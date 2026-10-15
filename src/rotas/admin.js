@@ -208,6 +208,7 @@ get('/admin', async (req, res) => {
     alunos: await n('SELECT COUNT(*) AS n FROM alunos'),
     turmas: await n('SELECT COUNT(*) AS n FROM turmas'),
     professores: await n('SELECT COUNT(*) AS n FROM professores'),
+    funcionarios: await n('SELECT COUNT(*) AS n FROM funcionarios'),
     porJustificar: await n('SELECT COUNT(*) AS n FROM faltas WHERE justificada = 0'),
   };
   const porTurma = await todos(
@@ -231,6 +232,7 @@ get('/admin', async (req, res) => {
       <a class="estatistica" href="/admin/alunos"><span>Alunos</span><strong>${stats.alunos}</strong></a>
       <a class="estatistica" href="/admin/turmas"><span>Turmas</span><strong>${stats.turmas}</strong></a>
       <div class="estatistica"><span>Professores</span><strong>${stats.professores}</strong></div>
+      <a class="estatistica" href="/admin/funcionarios"><span>Funcionários</span><strong>${stats.funcionarios}</strong></a>
       <a class="estatistica ${stats.porJustificar ? 'destaque-aviso' : ''}" href="/admin/faltas"><span>Faltas por justificar</span><strong>${stats.porJustificar}</strong></a>
     </section>
     <section class="cartao">

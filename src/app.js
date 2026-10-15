@@ -8,7 +8,7 @@ const { documento, mensagensFlash, botaoTema, LOGO } = require('./vistas/layout'
 const { semearSeVazia } = require('./seed');
 
 const PORTA = Number(process.env.PORT) || 3000;
-const PAGINA_INICIAL = { aluno: '/aluno', professor: '/professor/turmas', admin: '/admin' };
+const PAGINA_INICIAL = { aluno: '/aluno', professor: '/professor/turmas', admin: '/admin', funcionario: '/funcionario' };
 
 // ---------- Páginas de erro ----------
 const MENSAGENS_ERRO = {
@@ -60,7 +60,7 @@ async function antesDaRota(req, res) {
   }
 
   const area = req.caminho.split('/')[1];
-  if (['aluno', 'professor', 'admin'].includes(area) && req.utilizador.papel !== area) {
+  if (['aluno', 'professor', 'admin', 'funcionario'].includes(area) && req.utilizador.papel !== area) {
     paginaErro(req, res, 403);
     return false;
   }
@@ -76,6 +76,8 @@ async function antesDaRota(req, res) {
     );
   } else if (req.utilizador?.papel === 'professor') {
     req.professor = await um('SELECT * FROM professores WHERE utilizador_id = ?', req.utilizador.id);
+  } else if (req.utilizador?.papel === 'funcionario') {
+    req.funcionario = await um('SELECT * FROM funcionarios WHERE utilizador_id = ?', req.utilizador.id);
   }
   return true;
 }
@@ -207,6 +209,8 @@ require('./rotas/avaliacao');
 require('./rotas/admin');
 require('./rotas/turmas');
 require('./rotas/professores');
+require('./rotas/funcionario');
+require('./rotas/funcionarios');
 require('./rotas/horarios');
 require('./rotas/calendario');
 require('./rotas/auditoria');

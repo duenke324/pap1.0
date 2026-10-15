@@ -58,6 +58,7 @@ phpMyAdmin (separador *Importar*), mas não é necessário: a aplicação execut
 |---------------|------------------------------------|---------------|
 | Administrador | `1000`                            | `admin123`    |
 | Professor     | `1001`…`1005` (Ana, Rui, Marta, João, Pedro) | `prof123` |
+| Funcionário   | `3001`…`3008` (informático, auxiliar escolar, RH, biblioteca, secretaria, centro de recursos, cozinha, portaria) | `func123` |
 | Aluno         | `2450`…`2456` (10.º), `2310`…`2315` (11.º) | `aluno123` |
 
 Todos entram com o **número de processo** na Gestão Escolar — não há nomes de utilizador à parte.
@@ -176,6 +177,13 @@ ano letivo, curso, turma, diretor de turma e encarregado de educação) e por ba
 - Testes e avaliações: marcar e desmarcar testes, trabalhos e apresentações (é daqui que vêm os testes que o aluno vê)
 - Horário do professor
 
+### Painel do Funcionário
+Área de consulta para o pessoal não-docente (informático, auxiliar escolar, RH, biblioteca, secretaria,
+centro de recursos, cozinha e portaria): um painel de boas-vindas com o cargo e os dados pessoais
+(nome, n.º de processo, cargo, email e contacto). Tal como no aluno, quem corrige os dados é a
+administração — não há aqui funcionalidades de negócio próprias de cada cargo (sem catálogo de
+biblioteca, folha de RH, etc.), só a conta e a área pessoal.
+
 ### Painel do Administrador
 - Painel com estatísticas, turmas e faltas recentes por justificar
 - Turmas: criar, editar (nome, ano letivo, curso e diretor de turma) e apagar; ver os alunos, disciplinas e professores de cada turma.
@@ -183,6 +191,9 @@ ano letivo, curso, turma, diretor de turma e encarregado de educação) e por ba
 - Professores: criar, editar e apagar (com conta de acesso), email institucional (obrigatoriamente
   `@epmontijo.edu.pt`) e escolher as disciplinas que cada um leciona; ficha do professor com o seu horário semanal
 - Disciplinas: criar, editar e apagar (só se nunca foram usadas) e gerir os **módulos** de cada disciplina (n.º, nome e horas)
+- Funcionários (pessoal não-docente): criar, editar e apagar contas de acesso para informático, auxiliar escolar,
+  RH, biblioteca, secretaria, centro de recursos, cozinha e portaria — cada um com um **cargo**, email institucional
+  opcional e contacto. Sem disciplinas, turmas ou permissões especiais: só uma conta e uma área pessoal simples.
 - Calendário e avisos: períodos letivos e interrupções de cada ano letivo, e avisos para todos os alunos
   ou só para uma turma (é o que o aluno vê no separador Informações)
 - **Horários (editor de arrastar e largar)**: para cada turma, arrastar aulas (disciplina + professor) da paleta
@@ -226,6 +237,8 @@ src/
   rotas/admin.js      Painel do administrador (alunos, faltas, gráficos de assiduidade)
   rotas/turmas.js     Painel do administrador (turmas)
   rotas/professores.js Painel do administrador (professores e disciplinas)
+  rotas/funcionario.js Painel do funcionário (pessoal não-docente)
+  rotas/funcionarios.js Painel do administrador (gestão de funcionários)
   rotas/horarios.js   Editor de horários (página e gravação)
   rotas/calendario.js Calendário escolar e avisos (administrador)
   rotas/auditoria.js  Painel do administrador (histórico de auditoria)

@@ -188,6 +188,34 @@ async function semear() {
       await executar('INSERT IGNORE INTO professor_disciplinas (professor_id, disciplina_id) VALUES (?, ?)', professores[chave], disciplinas[sigla]);
     }
 
+    // Outros funcionários (utilizador = n.º de processo, palavra-passe func123)
+    const hashFunc = gerarHash('func123');
+    for (const [numeroProcesso, nome, cargo, email] of [
+      ['3001', 'Carlos Fonseca', 'informatico', 'carlos.fonseca@epmontijo.edu.pt'],
+      ['3002', 'Fernanda Amaral', 'auxiliar_escolar', null],
+      ['3003', 'Rosa Pinheiro', 'rh', 'rosa.pinheiro@epmontijo.edu.pt'],
+      ['3004', 'Vitor Cardoso', 'biblioteca', null],
+      ['3005', 'Isabel Nogueira', 'secretaria', 'isabel.nogueira@epmontijo.edu.pt'],
+      ['3006', 'Américo Brás', 'centro_recursos', null],
+      ['3007', 'Lurdes Pacheco', 'cozinha', null],
+      ['3008', 'Manuel Esteves', 'porteiro', null],
+    ]) {
+      const u = await inserir(
+        `INSERT INTO utilizadores (username, password_hash, papel, nome) VALUES (?, ?, 'funcionario', ?)`,
+        numeroProcesso,
+        hashFunc,
+        nome
+      );
+      await inserir(
+        'INSERT INTO funcionarios (utilizador_id, numero_processo, nome, cargo, email) VALUES (?, ?, ?, ?, ?)',
+        u,
+        numeroProcesso,
+        nome,
+        cargo,
+        email
+      );
+    }
+
     // Alunos (utilizador = n.º de processo, palavra-passe aluno123)
     const alunos = [
       // 10.º TGPSI
@@ -345,7 +373,7 @@ if (require.main === module) {
       await prepararBaseDeDados();
       await semear();
       console.log(`Base de dados "${CONFIG.database}" recriada com dados de demonstração.`);
-      console.log('  1000 / admin123   ·   1001…1005 / prof123   ·   2450…2456, 2310…2315 / aluno123');
+      console.log('  1000 / admin123   ·   1001…1005 / prof123   ·   3001…3008 / func123   ·   2450…2456, 2310…2315 / aluno123');
     } catch (erro) {
       console.error('Erro ao criar a base de dados:', erro.message);
       console.error('Confirme que o MySQL está ligado no painel do XAMPP.');

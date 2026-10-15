@@ -59,6 +59,7 @@ const ICONES = {
   lapis: '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>',
   medalha: '<circle cx="12" cy="9" r="5.5"/><path d="m8.5 13.5-1.5 7.5 5-2.5 5 2.5-1.5-7.5"/>',
   auditoria: '<circle cx="11" cy="11" r="7"/><path d="M16 16l5 5M8 11h6"/>',
+  mala: '<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/>',
   lua: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
   sair: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H4"/>',
@@ -140,7 +141,7 @@ function pagina(req, opcoes, conteudo) {
     <nav class="menu" aria-label="Menu principal">${menu}</nav>
     <div class="utilizador">
       <span class="avatar pequeno">${h(iniciais(u.nome))}</span>
-      <div class="utilizador-info"><strong>${h(u.nome)}</strong><small>${NOMES_PAPEL[u.papel]}</small></div>
+      <div class="utilizador-info"><strong>${h(u.nome)}</strong><small>${h(rotuloPapel(req))}</small></div>
       ${botaoTema()}
       <form method="post" action="/logout"><button class="botao-icone" title="Terminar sessão" aria-label="Terminar sessão">${icone('sair')}</button></form>
     </div>
