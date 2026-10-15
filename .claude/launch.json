@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gestao-escolar",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["src/app.js"],
+      "port": 3000,
+      "env": { "DB_PORT": "3120" }
+    }
+  ]
+}

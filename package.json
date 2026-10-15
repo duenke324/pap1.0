@@ -1,0 +1,28 @@
+{
+  "name": "gestao-escolar",
+  "version": "0.1.0-beta",
+  "description": "Sistema de Gestão Escolar - PAP (versão beta)",
+  "main": "src/app.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js",
+    "seed": "node src/seed.js",
+    "build:mac": "bash scripts/build-mac.sh",
+    "conversas": "node teams/app.js",
+    "conversas:dev": "node --watch teams/app.js",
+    "informanege": "node informanege/app.js",
+    "informanege:dev": "node --watch informanege/app.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "mysql2": "^3.24.4",
+    "stripe": "^23.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  }
+}

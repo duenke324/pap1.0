@@ -1,0 +1,295 @@
+/* =====================================================================
+   InformaNege — site de vendas
+   Mesma família visual do resto do produto (acento roxo partilhado com a
+   app "Conversas"). Capturas de ecrã no site são do software real — ver
+   publico/capturas/ — por isso não há nada a manter sincronizado à mão.
+   Funciona sem JavaScript: fica tudo visível, só sem as animações extra.
+   ===================================================================== */
+
+:root {
+  color-scheme: light;
+  --papel: #f5f5f9;
+  --superficie: #ffffff;
+  --superficie-2: #f0f0f6;
+  --tinta: #1c1c26;
+  --tinta-suave: #5c5c70;
+  --linha: #e4e4ec;
+
+  --acento: #5b5fc7;
+  --acento-forte: #464775;
+  --acento-fundo: #eceafb;
+  --acento-texto: #fff;
+  --acento-2: #e3008c;
+
+  --letra: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --raio: 10px;
+  --largura-maxima: 1080px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --papel: #101016;
+    --superficie: #1b1b24;
+    --superficie-2: #23232f;
+    --tinta: #e9e9f2;
+    --tinta-suave: #a6a6ba;
+    --linha: #2c2c3a;
+    --acento: #8b85f5;
+    --acento-forte: #a29cf8;
+    --acento-fundo: #29254a;
+    --acento-texto: #0e0c1f;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body { margin: 0; font: 16px/1.6 var(--letra); color: var(--tinta); background: var(--papel); overflow-x: hidden; }
+h1, h2, h3 { margin: 0 0 .5rem; line-height: 1.2; }
+p { margin: 0 0 1rem; color: var(--tinta-suave); }
+a { color: var(--acento); text-decoration: none; }
+code { font: 600 .9em ui-monospace, Menlo, Consolas, monospace; background: var(--superficie-2); padding: .15em .4em; border-radius: 4px; color: var(--tinta); }
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.texto-suave { color: var(--tinta-suave); font-size: .85rem; }
+.texto-gradiente { background: linear-gradient(90deg, var(--acento), var(--acento-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.centro { text-align: center; }
+
+.caixa { max-width: var(--largura-maxima); margin: 0 auto; padding: 0 1.5rem; position: relative; }
+
+/* ----- Fundo animado (discreto — só um sinal de vida, não um ecrã às cores) ----- */
+.fundo-animado { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.mancha { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .16; animation: deriva 26s ease-in-out infinite; }
+.mancha-1 { width: 44vmax; height: 44vmax; left: -16vmax; top: -18vmax; background: var(--acento); }
+.mancha-2 { width: 34vmax; height: 34vmax; right: -12vmax; bottom: -16vmax; background: var(--acento-2); animation-duration: 30s; animation-delay: -8s; }
+@media (prefers-color-scheme: dark) { .mancha { opacity: .1; } }
+@keyframes deriva {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(3vmax, 2.5vmax) scale(1.06); }
+}
+
+header, main, footer { position: relative; z-index: 1; }
+
+/* ----- Cabeçalho ----- */
+.topo { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--superficie) 78%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid transparent; transition: box-shadow .25s ease, border-color .25s ease; }
+.topo--scroll { border-color: var(--linha); box-shadow: 0 10px 30px -20px rgba(20, 20, 40, .35); }
+.topo-interior { display: flex; align-items: center; gap: 1.5rem; padding: .8rem 1.5rem; }
+.marca { display: inline-flex; align-items: center; gap: .5rem; color: var(--tinta); font-weight: 700; font-size: 1.05rem; }
+.marca svg { width: 24px; height: 24px; fill: none; stroke: var(--acento); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav-principal { display: flex; gap: 1.6rem; margin-left: 1rem; flex: 1; }
+.nav-principal a { color: var(--tinta-suave); font-weight: 600; font-size: .92rem; }
+.nav-principal a:hover { color: var(--tinta); }
+
+/* ----- Botões ----- */
+.botao {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem; white-space: nowrap;
+  padding: .6rem 1.1rem; border: 1px solid var(--acento); border-radius: 8px;
+  background: var(--acento); color: var(--acento-texto); font-weight: 600; font-size: .92rem; cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.botao:hover { background: var(--acento-forte); border-color: var(--acento-forte); transform: translateY(-2px); box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--acento-forte) 70%, transparent); }
+.botao-secundario { background: transparent; color: var(--tinta); border-color: var(--linha); }
+.botao-secundario:hover { background: var(--superficie-2); border-color: var(--linha); color: var(--tinta); }
+.botao-grande { padding: .85rem 1.5rem; font-size: 1rem; }
+.botao-pulsar { animation: pulsar 2.6s ease-in-out infinite; }
+@keyframes pulsar {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acento) 45%, transparent); }
+  50% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--acento) 0%, transparent); }
+}
+
+/* ----- Hero ----- */
+.hero { border-bottom: 1px solid var(--linha); }
+.hero-interior { display: flex; align-items: center; gap: 2.5rem; padding: 5rem 1.5rem; }
+.hero-texto-bloco { flex: 1 1 420px; min-width: 0; }
+.eyebrow { color: var(--acento-forte); font-weight: 700; font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 .6rem; }
+.hero h1 { font-size: clamp(2rem, 4vw, 2.9rem); font-weight: 800; color: var(--tinta); }
+.hero-texto { font-size: 1.08rem; max-width: 520px; margin: 1rem 0 2rem; }
+.hero-botoes { display: flex; flex-wrap: wrap; gap: .8rem; }
+
+.hero-eyebrow, .hero h1, .hero-texto, .hero-botoes { animation: subir-entrada .8s ease both; }
+.hero h1 { animation-delay: .05s; }
+.hero-texto { animation-delay: .15s; }
+.hero-botoes { animation-delay: .25s; }
+@keyframes subir-entrada { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+/* ----- Janelas com capturas de ecrã reais (não são desenhos) ----- */
+.hero-visual { flex: 1 1 380px; position: relative; height: 380px; perspective: 1400px; display: none; }
+.mock-janela { position: absolute; width: 340px; border-radius: 14px; background: var(--superficie); border: 1px solid var(--linha); box-shadow: 0 30px 60px -22px rgba(15, 15, 35, .35), 0 10px 22px -10px rgba(15, 15, 35, .2); overflow: hidden; transform-style: preserve-3d; }
+.mock-principal { right: 0; top: 4px; z-index: 2; transform: rotateX(4deg) rotateY(-8deg); animation: flutuar 7s ease-in-out infinite; }
+.mock-secundaria { right: 86px; top: 96px; z-index: 1; width: 250px; opacity: .5; transform: rotateX(3deg) rotateY(-5deg) scale(.9); animation: flutuar 7.6s ease-in-out infinite; animation-delay: -3.4s; filter: saturate(.85); }
+@keyframes flutuar { 0%, 100% { translate: 0 0; } 50% { translate: 0 -14px; } }
+.mock-barra { display: flex; gap: 6px; padding: .6rem .7rem; background: var(--superficie-2); border-bottom: 1px solid var(--linha); }
+.mock-barra span { width: 9px; height: 9px; border-radius: 50%; background: var(--linha); }
+.mock-barra span:nth-child(1) { background: #f28b82; } .mock-barra span:nth-child(2) { background: #f0b44c; } .mock-barra span:nth-child(3) { background: #6fcf97; }
+.mock-imagem { display: block; width: 100%; height: auto; }
+
+/* ----- Secções ----- */
+.secao { padding: 4.5rem 0; scroll-margin-top: 4.5rem; }
+.secao h2 { font-size: 1.8rem; text-align: center; color: var(--tinta); }
+.secao-intro { text-align: center; max-width: 560px; margin: 0 auto 2.5rem; }
+
+.grelha-funcionalidades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+.cartao {
+  position: relative; overflow: hidden; background: var(--superficie); border: 1px solid var(--linha);
+  border-radius: var(--raio); padding: 1.5rem; transition: transform .15s ease, box-shadow .15s ease; will-change: transform;
+}
+.cartao::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s ease;
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--acento) 18%, transparent), transparent 70%);
+}
+.cartao:hover { box-shadow: 0 20px 40px -24px rgba(15, 15, 35, .3); }
+.cartao:hover::before { opacity: 1; }
+.cartao-icone { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: var(--acento-fundo); margin-bottom: .9rem; }
+.cartao-icone .icone { width: 22px; height: 22px; fill: none; stroke: var(--acento-forte); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cartao h3 { font-size: 1.05rem; color: var(--tinta); }
+.cartao p { margin: 0; font-size: .92rem; }
+
+/* ----- Galeria de capturas reais ----- */
+.grelha-capturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; }
+.captura-cartao { display: flex; flex-direction: column; gap: .7rem; }
+.captura-janela { border-radius: 12px; overflow: hidden; border: 1px solid var(--linha); box-shadow: 0 20px 40px -24px rgba(15, 15, 35, .3); background: var(--superficie); }
+.captura-janela img { display: block; width: 100%; height: auto; }
+.captura-cartao figcaption { display: flex; flex-direction: column; gap: .2rem; }
+.captura-cartao figcaption strong { color: var(--tinta); font-size: .98rem; }
+.captura-cartao figcaption span { color: var(--tinta-suave); font-size: .86rem; }
+
+.secao-destaque { background: var(--superficie-2); border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha); }
+
+/* ----- Conversas: bloco de texto alinhado à esquerda — o título não deve ficar
+   centrado só porque ".secao h2" o é por omissão noutras secções simétricas. ----- */
+.secao-conversas { display: flex; align-items: center; justify-content: center; gap: 3rem; flex-wrap: wrap; }
+.secao-conversas-texto { max-width: 460px; }
+.secao-conversas-texto h2 { text-align: left; margin-bottom: .6rem; }
+.secao-conversas-texto p { font-size: 1.02rem; margin-bottom: 1.4rem; }
+.secao-conversas-visual { margin: 0; }
+.mock-conversas-preview { position: static; width: 320px; }
+
+/* ----- Listas simples de pontos (Tecnologia, Proteção de dados) ----- */
+.lista-pontos { list-style: none; margin: 0 auto; padding: 0; max-width: 640px; display: flex; flex-direction: column; gap: .8rem; }
+.lista-pontos li { position: relative; padding-left: 1.4rem; color: var(--tinta-suave); font-size: .94rem; }
+.lista-pontos li::before { content: ""; position: absolute; left: 0; top: .55em; width: 7px; height: 7px; border-radius: 50%; background: var(--acento); }
+
+/* ----- Aviso sobre as contas de demonstração ----- */
+.aviso-demo {
+  display: flex; align-items: center; gap: .6rem; max-width: 560px; margin: 0 auto 1.6rem; text-align: left;
+  padding: .7rem 1rem; border-radius: 10px; background: var(--superficie); border: 1px solid var(--linha); color: var(--tinta-suave); font-size: .86rem;
+}
+.aviso-demo .icone { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--acento-forte); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.demo-cartao {
+  max-width: 640px; margin: 0 auto; text-align: center; padding: 2.5rem;
+  background: color-mix(in srgb, var(--superficie) 88%, transparent); backdrop-filter: blur(10px);
+  border: 1px solid var(--linha); border-radius: 18px; box-shadow: 0 30px 60px -30px rgba(15, 15, 35, .35);
+}
+.tabela-demo-wrap { overflow-x: auto; margin-bottom: 2rem; }
+.tabela-demo { width: 100%; border-collapse: collapse; background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); overflow: hidden; }
+.tabela-demo th, .tabela-demo td { padding: .75rem 1rem; text-align: left; border-bottom: 1px solid var(--linha); font-size: .92rem; }
+.tabela-demo th { color: var(--tinta-suave); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; background: var(--superficie-2); }
+.tabela-demo tr:last-child td { border-bottom: 0; }
+
+/* ----- Preços ----- */
+.cartao-preco {
+  max-width: 420px; margin: 0 auto; text-align: center; padding: 2.5rem 2rem;
+  background: var(--superficie); border: 1px solid var(--linha); border-radius: 18px;
+  box-shadow: 0 30px 60px -30px rgba(15, 15, 35, .3);
+}
+.preco-valor { display: flex; align-items: baseline; justify-content: center; gap: .3rem; margin-bottom: 1rem; }
+.preco-numero { font-size: 3rem; font-weight: 800; color: var(--tinta); line-height: 1; }
+.preco-periodo { color: var(--tinta-suave); font-size: 1.1rem; }
+.preco-descricao { font-size: .94rem; margin-bottom: 1.6rem; }
+.cartao-preco form { margin: 0 0 .8rem; }
+.cartao-preco .botao { width: 100%; }
+.preco-nota { font-size: .82rem; color: var(--tinta-suave); margin: 0; }
+
+.contacto-interior { text-align: center; }
+.contacto-interior .botao .icone {
+  width: 18px; height: 18px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ----- Checkout (página própria, com o formulário do cartão do Stripe embutido) ----- */
+.checkout-topo-interior { justify-content: space-between; }
+.link-voltar { color: var(--tinta-suave); font-weight: 600; font-size: .9rem; }
+.link-voltar:hover { color: var(--tinta); }
+.checkout-pagina { min-height: calc(100vh - 68px); display: flex; align-items: center; padding: 2.5rem 0; }
+.checkout-caixa {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 2.5rem; align-items: start;
+}
+.checkout-resumo h1 { font-size: 1.6rem; margin: .3rem 0 1.2rem; }
+.checkout-resumo .preco-valor { justify-content: flex-start; margin-bottom: 1.1rem; }
+.checkout-nota {
+  display: flex; align-items: flex-start; gap: .5rem; font-size: .85rem; color: var(--tinta-suave);
+  max-width: 320px;
+}
+.checkout-nota .icone { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--acento-forte); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.checkout-cartao {
+  background: var(--superficie); border: 1px solid var(--linha); border-radius: 18px;
+  padding: 1.6rem; min-height: 320px; box-shadow: 0 30px 60px -30px rgba(15, 15, 35, .3);
+}
+.checkout-a-carregar { text-align: center; color: var(--tinta-suave); padding: 4rem 1rem; }
+.checkout-erro { text-align: center; color: var(--tinta-suave); padding: 2rem 1rem; }
+
+/* Pré-visualização de /checkout sem chaves da Stripe: campos de exemplo, nada clicável a sério */
+.checkout-cartao-previa { opacity: .92; }
+.checkout-previa-aviso {
+  display: flex; align-items: flex-start; gap: .5rem; font-size: .82rem; color: var(--acento-forte);
+  background: var(--acento-fundo); border-radius: 10px; padding: .7rem .9rem; margin: 0 0 1.2rem;
+}
+.checkout-previa-aviso .icone { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.campo-previa {
+  display: block; border: 1px solid var(--linha); border-radius: 10px; padding: .55rem .8rem; margin-bottom: .8rem;
+}
+.campo-previa-rotulo { display: block; font-size: .74rem; color: var(--tinta-suave); margin-bottom: .15rem; }
+.campo-previa-valor { display: block; color: var(--tinta); font-variant-numeric: tabular-nums; }
+.campo-previa-linha { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.campo-previa-linha .campo-previa { margin-bottom: .8rem; }
+.checkout-cartao-previa .botao[disabled] { opacity: .6; cursor: not-allowed; }
+.checkout-cartao-previa .botao[disabled]:hover { transform: none; box-shadow: none; }
+
+@media (max-width: 760px) {
+  .checkout-caixa { grid-template-columns: 1fr; gap: 1.6rem; }
+}
+
+/* ----- Scroll-reveal (só com JavaScript; sem JS fica tudo visível) ----- */
+.revelar { transition: opacity .7s ease, transform .7s ease; }
+html.js-ativo .revelar { opacity: 0; transform: translateY(26px); }
+html.js-ativo .revelar.visivel { opacity: 1; transform: none; }
+
+/* ----- Rodapé ----- */
+.rodape { border-top: 1px solid var(--linha); padding: 2rem 0; }
+.rodape-interior { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem 1.6rem; }
+.marca-rodape svg { stroke: var(--tinta-suave); }
+.rodape-links { display: flex; gap: 1.2rem; }
+.rodape-links a { color: var(--tinta-suave); font-size: .86rem; }
+.rodape-links a:hover { color: var(--tinta); }
+
+/* ----- Páginas curtas (404, resultado de pagamento) ----- */
+.ecra-mensagem { min-height: 100vh; display: grid; place-items: center; text-align: center; gap: .6rem; padding: 1.5rem; }
+.ecra-mensagem h1 { font-size: 2.2rem; color: var(--tinta); }
+
+/* ----- Ecrãs grandes: mostrar as janelas 3D ----- */
+@media (min-width: 981px) {
+  .hero-visual { display: block; }
+}
+
+/* ----- Ecrãs pequenos ----- */
+@media (max-width: 760px) {
+  .nav-principal { display: none; }
+  .grelha-funcionalidades { grid-template-columns: 1fr; }
+  .grelha-capturas { grid-template-columns: 1fr; }
+  .hero-interior { padding: 3.5rem 1.5rem; }
+  .demo-cartao { padding: 1.75rem; }
+  .secao-conversas-texto { text-align: left; }
+}
+@media (min-width: 761px) and (max-width: 980px) {
+  .grelha-funcionalidades { grid-template-columns: repeat(2, 1fr); }
+  .grelha-capturas { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ----- Movimento reduzido: desliga animações decorativas ----- */
+@media (prefers-reduced-motion: reduce) {
+  .mancha, .mock-principal, .mock-secundaria, .hero-eyebrow, .hero h1, .hero-texto, .hero-botoes, .botao-pulsar {
+    animation: none !important;
+  }
+  .cartao, .botao, .topo, .revelar { transition: none !important; }
+  html.js-ativo .revelar { opacity: 1; transform: none; }
+}
