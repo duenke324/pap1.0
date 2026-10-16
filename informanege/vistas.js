@@ -44,7 +44,7 @@ const FUNCIONALIDADES = [
 ];
 
 function cartaoFuncionalidade({ icone: nomeIcone, titulo, texto }) {
-  return `<article class="cartao revelar" data-tilt>
+  return `<article class="cartao">
     <span class="cartao-icone">${icone(nomeIcone)}</span>
     <h3>${titulo}</h3>
     <p>${texto}</p>
@@ -58,9 +58,8 @@ const CAPTURAS = [
 ];
 
 function cartaoCaptura({ src, titulo, texto }) {
-  return `<figure class="captura-cartao revelar">
+  return `<figure class="captura-cartao">
     <div class="captura-janela">
-      <div class="mock-barra"><span></span><span></span><span></span></div>
       <img src="${src}" alt="Captura de ecrã real: ${titulo}" loading="lazy">
     </div>
     <figcaption><strong>${titulo}</strong><span>${texto}</span></figcaption>
@@ -81,16 +80,9 @@ const RGPD = [
   'As cópias de segurança são as que a escola já faz ao seu servidor MySQL — o InformaNege não envia dados para fora para esse efeito.',
 ];
 
-// Janelas com capturas de ecrã reais do software (não são desenhos). O chrome (bolinhas no
-// topo) é decorativo; o conteúdo lá dentro é sempre uma imagem tirada da aplicação a correr.
-const JANELA_PRINCIPAL = `<div class="mock-janela mock-principal">
-  <div class="mock-barra"><span></span><span></span><span></span></div>
-  <img class="mock-imagem" src="/static/capturas/admin.jpg" alt="" aria-hidden="true">
-</div>`;
-
-const JANELA_SECUNDARIA = `<div class="mock-janela mock-secundaria">
-  <div class="mock-barra"><span></span><span></span><span></span></div>
-  <img class="mock-imagem" src="/static/capturas/professor.jpg" alt="" aria-hidden="true">
+// Captura de ecrã real do software (não é um desenho) — mostrada ao lado do texto no topo da página.
+const JANELA_PRINCIPAL = `<div class="mock-janela">
+  <img class="mock-imagem" src="/static/capturas/admin.jpg" alt="Captura de ecrã real do Painel do Administrador">
 </div>`;
 
 function pagina() {
@@ -102,17 +94,10 @@ function pagina() {
   <title>InformaNege — Sistema de Gestão Escolar</title>
   <meta name="description" content="Sistema de gestão escolar completo — alunos, professores, turmas, faltas e avaliações, tudo num só sistema, pronto a instalar na sua escola.">
   <meta name="color-scheme" content="light dark">
-  <script>document.documentElement.classList.add('js-ativo');</script>
   <link rel="stylesheet" href="/static/estilo.css">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <div class="fundo-animado" aria-hidden="true">
-    <span class="mancha mancha-1"></span>
-    <span class="mancha mancha-2"></span>
-  </div>
-
   <header class="topo">
     <div class="caixa topo-interior">
       <a href="#" class="marca">${LOGO}<strong>InformaNege</strong></a>
@@ -131,11 +116,10 @@ function pagina() {
     <section class="hero">
       <div class="caixa hero-interior">
         <div class="hero-texto-bloco">
-          <p class="eyebrow">Sistema de Gestão Escolar</p>
-          <h1>Toda a escola,<br>numa <span class="texto-gradiente">só plataforma</span>.</h1>
+          <h1>Sistema de Gestão Escolar</h1>
           <p class="hero-texto">
-            Alunos, professores, turmas, horários, faltas, sumários, avaliações e comunicação —
-            tudo num só sistema, em português, pronto a instalar na sua escola em poucos minutos.
+            Alunos, professores, turmas, horários, faltas, sumários e avaliações, tudo num só sistema,
+            em português. Construído de raiz, sem frameworks pesados, como projeto final de curso.
           </p>
           <div class="hero-botoes">
             <a class="botao botao-grande" href="${URL_GESTAO}" target="_blank" rel="noopener">Ver demonstração ao vivo</a>
@@ -143,7 +127,6 @@ function pagina() {
           </div>
         </div>
         <div class="hero-visual" aria-hidden="true">
-          ${JANELA_SECUNDARIA}
           ${JANELA_PRINCIPAL}
         </div>
       </div>
@@ -151,8 +134,8 @@ function pagina() {
 
     <section id="funcionalidades" class="secao">
       <div class="caixa">
-        <h2 class="revelar">Tudo o que a escola precisa</h2>
-        <p class="secao-intro revelar">Três painéis dedicados — aluno, professor e administrador — mais comunicação integrada.</p>
+        <h2>O que o sistema faz</h2>
+        <p class="secao-intro">Três painéis — aluno, professor e administrador — mais comunicação integrada.</p>
         <div class="grelha-funcionalidades">
           ${FUNCIONALIDADES.map(cartaoFuncionalidade).join('')}
         </div>
@@ -161,8 +144,8 @@ function pagina() {
 
     <section id="capturas" class="secao secao-destaque">
       <div class="caixa">
-        <h2 class="revelar">O software, tal como é</h2>
-        <p class="secao-intro revelar">Sem capturas fingidas — é o que o aluno, o professor e o administrador veem a cada dia.</p>
+        <h2>O software, tal como é</h2>
+        <p class="secao-intro">Sem capturas fingidas — é o que o aluno, o professor e o administrador veem a cada dia.</p>
         <div class="grelha-capturas">
           ${CAPTURAS.map(cartaoCaptura).join('')}
         </div>
@@ -171,17 +154,15 @@ function pagina() {
 
     <section id="conversas" class="secao">
       <div class="caixa secao-conversas">
-        <div class="secao-conversas-texto revelar">
-          <p class="eyebrow">Novo</p>
+        <div class="secao-conversas-texto">
           <h2>Uma conversa por disciplina, em cada turma</h2>
           <p>O professor cria um canal por disciplina e decide quem participa; o aluno só vê os canais a que foi
             adicionado. Também há mensagens privadas entre professores e alunos, para dúvidas que não precisam
             de ser públicas. Tema claro/escuro automático, e tudo a funcionar mesmo sem JavaScript.</p>
           <a class="botao" href="${URL_CONVERSAS}" target="_blank" rel="noopener">Experimentar Conversas</a>
         </div>
-        <figure class="secao-conversas-visual revelar">
+        <figure class="secao-conversas-visual">
           <div class="mock-janela mock-conversas-preview">
-            <div class="mock-barra"><span></span><span></span><span></span></div>
             <img class="mock-imagem" src="/static/capturas/conversas.jpg" alt="Captura de ecrã real da app Conversas, com um canal de turma aberto">
           </div>
         </figure>
@@ -190,10 +171,9 @@ function pagina() {
 
     <section id="tecnologia" class="secao secao-destaque">
       <div class="caixa">
-        <p class="eyebrow revelar centro">Para quem quer saber mais</p>
-        <h2 class="revelar">Tecnologia, em poucas palavras</h2>
-        <p class="secao-intro revelar">Não precisa de perceber disto para usar o sistema — mas se pesar na decisão, aqui fica.</p>
-        <ul class="lista-pontos revelar">
+        <h2 class="centro">Tecnologia, em poucas palavras</h2>
+        <p class="secao-intro">Não precisa de perceber disto para usar o sistema — mas se pesar na decisão, aqui fica.</p>
+        <ul class="lista-pontos">
           ${TECNOLOGIA.map((t) => `<li>${t}</li>`).join('')}
         </ul>
       </div>
@@ -201,7 +181,7 @@ function pagina() {
 
     <section id="demo" class="secao">
       <div class="caixa">
-        <div class="demo-cartao revelar">
+        <div class="demo-cartao">
           <h2>Experimente agora mesmo</h2>
           <p class="secao-intro">Não são capturas de ecrã — é o software real a correr.</p>
           <p class="aviso-demo">${icone('seguranca')} Estas são contas de demonstração, com dados fictícios, criadas só para este ambiente de testes. Numa instalação real não existem — cada escola cria as suas próprias contas.</p>
@@ -215,40 +195,38 @@ function pagina() {
               </tbody>
             </table>
           </div>
-          <a class="botao botao-grande botao-pulsar" href="${URL_GESTAO}" target="_blank" rel="noopener">Abrir a demonstração</a>
+          <a class="botao botao-grande" href="${URL_GESTAO}" target="_blank" rel="noopener">Abrir a demonstração</a>
         </div>
       </div>
     </section>
 
     <section id="precos" class="secao">
       <div class="caixa">
-        <p class="eyebrow centro revelar">Preço</p>
-        <h2 class="revelar">Uma subscrição, sem letra pequena</h2>
-        <p class="secao-intro revelar">Uma escola, um preço. Cancele quando quiser.</p>
-        <div class="cartao-preco revelar">
+        <h2 class="centro">Preço</h2>
+        <p class="secao-intro">Uma escola, um preço. Cancele quando quiser.</p>
+        <div class="cartao-preco">
           <div class="preco-valor"><span class="preco-numero">${PRECO_EUROS}€</span><span class="preco-periodo">/mês</span></div>
           <p class="preco-descricao">Sistema de Gestão Escolar completo — alunos, professores, turmas, faltas, avaliações e Conversas. Sem limite de alunos nem de turmas.</p>
-          <a class="botao botao-grande botao-pulsar" href="/subscrever">Subscrever agora — ${PRECO_EUROS} €/mês</a>
-          <p class="preco-nota">Escreva-nos a dizer que quer subscrever — respondemos a explicar os próximos passos.</p>
+          <a class="botao botao-grande" href="/subscrever">Subscrever agora — ${PRECO_EUROS} €/mês</a>
+          <p class="preco-nota">Escreva-me a dizer que quer subscrever — explico os próximos passos.</p>
         </div>
       </div>
     </section>
 
     <section id="privacidade" class="secao secao-destaque">
       <div class="caixa">
-        <p class="eyebrow revelar centro">Dados de menores</p>
-        <h2 class="revelar">Como tratamos os dados</h2>
-        <p class="secao-intro revelar">Uma escola guarda dados sensíveis. Isto não substitui o aconselhamento jurídico da escola sobre o RGPD — descreve como o sistema foi construído:</p>
-        <ul class="lista-pontos revelar">
+        <h2 class="centro">Como trato os dados</h2>
+        <p class="secao-intro">Uma escola guarda dados sensíveis de menores. Isto não substitui o aconselhamento jurídico da escola sobre o RGPD — descreve como o sistema foi construído:</p>
+        <ul class="lista-pontos">
           ${RGPD.map((t) => `<li>${t}</li>`).join('')}
         </ul>
       </div>
     </section>
 
     <section id="contacto" class="secao">
-      <div class="caixa contacto-interior revelar">
-        <h2>Fale connosco</h2>
-        <p class="secao-intro">Tem dúvidas ou quer saber mais sobre o InformaNege? Envie-nos um email.</p>
+      <div class="caixa contacto-interior">
+        <h2>Fale comigo</h2>
+        <p class="secao-intro">Tem dúvidas ou quer saber mais sobre o InformaNege? Mande-me um email.</p>
         <a class="botao botao-grande" href="${URL_CONTACTO}">${icone('email')} Contactar por email</a>
       </div>
     </section>
@@ -346,8 +324,7 @@ function paginaCheckout(clientSecret) {
   <main class="checkout-pagina">
     <div class="caixa checkout-caixa">
       <div class="checkout-resumo">
-        <p class="eyebrow">Subscrição mensal</p>
-        <h1>InformaNege<br>Sistema de Gestão Escolar</h1>
+        <h1>Subscrição mensal<br>InformaNege</h1>
         <div class="preco-valor"><span class="preco-numero">${PRECO_EUROS}€</span><span class="preco-periodo">/mês</span></div>
         <p class="checkout-nota">${icone('seguranca')} Pagamento processado e protegido pelo Stripe. Pode cancelar quando quiser.</p>
       </div>
@@ -368,10 +345,10 @@ function paginaCheckout(clientSecret) {
 function paginaInteresseRegistado() {
   return paginaSimples(
     'Obrigado pelo interesse',
-    `<h1>Obrigado pelo interesse! 🎉</h1>
+    `<h1>Obrigado pelo interesse.</h1>
      <p>Por agora, as subscrições são combinadas diretamente — ainda não há pagamento automático no site.</p>
      <p>Escreva para <a href="${URL_SUBSCREVER}"><strong>${EMAIL_CONTACTO}</strong></a> a dizer que quer subscrever,
-        com o nome da escola, e explicamos os próximos passos.</p>
+        com o nome da escola, e explico os próximos passos.</p>
      <a class="botao" href="${URL_SUBSCREVER}">${icone('email')} Enviar email agora</a>
      <a class="botao botao-secundario" href="/">Voltar ao início</a>`
   );
@@ -406,8 +383,8 @@ function pagina404() {
 function paginaPagamentoSucesso() {
   return paginaSimples(
     'Subscrição confirmada',
-    `<h1>Subscrição confirmada!</h1>
-     <p>Obrigado. Vamos entrar em contacto por email em breve para configurar a sua escola no InformaNege.</p>
+    `<h1>Subscrição confirmada.</h1>
+     <p>Obrigado. Entro em contacto por email em breve para configurar a sua escola no InformaNege.</p>
      <a class="botao" href="/">Voltar ao início</a>`
   );
 }
@@ -425,7 +402,7 @@ function paginaErroPagamento() {
   return paginaSimples(
     'Não foi possível continuar',
     `<h1>Não foi possível continuar</h1>
-     <p>Ocorreu um problema ao ligar ao Stripe. Tente novamente dentro de momentos, ou contacte-nos.</p>
+     <p>Ocorreu um problema ao ligar ao Stripe. Tente novamente dentro de momentos, ou contacte-me.</p>
      <a class="botao" href="/#precos">Voltar aos preços</a>`
   );
 }
