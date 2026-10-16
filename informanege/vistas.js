@@ -47,24 +47,29 @@ function pagina() {
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
-  <header class="topo">
-    <a href="/" class="marca">${LOGO}<strong>InformaNege</strong></a>
-  </header>
+  <div class="masthead">
+    <div class="masthead-interior">
+      <a href="/" class="marca">${LOGO}<strong>InformaNege</strong></a>
+      <h1>Sistema de Gestão Escolar</h1>
+      <p class="definicao">Alunos, professores, turmas, horários, faltas, sumários e avaliações — tudo num só sistema, em português.</p>
+      <p><a class="botao-claro" href="${URL_GESTAO}" target="_blank" rel="noopener">Ver demonstração ao vivo →</a></p>
+    </div>
+  </div>
 
   <main class="pagina">
     <article>
-      <h1>Sistema de Gestão Escolar</h1>
-      <p class="definicao">Alunos, professores, turmas, horários, faltas, sumários e avaliações — tudo num só sistema, em português.</p>
+      <blockquote class="destaque">Construí isto de raiz, sem frameworks pesados, como projeto final do curso
+      de Técnico de Gestão e Programação de Sistemas Informáticos.</blockquote>
 
-      <p>Construí isto de raiz, sem frameworks pesados, como projeto final do curso de Técnico de Gestão e
-      Programação de Sistemas Informáticos. Não são capturas de ecrã nem um protótipo — a demonstração abaixo
-      é o software real a correr, com dados fictícios, para experimentar sem compromisso.</p>
+      <p>Não são capturas de ecrã nem um protótipo — a demonstração acima é o software real a correr, com
+      dados fictícios, para experimentar sem compromisso.</p>
 
-      <p><a class="botao" href="${URL_GESTAO}" target="_blank" rel="noopener">Ver demonstração ao vivo →</a></p>
+      <figure class="figura-grande">
+        <img src="/static/capturas/admin.jpg" alt="Captura de ecrã real: Painel do Administrador" loading="lazy">
+        <figcaption>Painel do Administrador — turmas, professores e faltas por justificar, numa só vista.</figcaption>
+      </figure>
 
-      <hr>
-
-      <h2>O que faz</h2>
+      <h2><span class="marca-seccao"></span>O que faz</h2>
       <dl class="definicoes">
         <dt>Painel do Aluno</dt>
         <dd>Faltas, sumários, pauta e horário sempre à mão — o aluno vê tudo sem precisar de perguntar a ninguém.</dd>
@@ -78,13 +83,12 @@ function pagina() {
         <dd>Cada pessoa só vê o que lhe compete, as palavras-passe nunca ficam visíveis, e os dados não saem da escola.</dd>
       </dl>
 
-      ${figuraCaptura('/static/capturas/admin.jpg', 'Painel do Administrador — turmas, professores e faltas por justificar, numa só vista.')}
       ${figuraCaptura('/static/capturas/professor.jpg', '"As minhas turmas", no painel do professor — faltas por aluno já contabilizadas.')}
       ${figuraCaptura('/static/capturas/aluno.jpg', 'Painel do Aluno — assiduidade e avaliação por disciplina, num relance.')}
 
       <hr>
 
-      <h2>Conversas</h2>
+      <h2><span class="marca-seccao"></span>Conversas</h2>
       <p>O professor cria um canal por disciplina e decide quem participa; o aluno só vê os canais a que foi
       adicionado. Há também mensagens privadas entre professores e alunos, para dúvidas que não precisam de
       ser públicas. É uma segunda aplicação, incluída no mesmo preço.</p>
@@ -95,7 +99,7 @@ function pagina() {
 
       <hr>
 
-      <h2>Tecnologia, em poucas palavras</h2>
+      <h2><span class="marca-seccao"></span>Tecnologia, em poucas palavras</h2>
       <p class="texto-suave">Não precisa de perceber disto para usar o sistema — mas se pesar na decisão, aqui fica.</p>
       <ul>
         <li>Construído em Node.js puro, sem frameworks pesados — fácil de instalar e manter num computador da própria escola.</li>
@@ -106,7 +110,7 @@ function pagina() {
 
       <hr>
 
-      <h2>Experimente agora mesmo</h2>
+      <h2><span class="marca-seccao"></span>Experimente agora mesmo</h2>
       <p>${ICONE_CADEADO} Estas são contas de demonstração, com dados fictícios, criadas só para este ambiente de
       testes. Numa instalação real não existem — cada escola cria as suas próprias contas.</p>
       <div class="tabela-scroll">
@@ -123,15 +127,16 @@ function pagina() {
 
       <hr>
 
-      <h2>Preço</h2>
-      <p>Uma escola, um preço único: <strong>${PRECO_EUROS}€/mês</strong>. Sem limite de alunos nem de turmas.
-      Inclui a Gestão Escolar e o Conversas. Cancele quando quiser.</p>
+      <h2><span class="marca-seccao"></span>Preço</h2>
+      <p class="preco-grande">${PRECO_EUROS}€<span>/mês</span></p>
+      <p>Uma escola, um preço único. Sem limite de alunos nem de turmas. Inclui a Gestão Escolar e o
+      Conversas. Cancele quando quiser.</p>
       <p><a class="botao" href="/subscrever">Subscrever — ${PRECO_EUROS}€/mês</a></p>
       <p class="texto-suave">Escreva-me a dizer que quer subscrever — explico os próximos passos.</p>
 
       <hr>
 
-      <h2>Como trato os dados</h2>
+      <h2><span class="marca-seccao"></span>Como trato os dados</h2>
       <p>Uma escola guarda dados sensíveis de menores. Isto não substitui o aconselhamento jurídico da escola
       sobre o RGPD — descreve como o sistema foi construído:</p>
       <ul>
@@ -143,7 +148,7 @@ function pagina() {
 
       <hr>
 
-      <h2>Contacto</h2>
+      <h2><span class="marca-seccao"></span>Contacto</h2>
       <p>Tem dúvidas ou quer saber mais sobre o InformaNege? <a href="${URL_CONTACTO}">Mande-me um email</a>.</p>
     </article>
   </main>

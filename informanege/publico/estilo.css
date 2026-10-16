@@ -16,6 +16,9 @@
   --acento: #5b5fc7;
   --acento-forte: #43468f;
   --acento-texto: #fff;
+  --masthead-fundo: #2c2e68;
+  --masthead-tinta: #f3f2ff;
+  --masthead-tinta-suave: #c7c5ef;
 
   --letra-corpo: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --letra-titulo: Georgia, "Iowan Old Style", "Palatino Linotype", "URW Palladio L", serif;
@@ -33,6 +36,9 @@
     --acento: #a09af2;
     --acento-forte: #bcb6fa;
     --acento-texto: #15131c;
+    --masthead-fundo: #211d3a;
+    --masthead-tinta: #f1effc;
+    --masthead-tinta-suave: #b6b1d8;
   }
 }
 
@@ -52,7 +58,7 @@ code { font: 600 .92em ui-monospace, Menlo, Consolas, monospace; background: var
 .texto-suave { color: var(--tinta-suave); font-size: .92rem; }
 .centro { text-align: center; }
 
-/* ----- Cabeçalho ----- */
+/* ----- Cabeçalho (páginas sem faixa de abertura: checkout, 404, etc.) ----- */
 .topo {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   max-width: var(--largura); margin: 0 auto; padding: 1.8rem 1.25rem 0;
@@ -62,12 +68,34 @@ code { font: 600 .92em ui-monospace, Menlo, Consolas, monospace; background: var
 .link-voltar { color: var(--tinta-suave); font-size: .9rem; text-decoration: none; }
 .link-voltar:hover { color: var(--tinta); }
 
+/* ----- Faixa de abertura (só na página principal) — cor sólida, sem gradiente ----- */
+.masthead { background: var(--masthead-fundo); }
+.masthead-interior { max-width: var(--largura); margin: 0 auto; padding: 1.8rem 1.25rem 3rem; }
+.masthead .marca { color: var(--masthead-tinta); }
+.masthead .marca svg { stroke: var(--masthead-tinta); }
+.masthead h1 { color: var(--masthead-tinta); margin-top: 1.6rem; }
+.masthead .definicao { color: var(--masthead-tinta-suave); }
+.botao-claro {
+  display: inline-block; padding: .6rem 1.1rem; border-radius: 5px; font-weight: 600; font-size: .95rem;
+  text-decoration: none; background: var(--masthead-tinta); color: var(--masthead-fundo); border: 1px solid var(--masthead-tinta);
+}
+.botao-claro:hover { opacity: .9; }
+
 /* ----- Coluna de leitura ----- */
 .pagina { max-width: var(--largura); margin: 0 auto; padding: 2.4rem 1.25rem 4rem; }
 .pagina-estreita { max-width: 460px; }
 .definicao { font-size: 1.15rem; color: var(--tinta-suave); }
 
 hr { border: none; border-top: 1px solid var(--linha); margin: 2.6rem 0; }
+
+/* ----- Citação em destaque ----- */
+.destaque {
+  margin: 1.8rem 0; padding: 0 0 0 1.2rem; border-left: 3px solid var(--acento);
+  font-family: var(--letra-titulo); font-size: 1.3rem; line-height: 1.5; color: var(--tinta);
+}
+
+/* ----- Marcador de secção (antes de cada h2) ----- */
+.marca-seccao { display: inline-block; width: 10px; height: 10px; background: var(--acento); margin-right: .55rem; vertical-align: middle; }
 
 /* ----- Botões ----- */
 .botao, .botao-secundario {
@@ -96,12 +124,24 @@ figure { margin: 1.6rem 0; }
 figure img { display: block; width: 100%; height: auto; border: 1px solid var(--linha); border-radius: 5px; }
 figcaption { margin-top: .5rem; font-size: .88rem; color: var(--tinta-suave); }
 
+/* A primeira captura (logo a abrir o artigo) tem mais destaque: moldura com fundo e borda superior a cor */
+.figura-grande {
+  margin: 2rem 0 2.4rem; padding: .6rem .6rem 0; background: var(--superficie);
+  border: 1px solid var(--linha); border-top: 4px solid var(--acento); border-radius: 6px;
+}
+.figura-grande img { border: none; border-radius: 3px 3px 0 0; }
+.figura-grande figcaption { padding: .5rem .3rem .9rem; }
+
 /* ----- Tabela de contas de demonstração ----- */
 .tabela-scroll { overflow-x: auto; margin-bottom: 1.4rem; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: .55rem .7rem; text-align: left; border-bottom: 1px solid var(--linha); font-size: .92rem; }
 th { color: var(--tinta-suave); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; }
 tr:last-child td { border-bottom: 0; }
+
+/* ----- Preço, em destaque, na página principal ----- */
+.preco-grande { font-family: var(--letra-titulo); font-size: 3rem; color: var(--acento-forte); margin: 0 0 .9rem; line-height: 1; }
+.preco-grande span { font-family: var(--letra-corpo); font-size: 1.05rem; color: var(--tinta-suave); font-weight: 400; }
 
 /* ----- Preço (página de checkout) ----- */
 .checkout-preco { font-family: var(--letra-titulo); font-size: 2.4rem; color: var(--tinta); margin: 0 0 .6rem; }
@@ -128,5 +168,8 @@ tr:last-child td { border-bottom: 0; }
   body { font-size: 16px; }
   h1 { font-size: 1.7rem; }
   .pagina { padding: 1.8rem 1.1rem 3rem; }
+  .masthead-interior { padding: 1.5rem 1.1rem 2.2rem; }
+  .destaque { font-size: 1.1rem; }
+  .preco-grande { font-size: 2.4rem; }
   .campo-previa-linha { grid-template-columns: 1fr; }
 }
