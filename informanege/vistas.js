@@ -1,8 +1,8 @@
 // InformaNege — página de vendas do software. Sem base de dados, sem sessões: só a página e
-// botões que abrem a app real (Gestão Escolar / Conversas) a correr nas suas próprias portas.
+// ligações que abrem a app real (Gestão Escolar / Conversas) a correr nas suas próprias portas.
 // O botão de demonstração não é um mockup — é o produto real, por isso não há nada para manter
 // sincronizado: quando o painel mudar, a demonstração mostra sempre a versão atual automaticamente.
-// As capturas de ecrã (hero, galeria, Conversas) são do software real — ver publico/capturas/.
+// As capturas de ecrã são do software real — ver publico/capturas/.
 //
 // URL_GESTAO / URL_CONVERSAS apontam para localhost por omissão (ambiente de desenvolvimento).
 // Numa instalação real, definir as variáveis de ambiente GESTAO_URL / CONVERSAS_URL com o
@@ -21,69 +21,18 @@ const { chavePublicavelAtual, PRECO_CENTIMOS } = require('./pagamento');
 const PRECO_EUROS = (PRECO_CENTIMOS / 100).toFixed(0);
 
 const LOGO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/><path d="M22 10v6.5"/></svg>';
+const ICONE_CADEADO = '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 
-const ICONES = {
-  aluno: '<path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>',
-  professor: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4"/>',
-  admin: '<path d="M12 3l8 3v6c0 4.5-3.5 7.5-8 9-4.5-1.5-8-4.5-8-9V6l8-3Z"/>',
-  seguranca: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
-  conversas: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v10A1.5 1.5 0 0 1 18.5 17H9l-5 4z"/>',
-  email: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
-};
-
-function icone(nome) {
-  return `<svg class="icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES[nome] || ''}</svg>`;
+function h(texto) {
+  return String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-const FUNCIONALIDADES = [
-  { icone: 'aluno', titulo: 'Painel do Aluno', texto: 'Faltas, sumários, pauta e horário sempre à mão — o aluno vê tudo sem precisar de perguntar a ninguém.' },
-  { icone: 'professor', titulo: 'Painel do Professor', texto: 'Sumários, marcação de faltas e avaliação por módulos em poucos cliques, turma a turma.' },
-  { icone: 'admin', titulo: 'Painel do Administrador', texto: 'Turmas, horários, professores, alunos e avisos — gerido a partir de um único sítio, sem folhas de cálculo soltas.' },
-  { icone: 'conversas', titulo: 'Comunicação centralizada', texto: 'Um canal por disciplina em cada turma, e mensagens privadas entre professores e alunos — tudo dentro do mesmo sistema.' },
-  { icone: 'seguranca', titulo: 'Dados protegidos', texto: 'Cada pessoa só vê o que lhe compete, as palavras-passe nunca ficam visíveis, e os dados não saem da escola.' },
-];
-
-function cartaoFuncionalidade({ icone: nomeIcone, titulo, texto }) {
-  return `<article class="cartao">
-    <span class="cartao-icone">${icone(nomeIcone)}</span>
-    <h3>${titulo}</h3>
-    <p>${texto}</p>
-  </article>`;
-}
-
-const CAPTURAS = [
-  { src: '/static/capturas/aluno.jpg', titulo: 'Painel do Aluno', texto: 'Assiduidade e avaliação por disciplina, num relance.' },
-  { src: '/static/capturas/professor.jpg', titulo: 'Painel do Professor', texto: '"As minhas turmas", com faltas por aluno já contabilizadas.' },
-  { src: '/static/capturas/admin.jpg', titulo: 'Painel do Administrador', texto: 'Visão geral da escola: turmas, professores e faltas por justificar.' },
-];
-
-function cartaoCaptura({ src, titulo, texto }) {
-  return `<figure class="captura-cartao">
-    <div class="captura-janela">
-      <img src="${src}" alt="Captura de ecrã real: ${titulo}" loading="lazy">
-    </div>
-    <figcaption><strong>${titulo}</strong><span>${texto}</span></figcaption>
+function figuraCaptura(src, legenda) {
+  return `<figure>
+    <img src="${src}" alt="Captura de ecrã real: ${h(legenda)}" loading="lazy">
+    <figcaption>${legenda}</figcaption>
   </figure>`;
 }
-
-const TECNOLOGIA = [
-  'Construído em Node.js puro, sem frameworks pesados — fácil de instalar e manter num computador da própria escola.',
-  'Base de dados MySQL/MariaDB local: os dados ficam na escola, não num serviço de terceiros.',
-  'As páginas funcionam mesmo sem JavaScript no browser — o JavaScript só torna a experiência mais fluida.',
-  'Os endereços dos painéis (ver demonstração acima) são configuráveis — numa instalação real apontam para o servidor da escola, com HTTPS.',
-];
-
-const RGPD = [
-  'Os dados ficam na base de dados da própria escola (MySQL) — não num serviço cloud de terceiros nem fora do país.',
-  'Cada pessoa só acede ao que lhe compete: o aluno aos seus dados, o professor aos das suas turmas, a direção a tudo.',
-  'As palavras-passe nunca são guardadas em texto simples — só o seu hash, com sal aleatório (scrypt).',
-  'As cópias de segurança são as que a escola já faz ao seu servidor MySQL — o InformaNege não envia dados para fora para esse efeito.',
-];
-
-// Captura de ecrã real do software (não é um desenho) — mostrada ao lado do texto no topo da página.
-const JANELA_PRINCIPAL = `<div class="mock-janela">
-  <img class="mock-imagem" src="/static/capturas/admin.jpg" alt="Captura de ecrã real do Painel do Administrador">
-</div>`;
 
 function pagina() {
   return `<!doctype html>
@@ -92,155 +41,115 @@ function pagina() {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>InformaNege — Sistema de Gestão Escolar</title>
-  <meta name="description" content="Sistema de gestão escolar completo — alunos, professores, turmas, faltas e avaliações, tudo num só sistema, pronto a instalar na sua escola.">
+  <meta name="description" content="Sistema de gestão escolar — alunos, professores, turmas, faltas e avaliações, construído por um aluno como projeto final de curso.">
   <meta name="color-scheme" content="light dark">
   <link rel="stylesheet" href="/static/estilo.css">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
   <header class="topo">
-    <div class="caixa topo-interior">
-      <a href="#" class="marca">${LOGO}<strong>InformaNege</strong></a>
-      <nav class="nav-principal" aria-label="Navegação principal">
-        <a href="#funcionalidades">Funcionalidades</a>
-        <a href="#conversas">Conversas</a>
-        <a href="#demo">Demonstração</a>
-        <a href="#precos">Preços</a>
-        <a href="#contacto">Contactos</a>
-      </nav>
-      <a class="botao" href="${URL_GESTAO}" target="_blank" rel="noopener">Ver demonstração</a>
-    </div>
+    <a href="/" class="marca">${LOGO}<strong>InformaNege</strong></a>
   </header>
 
-  <main>
-    <section class="hero">
-      <div class="caixa hero-interior">
-        <div class="hero-texto-bloco">
-          <h1>Sistema de Gestão Escolar</h1>
-          <p class="hero-texto">
-            Alunos, professores, turmas, horários, faltas, sumários e avaliações, tudo num só sistema,
-            em português. Construído de raiz, sem frameworks pesados, como projeto final de curso.
-          </p>
-          <div class="hero-botoes">
-            <a class="botao botao-grande" href="${URL_GESTAO}" target="_blank" rel="noopener">Ver demonstração ao vivo</a>
-            <a class="botao botao-secundario botao-grande" href="#funcionalidades">Ver funcionalidades</a>
-          </div>
-        </div>
-        <div class="hero-visual" aria-hidden="true">
-          ${JANELA_PRINCIPAL}
-        </div>
-      </div>
-    </section>
+  <main class="pagina">
+    <article>
+      <h1>Sistema de Gestão Escolar</h1>
+      <p class="definicao">Alunos, professores, turmas, horários, faltas, sumários e avaliações — tudo num só sistema, em português.</p>
 
-    <section id="funcionalidades" class="secao">
-      <div class="caixa">
-        <h2>O que o sistema faz</h2>
-        <p class="secao-intro">Três painéis — aluno, professor e administrador — mais comunicação integrada.</p>
-        <div class="grelha-funcionalidades">
-          ${FUNCIONALIDADES.map(cartaoFuncionalidade).join('')}
-        </div>
-      </div>
-    </section>
+      <p>Construí isto de raiz, sem frameworks pesados, como projeto final do curso de Técnico de Gestão e
+      Programação de Sistemas Informáticos. Não são capturas de ecrã nem um protótipo — a demonstração abaixo
+      é o software real a correr, com dados fictícios, para experimentar sem compromisso.</p>
 
-    <section id="capturas" class="secao secao-destaque">
-      <div class="caixa">
-        <h2>O software, tal como é</h2>
-        <p class="secao-intro">Sem capturas fingidas — é o que o aluno, o professor e o administrador veem a cada dia.</p>
-        <div class="grelha-capturas">
-          ${CAPTURAS.map(cartaoCaptura).join('')}
-        </div>
-      </div>
-    </section>
+      <p><a class="botao" href="${URL_GESTAO}" target="_blank" rel="noopener">Ver demonstração ao vivo →</a></p>
 
-    <section id="conversas" class="secao">
-      <div class="caixa secao-conversas">
-        <div class="secao-conversas-texto">
-          <h2>Uma conversa por disciplina, em cada turma</h2>
-          <p>O professor cria um canal por disciplina e decide quem participa; o aluno só vê os canais a que foi
-            adicionado. Também há mensagens privadas entre professores e alunos, para dúvidas que não precisam
-            de ser públicas. Tema claro/escuro automático, e tudo a funcionar mesmo sem JavaScript.</p>
-          <a class="botao" href="${URL_CONVERSAS}" target="_blank" rel="noopener">Experimentar Conversas</a>
-        </div>
-        <figure class="secao-conversas-visual">
-          <div class="mock-janela mock-conversas-preview">
-            <img class="mock-imagem" src="/static/capturas/conversas.jpg" alt="Captura de ecrã real da app Conversas, com um canal de turma aberto">
-          </div>
-        </figure>
-      </div>
-    </section>
+      <hr>
 
-    <section id="tecnologia" class="secao secao-destaque">
-      <div class="caixa">
-        <h2 class="centro">Tecnologia, em poucas palavras</h2>
-        <p class="secao-intro">Não precisa de perceber disto para usar o sistema — mas se pesar na decisão, aqui fica.</p>
-        <ul class="lista-pontos">
-          ${TECNOLOGIA.map((t) => `<li>${t}</li>`).join('')}
-        </ul>
-      </div>
-    </section>
+      <h2>O que faz</h2>
+      <dl class="definicoes">
+        <dt>Painel do Aluno</dt>
+        <dd>Faltas, sumários, pauta e horário sempre à mão — o aluno vê tudo sem precisar de perguntar a ninguém.</dd>
+        <dt>Painel do Professor</dt>
+        <dd>Sumários, marcação de faltas e avaliação por módulos em poucos cliques, turma a turma.</dd>
+        <dt>Painel do Administrador</dt>
+        <dd>Turmas, horários, professores, alunos e avisos geridos a partir de um único sítio, sem folhas de cálculo soltas.</dd>
+        <dt>Comunicação</dt>
+        <dd>Um canal por disciplina em cada turma, e mensagens privadas entre professores e alunos — tudo dentro do mesmo sistema.</dd>
+        <dt>Dados</dt>
+        <dd>Cada pessoa só vê o que lhe compete, as palavras-passe nunca ficam visíveis, e os dados não saem da escola.</dd>
+      </dl>
 
-    <section id="demo" class="secao">
-      <div class="caixa">
-        <div class="demo-cartao">
-          <h2>Experimente agora mesmo</h2>
-          <p class="secao-intro">Não são capturas de ecrã — é o software real a correr.</p>
-          <p class="aviso-demo">${icone('seguranca')} Estas são contas de demonstração, com dados fictícios, criadas só para este ambiente de testes. Numa instalação real não existem — cada escola cria as suas próprias contas.</p>
-          <div class="tabela-demo-wrap">
-            <table class="tabela-demo">
-              <thead><tr><th>Papel</th><th>N.º de processo</th><th>Palavra-passe</th></tr></thead>
-              <tbody>
-                <tr><td>Administrador</td><td><code>1000</code></td><td><code>admin123</code></td></tr>
-                <tr><td>Professor</td><td><code>1001</code>–<code>1005</code></td><td><code>prof123</code></td></tr>
-                <tr><td>Aluno</td><td><code>2450</code>–<code>2456</code> / <code>2310</code>–<code>2315</code></td><td><code>aluno123</code></td></tr>
-              </tbody>
-            </table>
-          </div>
-          <a class="botao botao-grande" href="${URL_GESTAO}" target="_blank" rel="noopener">Abrir a demonstração</a>
-        </div>
-      </div>
-    </section>
+      ${figuraCaptura('/static/capturas/admin.jpg', 'Painel do Administrador — turmas, professores e faltas por justificar, numa só vista.')}
+      ${figuraCaptura('/static/capturas/professor.jpg', '"As minhas turmas", no painel do professor — faltas por aluno já contabilizadas.')}
+      ${figuraCaptura('/static/capturas/aluno.jpg', 'Painel do Aluno — assiduidade e avaliação por disciplina, num relance.')}
 
-    <section id="precos" class="secao">
-      <div class="caixa">
-        <h2 class="centro">Preço</h2>
-        <p class="secao-intro">Uma escola, um preço. Cancele quando quiser.</p>
-        <div class="cartao-preco">
-          <div class="preco-valor"><span class="preco-numero">${PRECO_EUROS}€</span><span class="preco-periodo">/mês</span></div>
-          <p class="preco-descricao">Sistema de Gestão Escolar completo — alunos, professores, turmas, faltas, avaliações e Conversas. Sem limite de alunos nem de turmas.</p>
-          <a class="botao botao-grande" href="/subscrever">Subscrever agora — ${PRECO_EUROS} €/mês</a>
-          <p class="preco-nota">Escreva-me a dizer que quer subscrever — explico os próximos passos.</p>
-        </div>
-      </div>
-    </section>
+      <hr>
 
-    <section id="privacidade" class="secao secao-destaque">
-      <div class="caixa">
-        <h2 class="centro">Como trato os dados</h2>
-        <p class="secao-intro">Uma escola guarda dados sensíveis de menores. Isto não substitui o aconselhamento jurídico da escola sobre o RGPD — descreve como o sistema foi construído:</p>
-        <ul class="lista-pontos">
-          ${RGPD.map((t) => `<li>${t}</li>`).join('')}
-        </ul>
-      </div>
-    </section>
+      <h2>Conversas</h2>
+      <p>O professor cria um canal por disciplina e decide quem participa; o aluno só vê os canais a que foi
+      adicionado. Há também mensagens privadas entre professores e alunos, para dúvidas que não precisam de
+      ser públicas. É uma segunda aplicação, incluída no mesmo preço.</p>
 
-    <section id="contacto" class="secao">
-      <div class="caixa contacto-interior">
-        <h2>Fale comigo</h2>
-        <p class="secao-intro">Tem dúvidas ou quer saber mais sobre o InformaNege? Mande-me um email.</p>
-        <a class="botao botao-grande" href="${URL_CONTACTO}">${icone('email')} Contactar por email</a>
+      ${figuraCaptura('/static/capturas/conversas.jpg', 'App Conversas, com um canal de turma aberto.')}
+
+      <p><a class="botao-secundario" href="${URL_CONVERSAS}" target="_blank" rel="noopener">Experimentar Conversas →</a></p>
+
+      <hr>
+
+      <h2>Tecnologia, em poucas palavras</h2>
+      <p class="texto-suave">Não precisa de perceber disto para usar o sistema — mas se pesar na decisão, aqui fica.</p>
+      <ul>
+        <li>Construído em Node.js puro, sem frameworks pesados — fácil de instalar e manter num computador da própria escola.</li>
+        <li>Base de dados MySQL/MariaDB local: os dados ficam na escola, não num serviço de terceiros.</li>
+        <li>As páginas funcionam mesmo sem JavaScript no browser.</li>
+        <li>Os endereços dos painéis (ver demonstração acima) são configuráveis — numa instalação real apontam para o servidor da escola, com HTTPS.</li>
+      </ul>
+
+      <hr>
+
+      <h2>Experimente agora mesmo</h2>
+      <p>${ICONE_CADEADO} Estas são contas de demonstração, com dados fictícios, criadas só para este ambiente de
+      testes. Numa instalação real não existem — cada escola cria as suas próprias contas.</p>
+      <div class="tabela-scroll">
+        <table>
+          <thead><tr><th>Papel</th><th>N.º de processo</th><th>Palavra-passe</th></tr></thead>
+          <tbody>
+            <tr><td>Administrador</td><td><code>1000</code></td><td><code>admin123</code></td></tr>
+            <tr><td>Professor</td><td><code>1001</code>–<code>1005</code></td><td><code>prof123</code></td></tr>
+            <tr><td>Aluno</td><td><code>2450</code>–<code>2456</code> / <code>2310</code>–<code>2315</code></td><td><code>aluno123</code></td></tr>
+          </tbody>
+        </table>
       </div>
-    </section>
+      <p><a class="botao" href="${URL_GESTAO}" target="_blank" rel="noopener">Abrir a demonstração →</a></p>
+
+      <hr>
+
+      <h2>Preço</h2>
+      <p>Uma escola, um preço único: <strong>${PRECO_EUROS}€/mês</strong>. Sem limite de alunos nem de turmas.
+      Inclui a Gestão Escolar e o Conversas. Cancele quando quiser.</p>
+      <p><a class="botao" href="/subscrever">Subscrever — ${PRECO_EUROS}€/mês</a></p>
+      <p class="texto-suave">Escreva-me a dizer que quer subscrever — explico os próximos passos.</p>
+
+      <hr>
+
+      <h2>Como trato os dados</h2>
+      <p>Uma escola guarda dados sensíveis de menores. Isto não substitui o aconselhamento jurídico da escola
+      sobre o RGPD — descreve como o sistema foi construído:</p>
+      <ul>
+        <li>Os dados ficam na base de dados da própria escola (MySQL) — não num serviço cloud de terceiros nem fora do país.</li>
+        <li>Cada pessoa só acede ao que lhe compete: o aluno aos seus dados, o professor aos das suas turmas, a direção a tudo.</li>
+        <li>As palavras-passe nunca são guardadas em texto simples — só o seu hash, com sal aleatório (scrypt).</li>
+        <li>As cópias de segurança são as que a escola já faz ao seu servidor MySQL — o InformaNege não envia dados para fora para esse efeito.</li>
+      </ul>
+
+      <hr>
+
+      <h2>Contacto</h2>
+      <p>Tem dúvidas ou quer saber mais sobre o InformaNege? <a href="${URL_CONTACTO}">Mande-me um email</a>.</p>
+    </article>
   </main>
 
   <footer class="rodape">
-    <div class="caixa rodape-interior">
-      <span class="marca marca-rodape">${LOGO}<strong>InformaNege</strong></span>
-      <nav class="rodape-links" aria-label="Links do rodapé">
-        <a href="#privacidade">Política de privacidade</a>
-        <a href="${URL_CONTACTO}">Contacto</a>
-      </nav>
-      <span class="texto-suave">Sistema de Gestão Escolar · versão beta · projeto académico (PAP)</span>
-    </div>
+    <span>InformaNege · Sistema de Gestão Escolar · versão beta · projeto académico (PAP)</span>
   </footer>
 </body>
 </html>`;
@@ -260,7 +169,7 @@ const CAMPOS_CARTAO_PREVIA = `<div class="campo-previa">
     <span class="campo-previa-rotulo">Nome no cartão</span>
     <span class="campo-previa-valor">O seu nome</span>
   </div>
-  <button class="botao botao-grande" type="button" disabled>Subscrever — exemplo</button>`;
+  <button class="botao" type="button" disabled>Subscrever — exemplo</button>`;
 
 // Página própria de checkout: fica no nosso site, com o nosso cabeçalho e o nosso resumo do
 // preço — só o formulário do cartão em si é que o Stripe.js desenha dentro de "#checkout" (num
@@ -279,8 +188,8 @@ function paginaCheckout(clientSecret) {
   const dados = JSON.stringify({ chave: chavePublicavelAtual(), clientSecret }).replace(/</g, '\\u003c');
 
   const corpoCartao = previa
-    ? `<p class="checkout-previa-aviso">${icone('seguranca')} Pré-visualização — ainda sem chaves da Stripe configuradas. Estes campos são só um exemplo; não é possível pagar aqui.</p>${CAMPOS_CARTAO_PREVIA}`
-    : `<p class="checkout-a-carregar">A preparar o pagamento…</p>`;
+    ? `<p class="checkout-previa-aviso">${ICONE_CADEADO} Pré-visualização — ainda sem chaves da Stripe configuradas. Estes campos são só um exemplo; não é possível pagar aqui.</p>${CAMPOS_CARTAO_PREVIA}`
+    : `<p class="texto-suave centro">A preparar o pagamento…</p>`;
 
   const scriptStripe = previa
     ? ''
@@ -290,7 +199,7 @@ function paginaCheckout(clientSecret) {
     var dados = ${dados};
     var alvo = document.getElementById('checkout');
     if (!window.Stripe) {
-      alvo.innerHTML = '<p class="checkout-erro">Não foi possível carregar o Stripe. Verifique a ligação à internet e <a href="/checkout">tente novamente</a>.</p>';
+      alvo.innerHTML = '<p class="texto-suave centro">Não foi possível carregar o Stripe. Verifique a ligação à internet e <a href="/checkout">tente novamente</a>.</p>';
       return;
     }
     var stripe = Stripe(dados.chave);
@@ -298,7 +207,7 @@ function paginaCheckout(clientSecret) {
       alvo.innerHTML = '';
       checkout.mount('#checkout');
     }).catch(function () {
-      alvo.innerHTML = '<p class="checkout-erro">Não foi possível carregar o pagamento. <a href="/checkout">Tente novamente</a>.</p>';
+      alvo.innerHTML = '<p class="texto-suave centro">Não foi possível carregar o pagamento. <a href="/checkout">Tente novamente</a>.</p>';
     });
   })();
   </script>`;
@@ -316,24 +225,20 @@ function paginaCheckout(clientSecret) {
 </head>
 <body>
   <header class="topo">
-    <div class="caixa topo-interior checkout-topo-interior">
-      <a href="/" class="marca">${LOGO}<strong>InformaNege</strong></a>
-      <a class="link-voltar" href="/#precos">← Voltar</a>
-    </div>
+    <a href="/" class="marca">${LOGO}<strong>InformaNege</strong></a>
+    <a class="link-voltar" href="/#preco">← Voltar</a>
   </header>
-  <main class="checkout-pagina">
-    <div class="caixa checkout-caixa">
-      <div class="checkout-resumo">
-        <h1>Subscrição mensal<br>InformaNege</h1>
-        <div class="preco-valor"><span class="preco-numero">${PRECO_EUROS}€</span><span class="preco-periodo">/mês</span></div>
-        <p class="checkout-nota">${icone('seguranca')} Pagamento processado e protegido pelo Stripe. Pode cancelar quando quiser.</p>
-      </div>
-      <div class="checkout-cartao${previa ? ' checkout-cartao-previa' : ''}" id="checkout">
+  <main class="pagina pagina-estreita">
+    <article>
+      <h1>Subscrição mensal</h1>
+      <p class="definicao">InformaNege — Sistema de Gestão Escolar</p>
+      <p class="checkout-preco">${PRECO_EUROS}€<span>/mês</span></p>
+      <p class="texto-suave">${ICONE_CADEADO} Pagamento processado e protegido pelo Stripe. Pode cancelar quando quiser.</p>
+      <div class="checkout-caixa${previa ? ' checkout-caixa-previa' : ''}" id="checkout">
         ${corpoCartao}
       </div>
-    </div>
+    </article>
   </main>
-
   ${scriptStripe}
 </body>
 </html>`;
@@ -347,14 +252,13 @@ function paginaInteresseRegistado() {
     'Obrigado pelo interesse',
     `<h1>Obrigado pelo interesse.</h1>
      <p>Por agora, as subscrições são combinadas diretamente — ainda não há pagamento automático no site.</p>
-     <p>Escreva para <a href="${URL_SUBSCREVER}"><strong>${EMAIL_CONTACTO}</strong></a> a dizer que quer subscrever,
-        com o nome da escola, e explico os próximos passos.</p>
-     <a class="botao" href="${URL_SUBSCREVER}">${icone('email')} Enviar email agora</a>
-     <a class="botao botao-secundario" href="/">Voltar ao início</a>`
+     <p>Escreva para <a href="${URL_SUBSCREVER}">${EMAIL_CONTACTO}</a> a dizer que quer subscrever, com o
+        nome da escola, e explico os próximos passos.</p>
+     <p><a class="botao" href="${URL_SUBSCREVER}">Enviar email agora</a> <a class="botao-secundario" href="/">Voltar ao início</a></p>`
   );
 }
 
-// Página curta genérica (404, resultado de pagamento, erro) — mesmo "cartão" centrado.
+// Página curta genérica (404, resultado de pagamento, erro) — mesma coluna estreita da página principal.
 function paginaSimples(titulo, corpo) {
   return `<!doctype html>
 <html lang="pt-PT">
@@ -367,15 +271,20 @@ function paginaSimples(titulo, corpo) {
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
-  <div class="ecra-mensagem">
-    ${corpo}
-  </div>
+  <header class="topo">
+    <a href="/" class="marca">${LOGO}<strong>InformaNege</strong></a>
+  </header>
+  <main class="pagina pagina-estreita">
+    <article class="centro">
+      ${corpo}
+    </article>
+  </main>
 </body>
 </html>`;
 }
 
 function pagina404() {
-  return paginaSimples('Página não encontrada', `<h1>404</h1><p>Esta página não existe.</p><a class="botao" href="/">Voltar ao início</a>`);
+  return paginaSimples('Página não encontrada', `<h1>404</h1><p>Esta página não existe.</p><p><a class="botao" href="/">Voltar ao início</a></p>`);
 }
 
 // Nota: o Stripe só chega aqui depois de o pagamento ser mesmo aceite — não é preciso validar
@@ -385,25 +294,25 @@ function paginaPagamentoSucesso() {
     'Subscrição confirmada',
     `<h1>Subscrição confirmada.</h1>
      <p>Obrigado. Entro em contacto por email em breve para configurar a sua escola no InformaNege.</p>
-     <a class="botao" href="/">Voltar ao início</a>`
+     <p><a class="botao" href="/">Voltar ao início</a></p>`
   );
 }
 
 function paginaPagamentoCancelado() {
   return paginaSimples(
     'Pagamento cancelado',
-    `<h1>Pagamento cancelado</h1>
+    `<h1>Pagamento cancelado.</h1>
      <p>Não foi cobrado nada. Pode tentar novamente quando quiser.</p>
-     <a class="botao" href="/#precos">Voltar aos preços</a>`
+     <p><a class="botao" href="/#preco">Voltar aos preços</a></p>`
   );
 }
 
 function paginaErroPagamento() {
   return paginaSimples(
     'Não foi possível continuar',
-    `<h1>Não foi possível continuar</h1>
+    `<h1>Não foi possível continuar.</h1>
      <p>Ocorreu um problema ao ligar ao Stripe. Tente novamente dentro de momentos, ou contacte-me.</p>
-     <a class="botao" href="/#precos">Voltar aos preços</a>`
+     <p><a class="botao" href="/#preco">Voltar aos preços</a></p>`
   );
 }
 
