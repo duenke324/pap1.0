@@ -23,14 +23,17 @@ CREATE TABLE IF NOT EXISTS utilizadores (
   criado_em               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE = InnoDB;
 
--- diretor_id: diretor de turma (a chave estrangeira para professores é criada em db.js, porque
--- a tabela professores só aparece mais abaixo)
+-- diretor_id: diretor de turma. delegado_id/subdelegado_id: alunos representantes da turma.
+-- As chaves estrangeiras destes três campos são criadas em db.js, porque as tabelas professores
+-- e alunos só aparecem mais abaixo.
 CREATE TABLE IF NOT EXISTS turmas (
-  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nome       VARCHAR(50) NOT NULL UNIQUE,
-  ano_letivo VARCHAR(9)  NOT NULL,
-  curso      VARCHAR(120),
-  diretor_id INT UNSIGNED
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nome           VARCHAR(50) NOT NULL UNIQUE,
+  ano_letivo     VARCHAR(9)  NOT NULL,
+  curso          VARCHAR(120),
+  diretor_id     INT UNSIGNED,
+  delegado_id    INT UNSIGNED,
+  subdelegado_id INT UNSIGNED
 ) ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS disciplinas (
@@ -210,6 +213,38 @@ CREATE TABLE IF NOT EXISTS faltas (
   CONSTRAINT fk_falta_horario     FOREIGN KEY (horario_id)      REFERENCES horario(id)      ON DELETE CASCADE,
   CONSTRAINT fk_falta_justificou  FOREIGN KEY (justificada_por) REFERENCES utilizadores(id) ON DELETE SET NULL,
   CONSTRAINT fk_falta_registou    FOREIGN KEY (registada_por)   REFERENCES utilizadores(id) ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+-- Ocorrências disciplinares dos alunos, com gravidade. Registadas por qualquer professor que lecione
+-- a turma do aluno; visíveis a esses professores e ao administrador.
+CREATE TABLE IF NOT EXISTS ocorrencias (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  aluno_id      INT UNSIGNED NOT NULL,
+  gravidade     ENUM('leve', 'grave', 'muito_grave') NOT NULL DEFAULT 'leve',
+  descricao     VARCHAR(500) NOT NULL,
+  data          DATE NOT NULL,
+  registada_por INT UNSIGNED,
+  criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_ocorrencias_aluno (aluno_id, data),
+  CONSTRAINT fk_ocorrencia_aluno    FOREIGN KEY (aluno_id)      REFERENCES alunos(id)       ON DELETE CASCADE,
+  CONSTRAINT fk_ocorrencia_registou FOREIGN KEY (registada_por) REFERENCES utilizadores(id) ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+-- Reuniões de turma (diretor de turma com os delegados e subdelegados). Visíveis a todos os alunos da
+-- turma e aos professores que a lecionam; o delegado e o subdelegado (turmas.delegado_id/subdelegado_id)
+-- recebem um aviso em destaque no seu painel.
+CREATE TABLE IF NOT EXISTS reunioes_turma (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  turma_id    INT UNSIGNED NOT NULL,
+  data        DATE NOT NULL,
+  hora        CHAR(5) NOT NULL,
+  local       VARCHAR(60),
+  assunto     VARCHAR(200),
+  marcada_por INT UNSIGNED,
+  criado_em   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_reunioes_turma (turma_id, data),
+  CONSTRAINT fk_reuniao_turma  FOREIGN KEY (turma_id)    REFERENCES turmas(id)       ON DELETE CASCADE,
+  CONSTRAINT fk_reuniao_marcou FOREIGN KEY (marcada_por) REFERENCES utilizadores(id) ON DELETE SET NULL
 ) ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS testes (

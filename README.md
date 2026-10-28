@@ -52,14 +52,28 @@ instalado e ligado à parte** (isto só embrulha a aplicação, não a base de d
 O esquema completo está em [database/escola.sql](database/escola.sql). Pode importá-lo à mão no
 phpMyAdmin (separador *Importar*), mas não é necessário: a aplicação executa-o ao arrancar.
 
+### Aplicação instalável (PWA)
+
+A Gestão Escolar é também uma **Progressive Web App**: no Chrome/Edge aparece um ícone de instalar
+na barra de endereço, e no telemóvel (Android ou iOS) dá para "Adicionar ao ecrã principal" a
+partir do browser — fica com ícone próprio e abre em janela própria, sem barra do browser.
+
+- Manifesto em [public/manifest.webmanifest](public/manifest.webmanifest) e service worker em
+  [public/sw.js](public/sw.js) (servido na raiz do site, `/sw.js`, para o seu âmbito cobrir a
+  aplicação toda).
+- Só os ficheiros estáticos (CSS, JS, ícones) ficam em cache — as páginas têm sempre dados do
+  utilizador autenticado, por isso são sempre pedidas à rede. Sem ligação, mostra-se
+  [public/offline.html](public/offline.html).
+- Os ícones (`public/icons/`) foram gerados a partir do logótipo em `public/favicon.svg`.
+
 ### Contas de demonstração
 
-| Papel         | Número de processo                | Palavra-passe |
-|---------------|------------------------------------|---------------|
-| Administrador | `1000`                            | `admin123`    |
-| Professor     | `1001`…`1005` (Ana, Rui, Marta, João, Pedro) | `prof123` |
-| Funcionário   | `3001`…`3008` (informático, auxiliar escolar, RH, biblioteca, secretaria, centro de recursos, cozinha, portaria) | `func123` |
-| Aluno         | `2450`…`2456` (10.º), `2310`…`2315` (11.º) | `aluno123` |
+| Papel         | Número de processo                                                                                               | Palavra-passe |
+| ------------- | ---------------------------------------------------------------------------------------------------------------- | ------------- |
+| Administrador | `1000`                                                                                                           | `admin123`    |
+| Professor     | `1001`…`1005` (Ana, Rui, Marta, João, Pedro)                                                                     | `prof123`     |
+| Funcionário   | `3001`…`3008` (informático, auxiliar escolar, RH, biblioteca, secretaria, centro de recursos, cozinha, portaria) | `func123`     |
+| Aluno         | `2450`…`2456` (10.º), `2310`…`2315` (11.º)                                                                       | `aluno123`    |
 
 Todos entram com o **número de processo** na Gestão Escolar — não há nomes de utilizador à parte.
 Para entrar na app **Conversas** (que usa email, não número de processo), o email de cada conta de

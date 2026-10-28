@@ -192,6 +192,18 @@ function etiquetaClassificacao(c) {
   return `<span class="etiqueta ${c.nota >= 10 ? 'etiqueta-ok' : 'etiqueta-aviso'}">${c.nota}</span>`;
 }
 
+// ---------- Ocorrências disciplinares ----------
+const GRAVIDADES_OCORRENCIA = {
+  leve: 'Leve',
+  grave: 'Grave',
+  muito_grave: 'Muito grave',
+};
+
+function etiquetaGravidade(gravidade) {
+  const classe = { leve: 'etiqueta-ok', grave: 'etiqueta-aviso', muito_grave: 'etiqueta-perigo' }[gravidade] || '';
+  return `<span class="etiqueta ${classe}">${GRAVIDADES_OCORRENCIA[gravidade] || gravidade}</span>`;
+}
+
 // Um campo de formulário repetido chega como array; um só chega como string
 function comoLista(valor) {
   if (valor === undefined || valor === null || valor === '') return [];
@@ -231,6 +243,8 @@ module.exports = {
   TIPOS_FALTA,
   TIPOS_TESTE,
   CARGOS_FUNCIONARIO,
+  GRAVIDADES_OCORRENCIA,
+  etiquetaGravidade,
   comoLista,
   iniciais,
   lerClassificacao,

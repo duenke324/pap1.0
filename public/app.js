@@ -1,5 +1,12 @@
 // Pequenas melhorias de interação (a aplicação funciona sem JavaScript na maior parte)
 
+// PWA: regista o service worker (cache dos ficheiros estáticos e página de "sem ligação")
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 // Submeter automaticamente os filtros ao mudar um <select> ou data
 document.addEventListener('change', (e) => {
   if (e.target.matches('[data-submeter]')) e.target.form.requestSubmit();

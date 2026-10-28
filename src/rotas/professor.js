@@ -20,6 +20,8 @@ const {
   TIPOS_TESTE,
   LIMITE_FALTAS,
   aulasDadas,
+  GRAVIDADES_OCORRENCIA,
+  etiquetaGravidade,
 } = require('../lib/util');
 
 // ---------- Consultas ----------
@@ -97,48 +99,104 @@ function cartaoAvisosDeFaltas(avisos) {
 }
 
 // Novidades recentes nas turmas que este professor dirige, para destacar logo ao abrir "As minhas turmas":
-// faltas disciplinares (o indicador mais próximo de "ocorrência grave" que existe hoje na base de dados)
-// e faltas injustificadas acabadas de registar. Não é o mesmo que o estado "Pendente de Validação" nem uma
-// tabela de Ocorrências com gravidade (Leve/Grave/Muito Grave) — essas ainda não existem.
+// ocorrências graves/muito graves e faltas injustificadas acabadas de registar.
 const DIAS_NOVIDADES = 7;
 
 async function novidadesRecentes(professorId) {
-  const base = (condicao) =>
-    todos(
-      `SELECT f.id, f.data, a.id AS aluno_id, a.nome AS aluno, t.nome AS turma, d.nome AS disciplina
-         FROM faltas f
-         JOIN horario hr ON hr.id = f.horario_id
-         JOIN turmas t ON t.id = hr.turma_id
-         JOIN alunos a ON a.id = f.aluno_id
-         JOIN disciplinas d ON d.id = hr.disciplina_id
-        WHERE t.diretor_id = ? AND f.criado_em >= DATE_SUB(NOW(), INTERVAL ? DAY) AND ${condicao}
-        ORDER BY f.criado_em DESC
-        LIMIT 20`,
-      professorId,
-      DIAS_NOVIDADES
-    );
-  const [disciplinares, porValidar] = await Promise.all([
-    base(`f.tipo = 'disciplinar'`),
-    base(`f.tipo IN ('presenca', 'material') AND f.justificada = 0`),
-  ]);
-  return { disciplinares, porValidar };
+  const graves = await todos(
+    `SELECT o.id, o.data, o.gravidade, a.id AS aluno_id, a.nome AS aluno, t.nome AS turma
+       FROM ocorrencias o
+       JOIN alunos a ON a.id = o.aluno_id
+       JOIN turmas t ON t.id = a.turma_id
+      WHERE t.diretor_id = ? AND o.gravidade IN ('grave', 'muito_grave')
+        AND o.criado_em >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      ORDER BY o.criado_em DESC
+      LIMIT 20`,
+    professorId,
+    DIAS_NOVIDADES
+  );
+  const porValidar = await todos(
+    `SELECT f.id, f.data, a.id AS aluno_id, a.nome AS aluno, t.nome AS turma, d.nome AS disciplina
+       FROM faltas f
+       JOIN horario hr ON hr.id = f.horario_id
+       JOIN turmas t ON t.id = hr.turma_id
+       JOIN alunos a ON a.id = f.aluno_id
+       JOIN disciplinas d ON d.id = hr.disciplina_id
+      WHERE t.diretor_id = ? AND f.criado_em >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        AND f.tipo IN ('presenca', 'material') AND f.justificada = 0
+      ORDER BY f.criado_em DESC
+      LIMIT 20`,
+    professorId,
+    DIAS_NOVIDADES
+  );
+  return { graves, porValidar };
 }
 
-function cartaoNovidades({ disciplinares, porValidar }) {
-  if (!disciplinares.length && !porValidar.length) return '';
-  const linha = (f, etiqueta, texto) => `<li>
-    <span class="hora">${h(formatarData(f.data))}</span>
-    <span><a href="/professor/alunos/${f.aluno_id}"><strong>${h(f.aluno)}</strong></a>
-      <small>${h(f.turma)} · ${h(f.disciplina)} · <span class="etiqueta ${etiqueta}">${texto}</span></small>
+function cartaoNovidades({ graves, porValidar }) {
+  if (!graves.length && !porValidar.length) return '';
+  const linha = (item, etiqueta, texto) => `<li>
+    <span class="hora">${h(formatarData(item.data))}</span>
+    <span><a href="/professor/alunos/${item.aluno_id}"><strong>${h(item.aluno)}</strong></a>
+      <small>${h(item.turma)}${item.disciplina ? ` · ${h(item.disciplina)}` : ''} · <span class="etiqueta ${etiqueta}">${texto}</span></small>
     </span>
   </li>`;
   return `<section class="cartao">
     <h2>Novidades nas suas turmas</h2>
-    <p class="texto-suave">Faltas disciplinares e novas faltas por justificar, registadas nos últimos ${DIAS_NOVIDADES} dias nas turmas que dirige.</p>
+    <p class="texto-suave">Ocorrências graves e novas faltas por justificar, registadas nos últimos ${DIAS_NOVIDADES} dias nas turmas que dirige.</p>
     <ul class="lista-simples">
-      ${disciplinares.map((f) => linha(f, 'etiqueta-perigo', 'Falta disciplinar')).join('')}
+      ${graves.map((o) => linha(o, o.gravidade === 'muito_grave' ? 'etiqueta-perigo' : 'etiqueta-aviso', GRAVIDADES_OCORRENCIA[o.gravidade])).join('')}
       ${porValidar.map((f) => linha(f, 'etiqueta-aviso', 'Nova falta por justificar')).join('')}
     </ul>
+  </section>`;
+}
+
+// ---------- Reuniões de turma ----------
+function reunioesDaTurma(turmaId) {
+  return todos(
+    `SELECT r.*, u.nome AS marcada_por_nome FROM reunioes_turma r LEFT JOIN utilizadores u ON u.id = r.marcada_por
+      WHERE r.turma_id = ? ORDER BY r.data DESC, r.hora DESC`,
+    turmaId
+  );
+}
+
+function cartaoReunioes(turma, reunioes, ehDiretor) {
+  const linhas = reunioes.length
+    ? `<ul class="lista-simples">${reunioes
+        .map(
+          (r) => `<li>
+          <span class="hora">${h(formatarData(r.data))}<small>${h(r.hora)}</small></span>
+          <span><strong>${h(r.assunto || 'Reunião de turma')}</strong>
+            <small>${r.local ? `${h(r.local)} · ` : ''}Marcada por ${h(r.marcada_por_nome || '—')}</small>
+          </span>
+          ${
+            ehDiretor
+              ? `<form method="post" action="/professor/reunioes/${r.id}/apagar" data-confirmar="Cancelar esta reunião?">
+                   <input type="hidden" name="voltar" value="/professor/turmas?turma=${turma.id}">
+                   <button class="botao-texto perigo">Cancelar</button></form>`
+              : ''
+          }
+        </li>`
+        )
+        .join('')}</ul>`
+    : vazio('Sem reuniões marcadas para esta turma.');
+
+  return `<section class="cartao">
+    <h2>Reuniões de turma</h2>
+    ${linhas}
+    ${
+      ehDiretor
+        ? `<hr class="separador">
+           <form method="post" action="/professor/turmas/${turma.id}/reunioes" class="grelha-form">
+             <label>Data <input type="date" name="data" min="${hoje()}" required></label>
+             <label>Hora <input type="time" name="hora" required></label>
+             <label>Local <input name="local" maxlength="60" placeholder="Ex.: Sala B12"></label>
+             <label class="coluna-toda">Assunto
+               <input name="assunto" maxlength="200" placeholder="Ex.: Reunião com os delegados e subdelegados"></label>
+             <div class="coluna-toda"><button class="botao">Marcar reunião</button></div>
+           </form>
+           <p class="legenda">O delegado e o subdelegado da turma veem esta reunião em destaque no seu painel.</p>`
+        : ''
+    }
   </section>`;
 }
 
@@ -191,6 +249,8 @@ get('/professor/turmas', async (req, res) => {
     req.professor.id
   );
   const total = (await um('SELECT COUNT(*) AS n FROM alunos WHERE turma_id = ?', turma.id)).n;
+  const ehDiretor = turma.diretor_id === req.professor.id;
+  const cartaoReunioesTurma = cartaoReunioes(turma, await reunioesDaTurma(turma.id), ehDiretor);
 
   const separadores = turmas
     .map((t) => `<a href="?turma=${t.id}" class="${t.id === turma.id ? 'ativo' : ''}">${h(t.nome)}</a>`)
@@ -229,9 +289,52 @@ get('/professor/turmas', async (req, res) => {
              <p class="legenda">O número à direita indica faltas injustificadas / total de faltas.</p>`
           : vazio(pesquisa ? 'Nenhum aluno corresponde à pesquisa.' : 'Esta turma ainda não tem alunos.')
       }
-    </section>`;
+    </section>
+    ${cartaoReunioesTurma}`;
 
   res.html(pagina(req, { titulo: 'As minhas turmas', ativo: 'turmas' }, conteudo));
+});
+
+// Só o diretor de turma marca ou cancela reuniões; os restantes professores só as veem
+post('/professor/turmas/:id/reunioes', async (req, res) => {
+  if (!req.professor) return semFicha(req, res);
+  const turma = await um('SELECT * FROM turmas WHERE id = ?', req.params.id);
+  if (!turma || turma.diretor_id !== req.professor.id) {
+    req.flash('erro', 'Só o diretor de turma pode marcar reuniões.');
+    return res.redirecionar('/professor/turmas');
+  }
+  const data = String(req.corpo.data || '');
+  const hora = String(req.corpo.hora || '');
+  const local = String(req.corpo.local || '').trim().slice(0, 60);
+  const assunto = String(req.corpo.assunto || '').trim().slice(0, 200);
+  if (!dataValida(data) || data < hoje() || !/^\d{2}:\d{2}$/.test(hora)) {
+    req.flash('erro', 'Indique uma data (hoje ou futura) e uma hora válidas.');
+    return res.redirecionar(`/professor/turmas?turma=${turma.id}`);
+  }
+  await executar(
+    'INSERT INTO reunioes_turma (turma_id, data, hora, local, assunto, marcada_por) VALUES (?, ?, ?, ?, ?, ?)',
+    turma.id,
+    data,
+    hora,
+    local || null,
+    assunto || null,
+    req.utilizador.id
+  );
+  req.flash('sucesso', 'Reunião marcada. O delegado e o subdelegado vão vê-la em destaque.');
+  res.redirecionar(`/professor/turmas?turma=${turma.id}`);
+});
+
+post('/professor/reunioes/:id/apagar', async (req, res) => {
+  if (!req.professor) return semFicha(req, res);
+  const reuniao = await um('SELECT r.*, t.diretor_id FROM reunioes_turma r JOIN turmas t ON t.id = r.turma_id WHERE r.id = ?', req.params.id);
+  if (!reuniao || reuniao.diretor_id !== req.professor.id) {
+    req.flash('erro', 'Só o diretor de turma pode cancelar esta reunião.');
+  } else {
+    await executar('DELETE FROM reunioes_turma WHERE id = ?', reuniao.id);
+    req.flash('sucesso', 'Reunião cancelada.');
+  }
+  const voltar = String(req.corpo.voltar || '');
+  res.redirecionar(voltar.startsWith('/professor/') ? voltar : '/professor/turmas');
 });
 
 get('/professor/alunos/:id', async (req, res) => {
@@ -252,6 +355,11 @@ get('/professor/alunos/:id', async (req, res) => {
     aluno.id
   );
   const minhas = faltas.filter((f) => f.professor_id === req.professor.id);
+  const ocorrencias = await todos(
+    `SELECT o.*, u.nome AS registada_por_nome FROM ocorrencias o LEFT JOIN utilizadores u ON u.id = o.registada_por
+      WHERE o.aluno_id = ? ORDER BY o.data DESC, o.id DESC`,
+    aluno.id
+  );
   const anos = idade(aluno.data_nascimento);
 
   const linhas = faltas
@@ -301,9 +409,77 @@ get('/professor/alunos/:id', async (req, res) => {
         }
       </section>
     </div>
+    <section class="cartao">
+      <h2>Ocorrências disciplinares</h2>
+      ${
+        ocorrencias.length
+          ? `<div class="tabela-scroll"><table class="tabela"><thead><tr><th>Data</th><th>Gravidade</th><th>Descrição</th><th>Registada por</th><th></th></tr></thead><tbody>${ocorrencias
+              .map(
+                (o) => `<tr>
+                <td>${h(formatarData(o.data))}</td>
+                <td>${etiquetaGravidade(o.gravidade)}</td>
+                <td>${h(o.descricao)}</td>
+                <td>${h(o.registada_por_nome || '—')}</td>
+                <td class="direita">${
+                  o.registada_por === req.utilizador.id
+                    ? `<form method="post" action="/professor/ocorrencias/${o.id}/apagar" data-confirmar="Apagar esta ocorrência?">
+                         <input type="hidden" name="voltar" value="/professor/alunos/${aluno.id}">
+                         <button class="botao-texto perigo">Apagar</button></form>`
+                    : ''
+                }</td>
+              </tr>`
+              )
+              .join('')}</tbody></table></div>`
+          : vazio('Este aluno não tem ocorrências registadas.')
+      }
+      <hr class="separador">
+      <form method="post" action="/professor/alunos/${aluno.id}/ocorrencias" class="grelha-form">
+        <label>Gravidade
+          <select name="gravidade" required>
+            ${Object.entries(GRAVIDADES_OCORRENCIA).map(([v, r]) => `<option value="${v}">${h(r)}</option>`).join('')}
+          </select></label>
+        <label>Data <input type="date" name="data" value="${hoje()}" max="${hoje()}" required></label>
+        <label class="coluna-toda">Descrição *
+          <textarea name="descricao" rows="2" maxlength="500" required placeholder="Ex.: Perturbação da aula, recusa em cumprir instruções."></textarea></label>
+        <div class="coluna-toda"><button class="botao">Registar ocorrência</button></div>
+      </form>
+    </section>
     <section class="cartao"><h2>Avaliação por módulos</h2>${await pautaDoAluno(aluno)}</section>`;
 
   res.html(pagina(req, { titulo: 'Ficha do aluno', ativo: 'turmas', acoes: botaoImprimir() }, conteudo));
+});
+
+post('/professor/alunos/:id/ocorrencias', async (req, res) => {
+  if (!req.professor) return semFicha(req, res);
+  const aluno = await um('SELECT * FROM alunos WHERE id = ?', req.params.id);
+  if (!aluno || !(await lecionaTurma(req.professor.id, aluno.turma_id))) {
+    req.flash('erro', 'Só pode registar ocorrências de alunos das suas turmas.');
+    return res.redirecionar('/professor/turmas');
+  }
+  const gravidade = String(req.corpo.gravidade || '');
+  const descricao = String(req.corpo.descricao || '').trim();
+  const data = String(req.corpo.data || '');
+  if (!(gravidade in GRAVIDADES_OCORRENCIA) || !descricao || descricao.length > 500 || !dataValida(data) || data > hoje()) {
+    req.flash('erro', 'Preencha a gravidade, a descrição e uma data válida (não futura).');
+    return res.redirecionar(`/professor/alunos/${aluno.id}`);
+  }
+  await executar(
+    'INSERT INTO ocorrencias (aluno_id, gravidade, descricao, data, registada_por) VALUES (?, ?, ?, ?, ?)',
+    aluno.id,
+    gravidade,
+    descricao,
+    data,
+    req.utilizador.id
+  );
+  req.flash('sucesso', 'Ocorrência registada.');
+  res.redirecionar(`/professor/alunos/${aluno.id}`);
+});
+
+post('/professor/ocorrencias/:id/apagar', async (req, res) => {
+  const r = await executar('DELETE FROM ocorrencias WHERE id = ? AND registada_por = ?', req.params.id, req.utilizador?.id);
+  req.flash(r.changes ? 'sucesso' : 'erro', r.changes ? 'Ocorrência apagada.' : 'Não é possível apagar esta ocorrência.');
+  const voltar = String(req.corpo.voltar || '');
+  res.redirecionar(voltar.startsWith('/professor/') ? voltar : '/professor/turmas');
 });
 
 // ---------- Dar aula (sumário + faltas) ----------

@@ -137,6 +137,27 @@ async function migrar(ligacao) {
     await ligacao.query('ALTER TABLE canais ADD UNIQUE KEY uq_canal_disciplina (turma_id, disciplina_id)');
   }
 
+  // Delegado e subdelegado de turma (alunos representantes), para as reuniões de turma
+  if (!(await existeColuna('turmas', 'delegado_id'))) {
+    await ligacao.query('ALTER TABLE turmas ADD COLUMN delegado_id INT UNSIGNED AFTER diretor_id');
+  }
+  if (!(await existeColuna('turmas', 'subdelegado_id'))) {
+    await ligacao.query('ALTER TABLE turmas ADD COLUMN subdelegado_id INT UNSIGNED AFTER delegado_id');
+  }
+  const existeConstraint = async (tabela, nome) =>
+    (
+      await ligacao.query(
+        'SELECT 1 FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?',
+        [CONFIG.database, tabela, nome]
+      )
+    )[0].length > 0;
+  if (!(await existeConstraint('turmas', 'fk_turma_delegado'))) {
+    await ligacao.query('ALTER TABLE turmas ADD CONSTRAINT fk_turma_delegado FOREIGN KEY (delegado_id) REFERENCES alunos(id) ON DELETE SET NULL');
+  }
+  if (!(await existeConstraint('turmas', 'fk_turma_subdelegado'))) {
+    await ligacao.query('ALTER TABLE turmas ADD CONSTRAINT fk_turma_subdelegado FOREIGN KEY (subdelegado_id) REFERENCES alunos(id) ON DELETE SET NULL');
+  }
+
   // Na primeira vez, deduz as disciplinas de cada professor a partir do horário existente
   const [[{ n }]] = await ligacao.query('SELECT COUNT(*) AS n FROM professor_disciplinas');
   if (n === 0) {

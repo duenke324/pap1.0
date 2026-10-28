@@ -15,6 +15,7 @@ const TIPOS_MIME = {
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.webmanifest': 'application/manifest+json',
 };
 
 const LIMITE_CORPO = 6 * 1024 * 1024; // 6 MB (a fotografia vem em base64 no formulário)

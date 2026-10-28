@@ -13,6 +13,8 @@ async function lerFormularioTurma(corpo, turmaId = null) {
     ano_letivo: String(corpo.ano_letivo || '').trim(),
     curso: String(corpo.curso || '').trim().replace(/\s+/g, ' '),
     diretor_id: corpo.diretor_id ? Number(corpo.diretor_id) : null,
+    delegado_id: corpo.delegado_id ? Number(corpo.delegado_id) : null,
+    subdelegado_id: corpo.subdelegado_id ? Number(corpo.subdelegado_id) : null,
   };
   const erros = {};
 
@@ -28,13 +30,30 @@ async function lerFormularioTurma(corpo, turmaId = null) {
   if (dados.diretor_id !== null && (!Number.isInteger(dados.diretor_id) || !(await um('SELECT 1 FROM professores WHERE id = ?', dados.diretor_id)))) {
     erros.diretor_id = 'Professor inválido.';
   }
+  // Delegado/subdelegado só fazem sentido numa turma já existente (criar uma turma ainda não tem alunos)
+  if (turmaId !== null) {
+    if (dados.delegado_id !== null && !(await um('SELECT 1 FROM alunos WHERE id = ? AND turma_id = ?', dados.delegado_id, turmaId))) {
+      erros.delegado_id = 'Aluno inválido.';
+    }
+    if (dados.subdelegado_id !== null && !(await um('SELECT 1 FROM alunos WHERE id = ? AND turma_id = ?', dados.subdelegado_id, turmaId))) {
+      erros.subdelegado_id = 'Aluno inválido.';
+    }
+    if (dados.delegado_id !== null && dados.delegado_id === dados.subdelegado_id) {
+      erros.subdelegado_id = 'O subdelegado tem de ser diferente do delegado.';
+    }
+  } else {
+    dados.delegado_id = null;
+    dados.subdelegado_id = null;
+  }
 
   return { dados, erros };
 }
 
-function formularioTurma({ turma = {}, erros = {}, acao, titulo, professores = [] }) {
+function formularioTurma({ turma = {}, erros = {}, acao, titulo, professores = [], alunos = [] }) {
   const erro = (campo) => (erros[campo] ? `<small class="erro-campo">${h(erros[campo])}</small>` : '');
   const cls = (campo) => (erros[campo] ? ' class="invalido"' : '');
+  const opcoesAlunos = (atual) =>
+    `<option value="">— Por definir —</option>${alunos.map((a) => `<option value="${a.id}"${selecionado(a.id, atual)}>${h(a.nome)}</option>`).join('')}`;
   return `
     <form method="post" action="${acao}" class="grelha-form">
       <label>Nome da turma *
@@ -48,6 +67,15 @@ function formularioTurma({ turma = {}, erros = {}, acao, titulo, professores = [
           <option value="">— Por definir —</option>
           ${professores.map((p) => `<option value="${p.id}"${selecionado(p.id, turma.diretor_id)}>${h(p.nome)}</option>`).join('')}
         </select>${erro('diretor_id') || '<small class="texto-suave">Aparece aos alunos da turma como contacto.</small>'}</label>
+      ${
+        alunos.length
+          ? `<label>Delegado de turma
+              <select name="delegado_id"${cls('delegado_id')}>${opcoesAlunos(turma.delegado_id)}</select>${erro('delegado_id')}</label>
+            <label>Subdelegado de turma
+              <select name="subdelegado_id"${cls('subdelegado_id')}>${opcoesAlunos(turma.subdelegado_id)}</select>
+              ${erro('subdelegado_id') || '<small class="texto-suave">Avisados em destaque das reuniões de turma marcadas.</small>'}</label>`
+          : ''
+      }
       <div class="coluna-toda barra-acoes"><button class="botao">${h(titulo)}</button></div>
     </form>`;
 }
@@ -130,6 +158,11 @@ async function paginaTurma(req, res, turma, { dados, erros = {} } = {}, estado =
        FROM alunos a WHERE a.turma_id = ? ORDER BY a.nome`,
     turma.id
   );
+  const reunioes = await todos(
+    `SELECT r.*, u.nome AS marcada_por_nome FROM reunioes_turma r LEFT JOIN utilizadores u ON u.id = r.marcada_por
+      WHERE r.turma_id = ? ORDER BY r.data DESC, r.hora DESC`,
+    turma.id
+  );
   const disciplinas = await todos(
     `SELECT d.nome, p.nome AS professor, COUNT(*) AS tempos
        FROM horario hr JOIN disciplinas d ON d.id = hr.disciplina_id LEFT JOIN professores p ON p.id = hr.professor_id
@@ -144,7 +177,7 @@ async function paginaTurma(req, res, turma, { dados, erros = {} } = {}, estado =
       <section class="cartao">
         <h2>Dados da turma</h2>
         ${Object.keys(erros).length ? `<div class="alerta alerta-erro" role="alert">Corrija os campos assinalados.</div>` : ''}
-        ${formularioTurma({ turma: dados || turma, erros, acao: `/admin/turmas/${turma.id}/editar`, titulo: 'Guardar alterações', professores: await listaProfessores() })}
+        ${formularioTurma({ turma: dados || turma, erros, acao: `/admin/turmas/${turma.id}/editar`, titulo: 'Guardar alterações', professores: await listaProfessores(), alunos })}
         <hr class="separador">
         ${
           podeApagar
@@ -177,7 +210,8 @@ async function paginaTurma(req, res, turma, { dados, erros = {} } = {}, estado =
           <tbody>${alunos
             .map(
               (a) => `<tr>
-              <td><a class="aluno-linha" href="/admin/alunos/${a.id}">${avatar(a, 'pequeno')}<span>${h(a.nome)}</span></a></td>
+              <td><a class="aluno-linha" href="/admin/alunos/${a.id}">${avatar(a, 'pequeno')}<span>${h(a.nome)}
+                ${a.id === turma.delegado_id ? ' <span class="etiqueta">Delegado</span>' : ''}${a.id === turma.subdelegado_id ? ' <span class="etiqueta">Subdelegado</span>' : ''}</span></a></td>
               <td>${h(a.numero_processo)}</td>
               <td>${h(formatarData(a.data_nascimento))}</td>
               <td class="direita">${a.injustificadas}</td>
@@ -186,6 +220,26 @@ async function paginaTurma(req, res, turma, { dados, erros = {} } = {}, estado =
             )
             .join('')}</tbody></table></div>`
           : vazio('Esta turma ainda não tem alunos.')
+      }
+    </section>
+    <section class="cartao">
+      <h2>Reuniões de turma</h2>
+      ${
+        reunioes.length
+          ? `<div class="tabela-scroll"><table class="tabela">
+          <thead><tr><th>Data</th><th>Hora</th><th>Local</th><th>Assunto</th><th>Marcada por</th></tr></thead>
+          <tbody>${reunioes
+            .map(
+              (r) => `<tr>
+              <td>${h(formatarData(r.data))}</td>
+              <td>${h(r.hora)}</td>
+              <td>${h(r.local || '—')}</td>
+              <td>${h(r.assunto || '—')}</td>
+              <td>${h(r.marcada_por_nome || '—')}</td>
+            </tr>`
+            )
+            .join('')}</tbody></table></div>`
+          : vazio('Sem reuniões marcadas. O diretor de turma pode marcar uma em "As minhas turmas".')
       }
     </section>`;
 
@@ -205,11 +259,13 @@ post('/admin/turmas/:id/editar', async (req, res) => {
   if (Object.keys(erros).length) return paginaTurma(req, res, turma, { dados, erros }, 422);
 
   await executar(
-    'UPDATE turmas SET nome = ?, ano_letivo = ?, curso = ?, diretor_id = ? WHERE id = ?',
+    'UPDATE turmas SET nome = ?, ano_letivo = ?, curso = ?, diretor_id = ?, delegado_id = ?, subdelegado_id = ? WHERE id = ?',
     dados.nome,
     dados.ano_letivo,
     dados.curso || null,
     dados.diretor_id,
+    dados.delegado_id,
+    dados.subdelegado_id,
     turma.id
   );
 

@@ -1,44 +1,45 @@
 /* =====================================================================
    Gestão Escolar — estilos
-   Cores simples: fundo branco/cinzento-claro, azul como cor principal
-   e cinzento-escuro no menu e nos separadores. Tema escuro em cinzentos.
+   Paleta a preto e branco: só cinzentos, sem nenhuma cor com matiz.
+   A hierarquia (o que é mais importante, o que é um alerta) é feita por
+   contraste/peso, não por cor. Tema escuro é a mesma ideia invertida.
    ===================================================================== */
 
 /* ----- Cores (tema claro) ----- */
 :root {
   color-scheme: light;
-  --papel: #f3f4f6;
+  --papel: #f5f5f5;
   --superficie: #ffffff;
-  --superficie-2: #f1f3f5;
+  --superficie-2: #ececec;
   --campo: #ffffff;
-  --tinta: #1f2328;
-  --tinta-suave: #5f6b7a;
-  --linha: #e2e5e9;
-  --linha-forte: #c8cdd4;
+  --tinta: #202020;
+  --tinta-suave: #666666;
+  --linha: #e2e2e2;
+  --linha-forte: #c6c6c6;
 
-  --acento: #1f5fae;          /* azul */
-  --acento-forte: #174a8a;
-  --acento-fundo: #e7eef8;
+  --acento: #000000;
+  --acento-forte: #333333;
+  --acento-fundo: #e8e8e8;
   --acento-texto: #fff;
 
-  --ok: #1e7b43;       --ok-fundo: #e3f3e8;
-  --aviso: #9a6200;    --aviso-fundo: #fdf1d8;
-  --perigo: #c0392b;   --perigo-fundo: #fbe5e3;
+  --ok: #4d4d4d;       --ok-fundo: #eeeeee;
+  --aviso: #2b2b2b;    --aviso-fundo: #dcdcdc;
+  --perigo: #1a1a1a;   --perigo-fundo: #c9c9c9;
 
-  --lateral: #1f2937;
-  --lateral-texto: #d6dbe1;
-  --lateral-suave: #9aa3ae;
+  --lateral: #141414;
+  --lateral-texto: #e6e6e6;
+  --lateral-suave: #999999;
   --lateral-ativo: rgba(255, 255, 255, .08);
 
-  /* Cores das disciplinas (horário): fundo / risca */
-  --c0-f: #e7eefa; --c0-b: #3b73c4;
-  --c1-f: #e4f3ea; --c1-b: #2f9160;
-  --c2-f: #fdf0de; --c2-b: #d98a1f;
-  --c3-f: #f0e9f8; --c3-b: #8457c0;
-  --c4-f: #fce7e5; --c4-b: #cc4b41;
-  --c5-f: #e1f3f4; --c5-b: #1f94a3;
-  --c6-f: #f5f2df; --c6-b: #a3891a;
-  --c7-f: #eceef1; --c7-b: #5f6b7a;
+  /* Cores das disciplinas (horário): sem matiz possível, distinguem-se pelo tom de cinzento */
+  --c0-f: #f2f2f2; --c0-b: #8a8a8a;
+  --c1-f: #ececec; --c1-b: #757575;
+  --c2-f: #e6e6e6; --c2-b: #606060;
+  --c3-f: #e0e0e0; --c3-b: #4a4a4a;
+  --c4-f: #dadada; --c4-b: #383838;
+  --c5-f: #d4d4d4; --c5-b: #262626;
+  --c6-f: #cecece; --c6-b: #141414;
+  --c7-f: #c8c8c8; --c7-b: #000000;
 
   --letra: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
   --letra-titulos: var(--letra);
@@ -50,64 +51,64 @@
 /* Aplica-se quando o utilizador escolhe "escuro", ou quando o sistema está em modo escuro e não há escolha */
 :root[data-tema="escuro"] {
   color-scheme: dark;
-  --papel: #111418;
-  --superficie: #1a1e24;
-  --superficie-2: #232830;
-  --campo: #15191e;
-  --tinta: #e6e9ed;
-  --tinta-suave: #9aa4b0;
-  --linha: #2c323b;
-  --linha-forte: #3c4450;
-  --acento: #6ea8f5;
-  --acento-forte: #8dbbf8;
-  --acento-fundo: #1c2a3d;
-  --acento-texto: #0b1422;
-  --ok: #6fcf97;     --ok-fundo: #1c3326;
-  --aviso: #f0b44c;  --aviso-fundo: #3a2e17;
-  --perigo: #f28b82; --perigo-fundo: #3d2220;
-  --lateral: #0b0d10;
-  --lateral-texto: #d6dbe1;
-  --lateral-suave: #8a939e;
+  --papel: #0d0d0d;
+  --superficie: #171717;
+  --superficie-2: #1f1f1f;
+  --campo: #131313;
+  --tinta: #ececec;
+  --tinta-suave: #a3a3a3;
+  --linha: #2b2b2b;
+  --linha-forte: #3d3d3d;
+  --acento: #ffffff;
+  --acento-forte: #cccccc;
+  --acento-fundo: #272727;
+  --acento-texto: #000000;
+  --ok: #b8b8b8;     --ok-fundo: #232323;
+  --aviso: #d6d6d6;  --aviso-fundo: #292929;
+  --perigo: #f2f2f2; --perigo-fundo: #343434;
+  --lateral: #000000;
+  --lateral-texto: #e6e6e6;
+  --lateral-suave: #8c8c8c;
   --lateral-ativo: rgba(255, 255, 255, .07);
-  --c0-f: #1e2a3a; --c0-b: #7aa7e0;
-  --c1-f: #1b2f24; --c1-b: #6cc08f;
-  --c2-f: #33291a; --c2-b: #e0a25a;
-  --c3-f: #2a2337; --c3-b: #b394de;
-  --c4-f: #36211f; --c4-b: #e8877c;
-  --c5-f: #192e31; --c5-b: #62c0c8;
-  --c6-f: #2e2b19; --c6-b: #ccb65a;
-  --c7-f: #262a30; --c7-b: #a0a9b4;
+  --c0-f: #1c1c1c; --c0-b: #9e9e9e;
+  --c1-f: #202020; --c1-b: #aeaeae;
+  --c2-f: #242424; --c2-b: #bebebe;
+  --c3-f: #282828; --c3-b: #cecece;
+  --c4-f: #2c2c2c; --c4-b: #dedede;
+  --c5-f: #303030; --c5-b: #e6e6e6;
+  --c6-f: #343434; --c6-b: #efefef;
+  --c7-f: #383838; --c7-b: #ffffff;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
     color-scheme: dark;
-    --papel: #111418;
-    --superficie: #1a1e24;
-    --superficie-2: #232830;
-    --campo: #15191e;
-    --tinta: #e6e9ed;
-    --tinta-suave: #9aa4b0;
-    --linha: #2c323b;
-    --linha-forte: #3c4450;
-    --acento: #6ea8f5;
-    --acento-forte: #8dbbf8;
-    --acento-fundo: #1c2a3d;
-    --acento-texto: #0b1422;
-    --ok: #6fcf97;     --ok-fundo: #1c3326;
-    --aviso: #f0b44c;  --aviso-fundo: #3a2e17;
-    --perigo: #f28b82; --perigo-fundo: #3d2220;
-    --lateral: #0b0d10;
-    --lateral-texto: #d6dbe1;
-    --lateral-suave: #8a939e;
+    --papel: #0d0d0d;
+    --superficie: #171717;
+    --superficie-2: #1f1f1f;
+    --campo: #131313;
+    --tinta: #ececec;
+    --tinta-suave: #a3a3a3;
+    --linha: #2b2b2b;
+    --linha-forte: #3d3d3d;
+    --acento: #ffffff;
+    --acento-forte: #cccccc;
+    --acento-fundo: #272727;
+    --acento-texto: #000000;
+    --ok: #b8b8b8;     --ok-fundo: #232323;
+    --aviso: #d6d6d6;  --aviso-fundo: #292929;
+    --perigo: #f2f2f2; --perigo-fundo: #343434;
+    --lateral: #000000;
+    --lateral-texto: #e6e6e6;
+    --lateral-suave: #8c8c8c;
     --lateral-ativo: rgba(255, 255, 255, .07);
-    --c0-f: #1e2a3a; --c0-b: #7aa7e0;
-    --c1-f: #1b2f24; --c1-b: #6cc08f;
-    --c2-f: #33291a; --c2-b: #e0a25a;
-    --c3-f: #2a2337; --c3-b: #b394de;
-    --c4-f: #36211f; --c4-b: #e8877c;
-    --c5-f: #192e31; --c5-b: #62c0c8;
-    --c6-f: #2e2b19; --c6-b: #ccb65a;
-    --c7-f: #262a30; --c7-b: #a0a9b4;
+    --c0-f: #1c1c1c; --c0-b: #9e9e9e;
+    --c1-f: #202020; --c1-b: #aeaeae;
+    --c2-f: #242424; --c2-b: #bebebe;
+    --c3-f: #282828; --c3-b: #cecece;
+    --c4-f: #2c2c2c; --c4-b: #dedede;
+    --c5-f: #303030; --c5-b: #e6e6e6;
+    --c6-f: #343434; --c6-b: #efefef;
+    --c7-f: #383838; --c7-b: #ffffff;
   }
 }
 
@@ -152,8 +153,8 @@ small { font-size: .82rem; }
 /* Logótipo: na barra lateral é branco sobre o fundo escuro */
 .logo { width: 34px; height: 34px; flex: none; }
 .logo-capa { fill: #ffffff; }
-.logo-lombada { fill: #c9d3df; }
-.logo-linhas { stroke: #7a8796; stroke-width: 1.6; stroke-linecap: round; fill: none; }
+.logo-lombada { fill: #c9c9c9; }
+.logo-linhas { stroke: #808080; stroke-width: 1.6; stroke-linecap: round; fill: none; }
 .logo-fita { fill: var(--acento); }
 .marca-login .logo-capa { fill: var(--acento); }
 .marca-login .logo-lombada { fill: var(--acento-forte); }

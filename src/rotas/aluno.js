@@ -89,6 +89,24 @@ function listaTestes(testes) {
     .join('')}</ul>`;
 }
 
+// Reunião de turma mais próxima: visível a toda a turma, com destaque extra para o delegado/subdelegado
+function cartaoReuniao(aluno, r) {
+  if (!r) return '';
+  const ehDelegado = aluno.delegado_id === aluno.id;
+  const ehSubdelegado = aluno.subdelegado_id === aluno.id;
+  const convocado = ehDelegado || ehSubdelegado;
+  return `<section class="cartao${convocado ? ' destaque-aviso' : ''}">
+    <h2>Reunião de turma</h2>
+    <p>${h(formatarDataLonga(r.data))} às ${h(r.hora)}${r.local ? ` · ${h(r.local)}` : ''}</p>
+    ${r.assunto ? `<p class="texto-suave">${h(r.assunto)}</p>` : ''}
+    ${
+      convocado
+        ? `<p><strong>Foi convocado(a) como ${ehDelegado ? 'delegado(a)' : 'subdelegado(a)'} de turma para esta reunião.</strong></p>`
+        : ''
+    }
+  </section>`;
+}
+
 function semTurma(req, res, titulo, ativo) {
   res.html(
     pagina(req, { titulo, ativo }, vazio('Ainda não está associado a nenhuma turma. Contacte a secretaria.'))
@@ -167,11 +185,15 @@ get('/aluno', async (req, res) => {
   const proximos = aluno.turma_id ? (await testesDaTurma(aluno.turma_id)).filter((t) => t.data >= hoje()) : [];
   const diaHoje = diaDaSemana(hoje());
   const aulasHoje = aluno.turma_id ? (await horarioDaTurma(aluno.turma_id)).filter((a) => a.dia_semana === diaHoje) : [];
+  const proximaReuniao = aluno.turma_id
+    ? await um('SELECT * FROM reunioes_turma WHERE turma_id = ? AND data >= ? ORDER BY data, hora LIMIT 1', aluno.turma_id, hoje())
+    : null;
 
   const conteudo = `
     <div class="grelha-informacoes">
       <aside>${cartaoCalendario(anoLetivo, calendario)}</aside>
       <div>
+        ${cartaoReuniao(aluno, proximaReuniao)}
         <section class="cartao">
           <h2>Avisos</h2>
           ${listaAvisos(avisos)}
@@ -305,6 +327,7 @@ get('/aluno/dados', async (req, res) => {
         <dt>Turma</dt><dd>${h(a.turma || '—')}${a.ano_letivo ? ` <span class="texto-suave">· ${h(a.ano_letivo)}</span>` : ''}</dd>
         <dt>Curso</dt><dd>${h(a.curso || '—')}</dd>
         <dt>Diretor de turma</dt><dd>${h(a.diretor || '—')}${a.diretor_email ? ` · <a href="mailto:${h(a.diretor_email)}">${h(a.diretor_email)}</a>` : ''}</dd>
+        ${a.delegado_id === a.id || a.subdelegado_id === a.id ? `<dt>Representação de turma</dt><dd>${a.delegado_id === a.id ? 'Delegado(a) de turma' : 'Subdelegado(a) de turma'}</dd>` : ''}
       </dl>
       <p class="legenda">Se algum dado estiver errado, fale com a secretaria da escola.</p>
     </section>`;

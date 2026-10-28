@@ -8,6 +8,7 @@ const { documento, mensagensFlash, botaoTema, LOGO } = require('./vistas/layout'
 const { semearSeVazia } = require('./seed');
 
 const PORTA = Number(process.env.PORT) || 3000;
+const PASTA_PUBLICA = path.join(pastaBase(), 'public');
 const PAGINA_INICIAL = { aluno: '/aluno', professor: '/professor/turmas', admin: '/admin', funcionario: '/funcionario' };
 
 // ---------- Páginas de erro ----------
@@ -47,7 +48,7 @@ async function antesDaRota(req, res) {
     if (!req.utilizador) await terminarSessao(req);
   }
 
-  const publico = req.caminho === '/login';
+  const publico = ['/login', '/manifest.webmanifest', '/sw.js', '/offline.html'].includes(req.caminho);
   if (!publico && !req.utilizador) {
     res.redirecionar('/login');
     return false;
@@ -67,7 +68,8 @@ async function antesDaRota(req, res) {
 
   if (req.utilizador?.papel === 'aluno') {
     req.aluno = await um(
-      `SELECT a.*, t.nome AS turma, t.ano_letivo, t.curso, p.nome AS diretor, p.email AS diretor_email
+      `SELECT a.*, t.nome AS turma, t.ano_letivo, t.curso, p.nome AS diretor, p.email AS diretor_email,
+              t.delegado_id, t.subdelegado_id
          FROM alunos a
          LEFT JOIN turmas t ON t.id = a.turma_id
          LEFT JOIN professores p ON p.id = t.diretor_id
@@ -193,6 +195,19 @@ post('/definir-password', async (req, res) => {
 });
 
 get('/', (req, res) => res.redirecionar(PAGINA_INICIAL[req.utilizador.papel]));
+
+// PWA: manifesto e service worker, acessíveis sem sessão (inclusive no ecrã de login).
+// O service worker tem de ser servido na raiz do site (não em /static/) para o seu âmbito
+// cobrir toda a aplicação, e nunca em cache, para as atualizações chegarem sem demora.
+get('/manifest.webmanifest', (req, res) => {
+  if (!enviarFicheiro(res, PASTA_PUBLICA, 'manifest.webmanifest', 3600)) paginaErro(req, res, 404);
+});
+get('/sw.js', (req, res) => {
+  if (!enviarFicheiro(res, PASTA_PUBLICA, 'sw.js', 0)) paginaErro(req, res, 404);
+});
+get('/offline.html', (req, res) => {
+  if (!enviarFicheiro(res, PASTA_PUBLICA, 'offline.html', 3600)) paginaErro(req, res, 404);
+});
 
 // Fotografias dos alunos: só utilizadores autenticados.
 // Um aluno só pode ver a sua própria fotografia.
