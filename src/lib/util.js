@@ -184,7 +184,7 @@ function textoClassificacao(c) {
   return c.estado === 'nota' ? String(c.nota) : c.estado;
 }
 
-// Etiqueta colorida: verde (≥ 10), laranja (< 10), vermelho (NC / EF)
+// Etiqueta da classificação: ok (≥ 10), aviso (< 10), perigo (NC / EF) — ver os níveis no estilo.css
 function etiquetaClassificacao(c) {
   if (!c) return '<span class="texto-suave">—</span>';
   if (c.estado === 'NC') return '<span class="etiqueta etiqueta-perigo" title="Módulo não concluído">NC</span>';

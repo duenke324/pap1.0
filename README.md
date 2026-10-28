@@ -64,7 +64,11 @@ partir do browser — fica com ícone próprio e abre em janela própria, sem ba
 - Só os ficheiros estáticos (CSS, JS, ícones) ficam em cache — as páginas têm sempre dados do
   utilizador autenticado, por isso são sempre pedidas à rede. Sem ligação, mostra-se
   [public/offline.html](public/offline.html).
-- Os ícones (`public/icons/`) foram gerados a partir do logótipo em `public/favicon.svg`.
+- Os ícones (`public/icons/`) mostram o caderno do logótipo a branco sobre fundo preto, com margem à volta
+  para o Android os poder recortar em círculo ou com cantos redondos (ícones "maskable").
+- Sempre que se mudar o CSS, o JavaScript ou os ícones, sobe-se a versão da cache em `public/sw.js`
+  (`gestao-escolar-estaticos-v2`, `-v3`, …): o service worker novo apaga a cache antiga e quem tem a app
+  instalada vê logo a versão nova.
 
 ### Contas de demonstração
 
@@ -165,9 +169,12 @@ na secção de preços de `informanege/vistas.js`.
 O aluno não tem menu lateral: no topo aparece a **ficha de identificação** (fotografia, processo, nome, situação,
 ano letivo, curso, turma, diretor de turma e encarregado de educação) e por baixo uma fila de **separadores**.
 - Informações: calendário do ano letivo (início e fim dos períodos, com o período atual assinalado),
-  interrupções letivas, avisos da escola, aulas de hoje e próximas avaliações
-- Estatísticas: assiduidade geral e por disciplina (barras), faltas por justificar, módulos concluídos e média
-- Dados pessoais: consulta dos dados da ficha (as correções são feitas pela secretaria)
+  interrupções letivas, avisos da escola, aulas de hoje, próximas avaliações e a **próxima reunião de turma**
+  — para o delegado e o subdelegado aparece em destaque, com a indicação de que foram convocados
+- Estatísticas: assiduidade geral e por disciplina (barras; a barra fica às riscas quando as faltas chegam
+  ao limite de 10%), faltas por justificar, módulos concluídos e média
+- Dados pessoais: consulta dos dados da ficha (as correções são feitas pela secretaria), incluindo se o aluno
+  é delegado ou subdelegado de turma
 - Faltas: lista completa, resumo por disciplina, filtro por estado (justificadas / injustificadas)
 - Sumários: o que foi dado em cada aula (n.º da lição, módulo e professor), com as aulas a que faltou assinaladas
 - Avaliação: classificação de cada módulo por disciplina (0 a 20, NC ou EF), módulos concluídos e média
@@ -176,10 +183,14 @@ ano letivo, curso, turma, diretor de turma e encarregado de educação) e por ba
 
 ### Painel do Professor
 - As minhas turmas: separadores para filtrar a turma, pesquisa de alunos, contagem de faltas
-- **Diretor de turma**: ao abrir "As minhas turmas", um cartão **"Novidades nas suas turmas"** com as faltas
-  disciplinares e as novas faltas por justificar dos últimos 7 dias (o indicador mais próximo de "ocorrência grave"
-  e de "falta pendente de validação" que a base de dados tem hoje — ainda não há gravidade nem esse estado, ver Limitações)
-- Ficha do aluno: dados pessoais, todas as faltas (pode anular faltas que registou e que ainda não foram justificadas) e a pauta
+- **Diretor de turma**: ao abrir "As minhas turmas", um cartão **"Novidades nas suas turmas"** com as ocorrências
+  graves e muito graves e as novas faltas por justificar dos últimos 7 dias, e um cartão **"Faltas a acompanhar"**
+  com uma linha por aluno e uma etiqueta por disciplina em que está perto (≥ 7%) ou acima (≥ 10%) do limite de faltas
+- **Reuniões de turma**: o diretor de turma marca (data, hora, local, assunto) e cancela as reuniões da turma;
+  os outros professores da turma veem-nas. As que já passaram ficam esbatidas e deixam de poder ser canceladas.
+- Ficha do aluno: dados pessoais, todas as faltas (pode anular faltas que registou e que ainda não foram justificadas),
+  as **ocorrências disciplinares** (leve, grave ou muito grave — qualquer professor da turma regista; cada um só
+  apaga as que registou) e a pauta
 - **Dar aula**: escolher turma → data → aula, escrever o **sumário**, escolher o **módulo** e marcar as faltas
   (presença, material ou disciplinares) — tudo no mesmo ecrã, guardado de uma vez.
   Cada aula dada fica registada como uma lição numerada (lição n.º 1, 2, 3… por turma e disciplina).
@@ -187,7 +198,7 @@ ano letivo, curso, turma, diretor de turma e encarregado de educação) e por ba
   (se foi registada por engano). Só se aceitam datas dentro do ano letivo da turma e nunca no futuro.
 - **Avaliação**: escolher turma/disciplina e módulo e lançar a classificação de cada aluno: nota de **0 a 20**,
   **NC** (módulo não concluído) ou **EF** (excluído por faltas). Para ajudar a decidir, mostra as faltas de cada aluno
-  nesse módulo e a percentagem das horas do módulo (a vermelho a partir de 10%). Inclui a pauta com todos os módulos.
+  nesse módulo e a percentagem das horas do módulo (em destaque, fundo escuro, a partir de 10%). Inclui a pauta com todos os módulos.
 - Testes e avaliações: marcar e desmarcar testes, trabalhos e apresentações (é daqui que vêm os testes que o aluno vê)
 - Horário do professor
 
@@ -200,7 +211,8 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
 
 ### Painel do Administrador
 - Painel com estatísticas, turmas e faltas recentes por justificar
-- Turmas: criar, editar (nome, ano letivo, curso e diretor de turma) e apagar; ver os alunos, disciplinas e professores de cada turma.
+- Turmas: criar, editar (nome, ano letivo, curso, diretor de turma, **delegado e subdelegado**) e apagar; ver os alunos,
+  disciplinas, professores e reuniões marcadas de cada turma. Um aluno que muda de turma deixa de ser delegado/subdelegado da antiga.
   Só se pode apagar uma turma sem alunos e sem faltas, para não perder histórico.
 - Professores: criar, editar e apagar (com conta de acesso), email institucional (obrigatoriamente
   `@epmontijo.edu.pt`) e escolher as disciplinas que cada um leciona; ficha do professor com o seu horário semanal
@@ -213,7 +225,8 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
 - **Horários (editor de arrastar e largar)**: para cada turma, arrastar aulas (disciplina + professor) da paleta
   para a grelha, mover e trocar aulas, arrastar para o lixo para remover, definir a sala.
   Também funciona com cliques (clicar numa aula e depois num tempo), útil em ecrãs táteis.
-  - Os tempos em que o professor já tem aula noutra turma ficam bloqueados (às riscas vermelhas)
+  - Os tempos em que o professor já tem aula noutra turma ficam bloqueados (às riscas); as aulas com conflitos
+    ficam com um contorno tracejado
   - Ao guardar, o servidor volta a verificar conflitos de professor e de sala
   - Retirar, mover ou mudar o professor de uma aula que já tem faltas não apaga as faltas: a aula antiga fica inativa
     (com o dia e a hora originais) e o histórico mantém-se. O professor ainda pode reabrir e corrigir essas folhas antigas.
@@ -229,9 +242,16 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
 - **Assiduidade (gráficos)**: no painel principal, um gráfico de assiduidade global e um gráfico por curso
   (biblioteca **Chart.js**, incluída localmente em `public/vendor/` — não depende de internet).
   Debaixo do gráfico por curso fica sempre uma lista com os mesmos números, para a informação não depender de JavaScript.
-- **Auditoria**: histórico de quem criou, editou ou apagou turmas, professores, disciplinas e alunos — com destaque
-  para mudanças de diretor de turma, de curso de uma turma e de turma de um aluno. Mostra os 200 registos mais recentes,
-  com filtro por tipo.
+- **Auditoria**: histórico de quem criou, editou ou apagou turmas, professores, funcionários, disciplinas e alunos —
+  com destaque para mudanças de diretor de turma, de delegado/subdelegado, de curso de uma turma e de turma de um aluno.
+  Mostra os 200 registos mais recentes, com filtro por tipo.
+
+### Aspeto (preto e branco)
+A interface usa só tons de cinzento, sem cores. Para a informação não depender da cor:
+- os estados têm três formas diferentes — ok = só contorno, aviso = fundo cinzento, perigo = invertido (fundo escuro,
+  texto claro) — e as mensagens têm um símbolo à esquerda (✓, ! ou ×);
+- os links no meio do texto e das tabelas são sublinhados;
+- o que está acima do limite de faltas ou bloqueado aparece às riscas.
 
 ## Estrutura do projeto
 
@@ -280,9 +300,11 @@ Tudo o que é criado ou alterado na plataforma fica guardado nestas tabelas:
 `modulos` (módulos de cada disciplina) · `licoes` (aulas dadas: aula do horário, data, módulo e sumário) ·
 `notas` (classificação de cada aluno em cada módulo: nota 0–20, NC ou EF) ·
 `calendario` (períodos e interrupções letivas) · `avisos` (para todos ou para uma turma) ·
+`ocorrencias` (ocorrências disciplinares: aluno, gravidade, descrição, data, quem registou) ·
+`reunioes_turma` (data, hora, local e assunto; o delegado e o subdelegado estão em `turmas.delegado_id`/`subdelegado_id`) ·
 `canais`, `canal_membros`, `canal_mensagens` (usadas pela app **Conversas**, não pela Gestão Escolar) ·
 `sessoes` (logins ativos — por isso reiniciar o servidor não obriga a entrar de novo) ·
-`logs_auditoria` (quem criou, editou ou apagou turmas, professores, disciplinas e alunos, e quando).
+`logs_auditoria` (quem criou, editou ou apagou turmas, professores, funcionários, disciplinas e alunos, e quando).
 
 As tabelas usam InnoDB com chaves estrangeiras: por exemplo, apagar um aluno apaga as faltas dele.
 As operações com vários passos (criar aluno + conta, guardar a folha de faltas) usam transações.
@@ -300,9 +322,9 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
   a pessoa é obrigada a escolher uma palavra-passe nova em `/definir-password` antes de aceder ao resto da aplicação —
   e essa palavra-passe nova tem de ser diferente da que lhe foi atribuída (não pode "voltar atrás")
 - Um professor só vê e escreve nos canais das turmas que leciona; um aluno só nos canais a que foi adicionado
-- **Histórico de auditoria**: criar, editar e apagar turmas, professores, disciplinas e alunos fica registado
-  (quem, o quê e quando) em `/admin/auditoria` — mudanças de diretor de turma, de curso e de turma de um aluno
-  aparecem destacadas no detalhe
+- **Histórico de auditoria**: criar, editar e apagar turmas, professores, funcionários, disciplinas e alunos fica registado
+  (quem, o quê e quando) em `/admin/auditoria` — mudanças de diretor de turma, de delegado/subdelegado, de curso e de
+  turma de um aluno aparecem destacadas no detalhe
 
 ## Limitações conhecidas (beta)
 
@@ -310,9 +332,10 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - Não há recuperação de palavra-passe (esqueci-me da palavra-passe); só o administrador a pode redefinir
 - Fora do primeiro acesso forçado, não há alteração voluntária da palavra-passe pelo próprio utilizador
 - Sem HTTPS — para uso real deve ficar atrás de um servidor com HTTPS (ex.: nginx, Caddy)
-- O cartão "Novidades nas suas turmas" (faltas disciplinares e novas faltas por justificar) é uma aproximação:
-  ainda não existe o estado "Pendente de Validação" nas faltas nem uma tabela de Ocorrências com gravidade
-  (Leve/Grave/Muito Grave) — fica para uma próxima versão
+- Ainda não existe o estado "Pendente de Validação" nas faltas — o cartão "Novidades nas suas turmas" mostra
+  as novas faltas por justificar no seu lugar (as ocorrências com gravidade já existem)
+- Uma base de dados criada antes do papel Funcionário não tem as contas de demonstração 3001…3008: o arranque só
+  preenche dados numa base vazia. `npm run seed` recria tudo com os dados de demonstração (e apaga os atuais)
 
 ## Ideias para próximas versões
 

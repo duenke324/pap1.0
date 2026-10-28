@@ -76,21 +76,32 @@ async function avisosDeFaltas(professorId) {
     .sort((x, y) => y.percentagem - x.percentagem);
 }
 
+// Uma linha por aluno, com uma etiqueta por disciplina (antes era uma linha por aluno e disciplina, e a
+// tabela empurrava as turmas para fora do ecrã). Os avisos já vêm do mais grave para o menos grave.
 function cartaoAvisosDeFaltas(avisos) {
   if (!avisos.length) return '';
+  const porAluno = new Map();
+  for (const x of avisos) {
+    if (!porAluno.has(x.aluno_id)) porAluno.set(x.aluno_id, { aluno_id: x.aluno_id, aluno: x.aluno, turma: x.turma, disciplinas: [] });
+    porAluno.get(x.aluno_id).disciplinas.push(x);
+  }
+  const acima = avisos.filter((x) => x.excedido).length;
+  const etiqueta = (x) =>
+    `<span class="etiqueta ${x.excedido ? 'etiqueta-perigo' : 'etiqueta-aviso'}" title="${x.excedido ? 'Acima do limite' : 'A aproximar-se do limite'}">${h(x.disciplina)} · ${Math.round(x.percentagem * 100)}% (${x.faltas}/${aulasDadas(x.aulas, x.faltas)})</span>`;
   return `<section class="cartao">
-    <h2>Faltas a acompanhar</h2>
-    <p class="texto-suave">Alunos das turmas que dirige, perto ou acima do limite de ${LIMITE_FALTAS * 100}% de faltas numa disciplina.</p>
+    <div class="cartao-topo">
+      <h2>Faltas a acompanhar</h2>
+      <span class="texto-suave">${porAluno.size} aluno(s) · ${acima} disciplina(s) acima do limite</span>
+    </div>
+    <p class="texto-suave">Alunos das turmas que dirige com ${Math.round(LIMITE_FALTAS * 70)}% ou mais de faltas numa disciplina.
+      As etiquetas escuras já passaram o limite de ${LIMITE_FALTAS * 100}%; entre parênteses, faltas / aulas dadas.</p>
     <div class="tabela-scroll"><table class="tabela">
-      <thead><tr><th>Aluno</th><th>Turma</th><th>Disciplina</th><th class="direita">Faltas</th><th>Situação</th></tr></thead>
-      <tbody>${avisos
+      <thead><tr><th>Aluno</th><th>Faltas por disciplina</th></tr></thead>
+      <tbody>${[...porAluno.values()]
         .map(
-          (x) => `<tr>
-        <td><a class="aluno-linha" href="/professor/alunos/${x.aluno_id}"><span>${h(x.aluno)}</span></a></td>
-        <td>${h(x.turma)}</td>
-        <td>${h(x.disciplina)}</td>
-        <td class="direita">${x.faltas}/${aulasDadas(x.aulas, x.faltas)}</td>
-        <td><span class="etiqueta ${x.excedido ? 'etiqueta-perigo' : 'etiqueta-aviso'}">${Math.round(x.percentagem * 100)}%${x.excedido ? ' · acima do limite' : ' · a aproximar-se'}</span></td>
+          (a) => `<tr>
+        <td><a class="aluno-linha" href="/professor/alunos/${a.aluno_id}"><span>${h(a.aluno)}<small>${h(a.turma)}</small></span></a></td>
+        <td><div class="lista-etiquetas">${a.disciplinas.map(etiqueta).join('')}</div></td>
       </tr>`
         )
         .join('')}</tbody>
@@ -160,24 +171,26 @@ function reunioesDaTurma(turmaId) {
 }
 
 function cartaoReunioes(turma, reunioes, ehDiretor) {
-  const linhas = reunioes.length
-    ? `<ul class="lista-simples">${reunioes
-        .map(
-          (r) => `<li>
+  // As próximas primeiro (da mais perto para a mais longe); depois as últimas já realizadas, esbatidas e
+  // sem "Cancelar" (não faz sentido cancelar uma reunião que já aconteceu)
+  const hojeISO = hoje();
+  const proximas = reunioes.filter((r) => r.data >= hojeISO).reverse(); // vêm da mais recente para a mais antiga
+  const anteriores = reunioes.filter((r) => r.data < hojeISO).slice(0, 5);
+  const linha = (r, passada) => `<li${passada ? ' class="passado"' : ''}>
           <span class="hora">${h(formatarData(r.data))}<small>${h(r.hora)}</small></span>
           <span><strong>${h(r.assunto || 'Reunião de turma')}</strong>
-            <small>${r.local ? `${h(r.local)} · ` : ''}Marcada por ${h(r.marcada_por_nome || '—')}</small>
+            <small>${r.local ? `${h(r.local)} · ` : ''}Marcada por ${h(r.marcada_por_nome || '—')}${passada ? ' · já realizada' : ''}</small>
           </span>
           ${
-            ehDiretor
+            ehDiretor && !passada
               ? `<form method="post" action="/professor/reunioes/${r.id}/apagar" data-confirmar="Cancelar esta reunião?">
                    <input type="hidden" name="voltar" value="/professor/turmas?turma=${turma.id}">
                    <button class="botao-texto perigo">Cancelar</button></form>`
               : ''
           }
-        </li>`
-        )
-        .join('')}</ul>`
+        </li>`;
+  const linhas = reunioes.length
+    ? `<ul class="lista-simples">${proximas.map((r) => linha(r, false)).join('')}${anteriores.map((r) => linha(r, true)).join('')}</ul>`
     : vazio('Sem reuniões marcadas para esta turma.');
 
   return `<section class="cartao">
@@ -307,7 +320,7 @@ post('/professor/turmas/:id/reunioes', async (req, res) => {
   const hora = String(req.corpo.hora || '');
   const local = String(req.corpo.local || '').trim().slice(0, 60);
   const assunto = String(req.corpo.assunto || '').trim().slice(0, 200);
-  if (!dataValida(data) || data < hoje() || !/^\d{2}:\d{2}$/.test(hora)) {
+  if (!dataValida(data) || data < hoje() || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) {
     req.flash('erro', 'Indique uma data (hoje ou futura) e uma hora válidas.');
     return res.redirecionar(`/professor/turmas?turma=${turma.id}`);
   }

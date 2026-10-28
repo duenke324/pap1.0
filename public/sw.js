@@ -2,7 +2,9 @@
 // As páginas desta aplicação têm sempre dados pessoais do utilizador autenticado, por isso nunca
 // são guardadas em cache: os pedidos de navegação vão sempre à rede, com uma página de "sem ligação"
 // como único recurso offline. Só os ficheiros estáticos (CSS, JS, ícones) ficam em cache.
-const CACHE_ESTATICOS = 'gestao-escolar-estaticos-v1';
+// Mudar a versão sempre que o CSS/JS/ícones mudarem: o service worker novo apaga a cache antiga
+// (sem isto, quem tem a app instalada continuava a ver o CSS antigo na primeira visita)
+const CACHE_ESTATICOS = 'gestao-escolar-estaticos-v2';
 const FICHEIRO_OFFLINE = '/offline.html';
 
 const PRE_CACHE = [

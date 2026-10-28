@@ -48,14 +48,16 @@ async function antesDaRota(req, res) {
     if (!req.utilizador) await terminarSessao(req);
   }
 
-  const publico = ['/login', '/manifest.webmanifest', '/sw.js', '/offline.html'].includes(req.caminho);
+  const ficheiroPwa = ['/manifest.webmanifest', '/sw.js', '/offline.html'].includes(req.caminho);
+  const publico = req.caminho === '/login' || ficheiroPwa;
   if (!publico && !req.utilizador) {
     res.redirecionar('/login');
     return false;
   }
 
-  // Palavra-passe atribuída pelo administrador (conta nova ou redefinida): tem de ser substituída antes de mais nada
-  if (req.utilizador?.deve_redefinir_password && !['/definir-password', '/logout'].includes(req.caminho)) {
+  // Palavra-passe atribuída pelo administrador (conta nova ou redefinida): tem de ser substituída antes de mais nada.
+  // Os ficheiros do PWA ficam de fora: o browser não aceita um service worker que responda com um redirecionamento.
+  if (req.utilizador?.deve_redefinir_password && !ficheiroPwa && !['/definir-password', '/logout'].includes(req.caminho)) {
     res.redirecionar('/definir-password');
     return false;
   }

@@ -231,7 +231,7 @@
     el.descartar.disabled = !mudou;
     el.estado.textContent = mudou ? 'Alterações por guardar.' : 'Sem alterações.';
     el.estado.classList.toggle('por-guardar', mudou);
-    if (comConflitos) el.estado.textContent += ' Existem conflitos assinalados a vermelho.';
+    if (comConflitos) el.estado.textContent += ' Existem conflitos, assinalados com contorno tracejado.';
   }
 
   function desenhar() {

@@ -2,7 +2,7 @@
 const { get, post } = require('../lib/servidor');
 const { todos, um, executar } = require('../db');
 const { pagina, vazio, avatar } = require('../vistas/layout');
-const { h, formatarData, anoLetivoAtual, selecionado } = require('../lib/util');
+const { h, hoje, formatarData, anoLetivoAtual, selecionado } = require('../lib/util');
 const { registarLog } = require('../lib/auditoria');
 
 const listaProfessores = () => todos('SELECT id, nome FROM professores ORDER BY nome');
@@ -230,7 +230,7 @@ async function paginaTurma(req, res, turma, { dados, erros = {} } = {}, estado =
           <thead><tr><th>Data</th><th>Hora</th><th>Local</th><th>Assunto</th><th>Marcada por</th></tr></thead>
           <tbody>${reunioes
             .map(
-              (r) => `<tr>
+              (r) => `<tr${r.data < hoje() ? ' class="linha-suave" title="Já realizada"' : ''}>
               <td>${h(formatarData(r.data))}</td>
               <td>${h(r.hora)}</td>
               <td>${h(r.local || '—')}</td>
@@ -280,6 +280,14 @@ post('/admin/turmas/:id/editar', async (req, res) => {
       dados.diretor_id ? um('SELECT nome FROM professores WHERE id = ?', dados.diretor_id) : null,
     ]);
     alteracoes.push(`diretor de turma: "${antigo?.nome || '—'}" → "${novo?.nome || '—'}"`);
+  }
+  for (const [campo, rotulo] of [['delegado_id', 'delegado'], ['subdelegado_id', 'subdelegado']]) {
+    if ((turma[campo] || null) === (dados[campo] || null)) continue;
+    const [antigo, novo] = await Promise.all([
+      turma[campo] ? um('SELECT nome FROM alunos WHERE id = ?', turma[campo]) : null,
+      dados[campo] ? um('SELECT nome FROM alunos WHERE id = ?', dados[campo]) : null,
+    ]);
+    alteracoes.push(`${rotulo}: "${antigo?.nome || '—'}" → "${novo?.nome || '—'}"`);
   }
   await registarLog(
     req,

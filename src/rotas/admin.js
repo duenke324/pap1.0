@@ -226,6 +226,9 @@ get('/admin', async (req, res) => {
   const assiduidade = await estatisticasAssiduidade();
   // Dados para os gráficos (Chart.js, carregado localmente): nomes dos cursos escapados contra </script>
   const dadosGrafico = JSON.stringify(assiduidade).replace(/</g, '\\u003c');
+  const pct = (x) => String(x).replace('.', ','); // 94.6 → "94,6"
+  // Uma linha por curso (os nomes compridos ocupam até 3 linhas de texto)
+  const alturaBarras = 40 + assiduidade.cursos.length * 56;
 
   const conteudo = `
     <section class="estatisticas">
@@ -242,17 +245,19 @@ get('/admin', async (req, res) => {
           ? vazio('Ainda não há lições dadas para calcular a assiduidade.')
           : `<div class="grelha-graficos">
               <div class="grafico-caixa">
-                <canvas id="graficoAssiduidadeGlobal" height="180" role="img" aria-label="Assiduidade global: ${assiduidade.global}%"></canvas>
-                <span class="grafico-numero">${assiduidade.global}%</span>
+                <canvas id="graficoAssiduidadeGlobal" height="180" role="img" aria-label="Assiduidade global: ${pct(assiduidade.global)}%"></canvas>
+                <span class="grafico-numero">${pct(assiduidade.global)}%</span>
                 <p class="texto-suave">Assiduidade global</p>
               </div>
               <div class="grafico-caixa">
-                <canvas id="graficoAssiduidadePorCurso" height="180" role="img" aria-label="Assiduidade por curso"></canvas>
                 ${
                   assiduidade.cursos.length
-                    ? `<ul class="lista-assiduidade-cursos">${assiduidade.cursos
+                    ? `<div class="grafico-barras" style="height: ${alturaBarras}px">
+                        <canvas id="graficoAssiduidadePorCurso" role="img" aria-label="Assiduidade por curso"></canvas>
+                      </div>
+                      <ul class="lista-assiduidade-cursos">${assiduidade.cursos
                         .map(
-                          (c) => `<li><span>${h(c.nome)}</span><span class="etiqueta etiqueta-${corAssiduidade(c.assiduidade)}">${c.assiduidade}%</span></li>`
+                          (c) => `<li><span>${h(c.nome)}</span><span class="etiqueta etiqueta-${corAssiduidade(c.assiduidade)}">${pct(c.assiduidade)}%</span></li>`
                         )
                         .join('')}</ul>`
                     : ''
@@ -270,6 +275,21 @@ get('/admin', async (req, res) => {
                 if (pct < ${(1 - LIMITE_FALTAS * 0.7) * 100}) return cor('--aviso');
                 return cor('--ok');
               }
+              // Nomes compridos ("Técnico de Gestão e Programação de ...") partidos em linhas de ~28 caracteres
+              function partirNome(texto) {
+                var linhas = [];
+                var atual = '';
+                texto.split(' ').forEach(function (palavra) {
+                  if (atual && (atual + ' ' + palavra).length > 28) {
+                    linhas.push(atual);
+                    atual = palavra;
+                  } else {
+                    atual = atual ? atual + ' ' + palavra : palavra;
+                  }
+                });
+                if (atual) linhas.push(atual);
+                return linhas;
+              }
               var graficos = [];
               function desenhar() {
                 graficos.forEach(function (g) { g.destroy(); });
@@ -278,6 +298,7 @@ get('/admin', async (req, res) => {
                 var tinta = cor('--tinta-suave');
                 Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
                 Chart.defaults.color = tinta;
+                Chart.defaults.locale = 'pt-PT'; // números com vírgula nas dicas (94,6 e não 94.6)
 
                 var elGlobal = document.getElementById('graficoAssiduidadeGlobal');
                 if (elGlobal) {
@@ -296,20 +317,22 @@ get('/admin', async (req, res) => {
                   graficos.push(new Chart(elCursos, {
                     type: 'bar',
                     data: {
-                      labels: dados.cursos.map(function (c) { return c.nome; }),
+                      labels: dados.cursos.map(function (c) { return partirNome(c.nome); }),
                       datasets: [{
                         label: 'Assiduidade (%)',
                         data: dados.cursos.map(function (c) { return c.assiduidade; }),
                         backgroundColor: dados.cursos.map(function (c) { return corPorTaxa(c.assiduidade); }),
                         borderRadius: 4,
-                        maxBarThickness: 36,
+                        maxBarThickness: 28,
                       }],
                     },
                     options: {
-                      indexAxis: dados.cursos.length > 4 ? 'y' : 'x',
+                      // Barras deitadas: os nomes dos cursos cabem à esquerda, em vez de ficarem cortados por baixo
+                      indexAxis: 'y',
+                      maintainAspectRatio: false,
                       scales: {
-                        x: { min: 0, max: 100, grid: { color: linha }, ticks: { color: tinta } },
-                        y: { min: 0, max: 100, grid: { color: linha }, ticks: { color: tinta } },
+                        x: { min: 0, max: 100, grid: { color: linha }, ticks: { color: tinta, callback: function (v) { return v + '%'; } } },
+                        y: { grid: { display: false }, ticks: { color: tinta } },
                       },
                       plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.formattedValue + '% de assiduidade'; } } } },
                     },
@@ -620,6 +643,11 @@ function guardarAlteracoesAluno(atual, dados, fotografia) {
       fotografia,
       atual.id
     );
+    // Quem muda de turma deixa de ser delegado/subdelegado da turma antiga
+    if ((atual.turma_id || null) !== (dados.turma_id || null)) {
+      await tx.executar('UPDATE turmas SET delegado_id = NULL WHERE delegado_id = ?', atual.id);
+      await tx.executar('UPDATE turmas SET subdelegado_id = NULL WHERE subdelegado_id = ?', atual.id);
+    }
     if (atual.utilizador_id) {
       await tx.executar('UPDATE utilizadores SET username = ?, nome = ? WHERE id = ?', dados.numero_processo, dados.nome, atual.utilizador_id);
       if (dados.password) {

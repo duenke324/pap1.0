@@ -3,6 +3,10 @@
    Paleta a preto e branco: só cinzentos, sem nenhuma cor com matiz.
    A hierarquia (o que é mais importante, o que é um alerta) é feita por
    contraste/peso, não por cor. Tema escuro é a mesma ideia invertida.
+   Os três níveis de estado distinguem-se pela forma: ok = só contorno,
+   aviso = fundo cinzento, perigo = invertido (fundo escuro, texto claro).
+   Links no meio do texto levam sublinhado; o que está fora do limite de
+   faltas ou bloqueado aparece às riscas.
    ===================================================================== */
 
 /* ----- Cores (tema claro) ----- */
@@ -22,9 +26,9 @@
   --acento-fundo: #e8e8e8;
   --acento-texto: #fff;
 
-  --ok: #4d4d4d;       --ok-fundo: #eeeeee;
-  --aviso: #2b2b2b;    --aviso-fundo: #dcdcdc;
-  --perigo: #1a1a1a;   --perigo-fundo: #c9c9c9;
+  --ok: #737373;       --ok-fundo: #f0f0f0;
+  --aviso: #333333;    --aviso-fundo: #dedede;
+  --perigo: #111111;   --perigo-fundo: #cfcfcf;
 
   --lateral: #141414;
   --lateral-texto: #e6e6e6;
@@ -63,9 +67,9 @@
   --acento-forte: #cccccc;
   --acento-fundo: #272727;
   --acento-texto: #000000;
-  --ok: #b8b8b8;     --ok-fundo: #232323;
-  --aviso: #d6d6d6;  --aviso-fundo: #292929;
-  --perigo: #f2f2f2; --perigo-fundo: #343434;
+  --ok: #8c8c8c;     --ok-fundo: #1f1f1f;
+  --aviso: #d0d0d0;  --aviso-fundo: #333333;
+  --perigo: #f5f5f5; --perigo-fundo: #3d3d3d;
   --lateral: #000000;
   --lateral-texto: #e6e6e6;
   --lateral-suave: #8c8c8c;
@@ -94,9 +98,9 @@
     --acento-forte: #cccccc;
     --acento-fundo: #272727;
     --acento-texto: #000000;
-    --ok: #b8b8b8;     --ok-fundo: #232323;
-    --aviso: #d6d6d6;  --aviso-fundo: #292929;
-    --perigo: #f2f2f2; --perigo-fundo: #343434;
+    --ok: #8c8c8c;     --ok-fundo: #1f1f1f;
+    --aviso: #d0d0d0;  --aviso-fundo: #333333;
+    --perigo: #f5f5f5; --perigo-fundo: #3d3d3d;
     --lateral: #000000;
     --lateral-texto: #e6e6e6;
     --lateral-suave: #8c8c8c;
@@ -123,6 +127,14 @@ body {
 }
 a { color: var(--acento); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 2px; }
+/* Sem cor própria (preto e branco), os links no meio do texto e das tabelas distinguem-se por um
+   sublinhado discreto. Os links com classe (menu, separadores, botões, cartões) têm estilo próprio. */
+a:not([class]) {
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em;
+  text-decoration-color: var(--linha-forte);
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); /* visível nos dois temas */
+}
+a:not([class]):hover { text-decoration-color: currentColor; }
 h1, h2, h3 { margin: 0; line-height: 1.25; font-family: var(--letra-titulos); font-weight: 700; }
 h1 { font-size: 1.85rem; }
 h2 { font-size: 1.18rem; margin-bottom: .7rem; }
@@ -169,7 +181,7 @@ small { font-size: .82rem; }
 .menu a.ativo { background: var(--lateral-ativo); color: #fff; font-weight: 600; }
 .menu a.ativo::before {
   content: ""; position: absolute; left: -.75rem; top: .45rem; bottom: .45rem; width: 3px;
-  background: var(--acento);
+  background: #fff; /* a barra lateral é escura nos dois temas (com --acento ficava preto sobre preto) */
 }
 .icone { width: 19px; height: 19px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -207,6 +219,8 @@ small { font-size: .82rem; }
   background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio);
   padding: 1.3rem 1.45rem; margin-bottom: 1.3rem;
 }
+/* Cartão em destaque (ex.: reunião para a qual o aluno foi convocado): traço forte à esquerda em vez de cor */
+.cartao-destaque { border-color: var(--tinta); box-shadow: inset 4px 0 0 var(--tinta); }
 .cartao-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; flex-wrap: wrap; }
 .cartao-topo h2 { margin-bottom: .15rem; }
 .cartao-topo p { margin: 0; }
@@ -233,13 +247,16 @@ small { font-size: .82rem; }
 a.estatistica:hover { background: var(--superficie-2); text-decoration: none; }
 .estatistica span { color: var(--tinta-suave); font-size: .85rem; }
 .estatistica strong { font-family: var(--letra-titulos); font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums lining-nums; }
-.destaque-aviso { box-shadow: inset 0 3px 0 var(--aviso), 1px 0 0 var(--linha), 0 1px 0 var(--linha); }
-.destaque-aviso strong { color: var(--aviso); }
+.estatistica.destaque-aviso { box-shadow: inset 0 3px 0 var(--aviso), 1px 0 0 var(--linha), 0 1px 0 var(--linha); }
+.estatistica.destaque-aviso strong { color: var(--aviso); }
 
 /* ----- Gráficos (painel de administração) ----- */
 .grelha-graficos { display: grid; grid-template-columns: minmax(170px, 230px) 1fr; gap: 1.5rem; align-items: center; }
 .grafico-caixa { position: relative; min-height: 180px; }
 .grafico-caixa p { margin: .5rem 0 0; text-align: center; }
+/* Altura fixa (a página define-a conforme o n.º de cursos): sem isto o Chart.js mantinha a proporção
+   2:1 e uma única barra ocupava meio ecrã */
+.grafico-barras { position: relative; }
 .grafico-numero {
   position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%);
   font-family: var(--letra-titulos); font-size: 1.7rem; font-weight: 600; color: var(--tinta);
@@ -333,19 +350,30 @@ textarea { width: 100%; resize: vertical; min-height: 4.5rem; line-height: 1.5; 
 .pre-visualizacao.a-remover img { opacity: .25; filter: grayscale(1); }
 
 /* ----- Alertas e etiquetas ----- */
-.alerta { padding: .7rem 1rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid; border-left-width: 4px; font-weight: 500; }
-.alerta-sucesso { background: var(--ok-fundo); border-color: var(--ok); color: var(--ok); }
-.alerta-erro { background: var(--perigo-fundo); border-color: var(--perigo); color: var(--perigo); }
-.alerta-aviso { background: var(--aviso-fundo); border-color: var(--aviso); color: var(--aviso); }
+/* Cada tipo de mensagem tem um símbolo à esquerda (✓ ! ×), para não depender só do tom de cinzento.
+   O "/ ''" esconde o símbolo dos leitores de ecrã; a primeira declaração é para browsers antigos. */
+.alerta {
+  position: relative; padding: .7rem 1rem .7rem 2.3rem; border-radius: 4px; margin-bottom: 1rem;
+  border: 1px solid var(--linha-forte); border-left-width: 4px; font-weight: 500;
+  background: var(--superficie); color: var(--tinta);
+}
+.alerta::before { position: absolute; left: .85rem; top: .7rem; font-weight: 700; }
+.alerta-sucesso { border-left-color: var(--ok); }
+.alerta-sucesso::before { content: "✓"; content: "✓" / ""; }
+.alerta-aviso { background: var(--aviso-fundo); border-color: var(--aviso); }
+.alerta-aviso::before { content: "!"; content: "!" / ""; }
+.alerta-erro { background: var(--perigo); border-color: var(--perigo); color: var(--superficie); }
+.alerta-erro::before { content: "×"; content: "×" / ""; }
 
 .etiqueta {
   display: inline-block; padding: .08rem .45rem; border-radius: 3px; white-space: nowrap;
   font-size: .78rem; font-weight: 600; background: var(--superficie-2); color: var(--tinta-suave);
   font-variant-numeric: tabular-nums;
 }
-.etiqueta-ok { background: var(--ok-fundo); color: var(--ok); }
-.etiqueta-aviso { background: var(--aviso-fundo); color: var(--aviso); }
-.etiqueta-perigo { background: var(--perigo-fundo); color: var(--perigo); }
+.etiqueta-ok { background: transparent; color: var(--tinta-suave); box-shadow: inset 0 0 0 1px var(--linha-forte); }
+.etiqueta-aviso { background: var(--aviso-fundo); color: var(--tinta); }
+.etiqueta-perigo { background: var(--perigo); color: var(--superficie); }
+.etiqueta-forte { background: var(--tinta); color: var(--superficie); } /* destaque sem ser um problema (ex.: "Convocado") */
 a.etiqueta:hover { text-decoration: none; filter: brightness(.96); }
 .legenda { margin: .8rem 0 0; color: var(--tinta-suave); font-size: .82rem; }
 
@@ -373,6 +401,8 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: 2p
 .lista-simples li { display: flex; gap: .9rem; padding: .6rem 0; border-bottom: 1px solid var(--linha); align-items: baseline; }
 .lista-simples li:last-child { border-bottom: 0; }
 .lista-simples small { display: block; color: var(--tinta-suave); }
+.lista-simples li > form:last-child { margin: 0 0 0 auto; } /* botão de ação (ex.: "Cancelar") encostado à direita */
+.lista-simples li.passado { color: var(--tinta-suave); }
 .hora { color: var(--tinta-suave); font-variant-numeric: tabular-nums; font-size: .86rem; min-width: 88px; }
 
 .lista-testes { list-style: none; margin: 0; padding: 0; }
@@ -415,7 +445,11 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: 2p
 .cartao-aluno strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cartao-aluno small { color: var(--tinta-suave); }
 .contagem { font-size: .8rem; font-weight: 700; padding: .1rem .45rem; border-radius: 3px; background: var(--superficie-2); color: var(--tinta-suave); font-variant-numeric: tabular-nums; }
-.contagem.aviso { background: var(--aviso-fundo); color: var(--aviso); }
+.contagem.aviso { background: var(--aviso-fundo); color: var(--tinta); }
+
+/* Faltas a acompanhar (diretor de turma): uma linha por aluno, uma etiqueta por disciplina */
+.lista-etiquetas { display: flex; flex-wrap: wrap; gap: .3rem; }
+.lista-etiquetas .etiqueta { white-space: normal; } /* no telemóvel, uma etiqueta comprida parte em vez de sair do cartão */
 
 /* ----- Ficha do aluno ----- */
 .grelha-ficha { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 1.3rem; align-items: start; }
@@ -538,9 +572,10 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: 2p
 .horario-editor td.livre { cursor: pointer; }
 .horario-editor td.livre:hover { background: var(--acento-fundo); }
 .horario-editor td.sobre { box-shadow: inset 0 0 0 2px var(--acento); background: var(--acento-fundo); }
-.horario-editor td.bloqueada { background: var(--perigo-fundo); cursor: not-allowed; }
+.horario-editor td.bloqueada { background: repeating-linear-gradient(-45deg, var(--perigo-fundo) 0 6px, transparent 6px 12px); cursor: not-allowed; }
 .horario-editor .arrastavel { cursor: grab; position: relative; }
-.horario-editor .aula.conflito { box-shadow: 0 0 0 2px var(--perigo); }
+/* Tracejado, para não se confundir com a aula selecionada (contorno contínuo da mesma cor) */
+.horario-editor .aula.conflito { outline: 2px dashed var(--perigo); outline-offset: 1px; }
 .dica-celula { display: grid; place-items: center; height: 100%; font-size: .72rem; color: var(--acento); opacity: .8; }
 .marca-faltas { position: absolute; top: .25rem; right: .4rem; color: var(--perigo); font-size: .7rem; }
 
@@ -687,7 +722,8 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: 2p
   background: var(--superficie-2); border-radius: 4px; overflow: hidden;
 }
 .barra-assiduidade span { display: block; height: 100%; background: var(--ok); }
-.barra-assiduidade.alerta span { background: var(--aviso); }
+/* Faltas no limite ou acima: barra às riscas e mais escura (o padrão vê-se mesmo sem cor) */
+.barra-assiduidade.abaixo-limite span { background: repeating-linear-gradient(-45deg, var(--tinta) 0 3px, transparent 3px 5px); }
 .valor-barra { display: inline-block; width: 3.8rem; text-align: right; font-variant-numeric: tabular-nums; font-size: .88rem; }
 .estatistica small { font-family: var(--letra); font-size: .9rem; }
 
@@ -702,12 +738,18 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: 2p
   .id-campo, .id-campo.medio, .id-campo.fim { grid-column: span 6; }
   .id-campo.largo { grid-column: span 12; }
   .grelha-informacoes { grid-template-columns: minmax(0, 1fr); }
+  /* Numa só coluna, a reunião e os avisos vêm antes do calendário (senão ficavam lá muito abaixo) */
+  .grelha-informacoes > aside { order: 1; }
 }
 @media (max-width: 640px) {
   .identificacao { align-items: flex-start; }
   .avatar.foto { width: 64px; height: 78px; font-size: 1.3rem; }
   .id-campo, .id-campo.medio, .id-campo.largo, .id-campo.fim { grid-column: span 12; }
-  .id-rotulo { min-width: 5.6rem; }
+  /* Rótulos com a mesma largura; "Encarregado de educação" parte em duas linhas e o valor fica visível */
+  .id-rotulo { flex: 0 0 5.6rem; min-width: 0; white-space: normal; }
+  /* Testes e reunião: o prazo passa para baixo do texto, em vez de o espremer numa coluna estreita */
+  .lista-testes li { display: grid; grid-template-columns: 50px minmax(0, 1fr); gap: .4rem 1rem; }
+  .lista-testes li > .etiqueta { grid-column: 2; justify-self: start; }
   .barra-aluno-escola { display: none; }
   .barra-aluno { justify-content: space-between; }
   .pagina-aluno { padding: 1rem .7rem 2.5rem; }

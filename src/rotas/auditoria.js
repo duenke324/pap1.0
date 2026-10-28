@@ -4,7 +4,7 @@ const { todos, um } = require('../db');
 const { pagina, vazio } = require('../vistas/layout');
 const { h, formatarDataLonga } = require('../lib/util');
 
-const NOMES_ENTIDADE = { turma: 'Turma', professor: 'Professor', aluno: 'Aluno', disciplina: 'Disciplina' };
+const NOMES_ENTIDADE = { turma: 'Turma', professor: 'Professor', funcionario: 'Funcionário', aluno: 'Aluno', disciplina: 'Disciplina' };
 const NOMES_ACAO = { criar: 'Criou', editar: 'Editou', apagar: 'Apagou' };
 const ETIQUETA_ACAO = { criar: 'etiqueta-ok', editar: 'etiqueta-aviso', apagar: 'etiqueta-perigo' };
 
@@ -40,7 +40,7 @@ get('/admin/auditoria', async (req, res) => {
           </select></label>
         <span class="contador">${linhas.length} de ${total} registo(s)${linhas.length === 200 ? ' · mostra só os 200 mais recentes' : ''}</span>
       </form>
-      <p class="texto-suave">Regista quem criou, editou ou apagou turmas, professores, disciplinas e alunos — incluindo mudanças de diretor de turma, curso e turma de um aluno.</p>
+      <p class="texto-suave">Regista quem criou, editou ou apagou turmas, professores, funcionários, disciplinas e alunos — incluindo mudanças de diretor de turma, delegados, curso e turma de um aluno.</p>
       ${
         linhas.length
           ? `<div class="tabela-scroll"><table class="tabela">

@@ -71,14 +71,19 @@ function etiquetaPrazo(data) {
   return `<span class="etiqueta">Daqui a ${dias} dias</span>`;
 }
 
+// Dia e mês num bloco, como uma folha de calendário (ex.: "15 / nov")
+function blocoData(dataISO) {
+  const [a, m, d] = dataISO.split('-');
+  const mes = new Date(a, m - 1, d).toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '');
+  return `<div class="data-bloco"><strong>${d}</strong><span>${h(mes)}</span></div>`;
+}
+
 function listaTestes(testes) {
   if (!testes.length) return vazio('Não há avaliações marcadas.');
   return `<ul class="lista-testes">${testes
     .map((t) => {
-      const [a, m, d] = t.data.split('-');
-      const mes = new Date(a, m - 1, d).toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '');
       return `<li>
-        <div class="data-bloco"><strong>${d}</strong><span>${h(mes)}</span></div>
+        ${blocoData(t.data)}
         <div class="teste-info">
           <strong>${h(TIPOS_TESTE[t.tipo])} de ${h(t.disciplina)}</strong>
           <span>${h(t.descricao || 'Sem descrição')}${t.professor ? ` · ${h(t.professor)}` : ''}</span>
@@ -95,10 +100,19 @@ function cartaoReuniao(aluno, r) {
   const ehDelegado = aluno.delegado_id === aluno.id;
   const ehSubdelegado = aluno.subdelegado_id === aluno.id;
   const convocado = ehDelegado || ehSubdelegado;
-  return `<section class="cartao${convocado ? ' destaque-aviso' : ''}">
-    <h2>Reunião de turma</h2>
-    <p>${h(formatarDataLonga(r.data))} às ${h(r.hora)}${r.local ? ` · ${h(r.local)}` : ''}</p>
-    ${r.assunto ? `<p class="texto-suave">${h(r.assunto)}</p>` : ''}
+  return `<section class="cartao${convocado ? ' cartao-destaque' : ''}">
+    <div class="cartao-topo">
+      <h2>Reunião de turma</h2>
+      ${convocado ? '<span class="etiqueta etiqueta-forte">Convocado(a)</span>' : ''}
+    </div>
+    <ul class="lista-testes"><li>
+      ${blocoData(r.data)}
+      <div class="teste-info">
+        <strong>${h(formatarDataLonga(r.data))} às ${h(r.hora)}${r.local ? ` · ${h(r.local)}` : ''}</strong>
+        <span>${h(r.assunto || 'Reunião com o diretor de turma')}</span>
+      </div>
+      ${etiquetaPrazo(r.data)}
+    </li></ul>
     ${
       convocado
         ? `<p><strong>Foi convocado(a) como ${ehDelegado ? 'delegado(a)' : 'subdelegado(a)'} de turma para esta reunião.</strong></p>`
@@ -185,8 +199,16 @@ get('/aluno', async (req, res) => {
   const proximos = aluno.turma_id ? (await testesDaTurma(aluno.turma_id)).filter((t) => t.data >= hoje()) : [];
   const diaHoje = diaDaSemana(hoje());
   const aulasHoje = aluno.turma_id ? (await horarioDaTurma(aluno.turma_id)).filter((a) => a.dia_semana === diaHoje) : [];
+  // Próxima reunião ainda por acontecer (uma de hoje cuja hora já passou deixa de aparecer)
+  const horaAgora = new Date().toTimeString().slice(0, 5);
   const proximaReuniao = aluno.turma_id
-    ? await um('SELECT * FROM reunioes_turma WHERE turma_id = ? AND data >= ? ORDER BY data, hora LIMIT 1', aluno.turma_id, hoje())
+    ? await um(
+        'SELECT * FROM reunioes_turma WHERE turma_id = ? AND (data > ? OR (data = ? AND hora >= ?)) ORDER BY data, hora LIMIT 1',
+        aluno.turma_id,
+        hoje(),
+        hoje(),
+        horaAgora
+      )
     : null;
 
   const conteudo = `
@@ -271,13 +293,14 @@ get('/aluno/estatisticas', async (req, res) => {
   const linhas = disciplinas
     .map((d) => {
       const presenca = base(d) ? Math.round((1 - d.faltas / base(d)) * 1000) / 10 : 100;
-      const alerta = base(d) && d.faltas / base(d) >= LIMITE_FALTAS;
+      // (a classe não pode chamar-se "alerta": essa é a das caixas de mensagem e desfazia a barra)
+      const abaixoLimite = base(d) && d.faltas / base(d) >= LIMITE_FALTAS;
       return `<tr>
         <td>${h(d.nome)}</td>
         <td class="direita">${d.aulas}</td>
         <td class="direita">${d.faltas}${d.injustificadas ? ` <small class="texto-suave">(${d.injustificadas} inj.)</small>` : ''}</td>
         <td class="coluna-barra">
-          <div class="barra-assiduidade${alerta ? ' alerta' : ''}" role="img" aria-label="Assiduidade ${pct(presenca)}%">
+          <div class="barra-assiduidade${abaixoLimite ? ' abaixo-limite' : ''}" role="img" aria-label="Assiduidade ${pct(presenca)}%${abaixoLimite ? ', faltas no limite ou acima' : ''}">
             <span style="width: ${presenca}%"></span>
           </div>
           <span class="valor-barra">${pct(presenca)}%</span>
@@ -302,7 +325,7 @@ get('/aluno/estatisticas', async (req, res) => {
               <tbody>${linhas}</tbody>
             </table></div>
             <p class="legenda">Contam as aulas com sumário registado e as faltas de presença.
-              A laranja quando as faltas chegam a 10% das aulas da disciplina.
+              A barra fica às riscas quando as faltas chegam a ${LIMITE_FALTAS * 100}% das aulas da disciplina.
               Faltas de material: ${Number(outras.material) || 0} · disciplinares: ${Number(outras.disciplinar) || 0}.</p>`
           : vazio('A turma ainda não tem horário.')
       }

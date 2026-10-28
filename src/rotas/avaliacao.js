@@ -196,7 +196,7 @@ function paginaAvaliacao(req, res, d, { valores = null, erros = {} } = {}, estad
         </table></div>
         <p class="legenda">Escreva uma nota de 0 a 20, <strong>NC</strong> (módulo não concluído) ou <strong>EF</strong> (excluído por faltas).
           Deixe em branco para retirar a classificação. As faltas contam as faltas de presença nas lições marcadas com este módulo;
-          a vermelho quando chegam a ${LIMITE_FALTAS * 100}% das aulas já dadas neste módulo.</p>
+          ficam em destaque (fundo escuro) quando chegam a ${LIMITE_FALTAS * 100}% das aulas já dadas neste módulo.</p>
         <div class="barra-acoes"><button class="botao">Guardar classificações</button></div>
       </form>`
     : vazio('Esta turma ainda não tem alunos.');
