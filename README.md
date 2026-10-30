@@ -348,3 +348,4 @@ browser — no diálogo de impressão, escolher "Guardar como PDF" em vez de uma
 O diretor de turma já vê, sempre que abre "As minhas turmas", um cartão "Faltas a acompanhar" com os alunos
 da(s) turma(s) que dirige que estejam perto (≥ 7%) ou acima (≥ 10%) do limite de faltas numa disciplina —
 o mesmo limite já usado na avaliação por módulos. Só aparece a quem tem `diretor_id` numa turma.
+# PAPPre
