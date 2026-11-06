@@ -401,7 +401,9 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: 2p
 .lista-simples li { display: flex; gap: .9rem; padding: .6rem 0; border-bottom: 1px solid var(--linha); align-items: baseline; }
 .lista-simples li:last-child { border-bottom: 0; }
 .lista-simples small { display: block; color: var(--tinta-suave); }
-.lista-simples li > form:last-child { margin: 0 0 0 auto; } /* botão de ação (ex.: "Cancelar") encostado à direita */
+/* Ações de uma linha (ex.: "Ver ata", "Cancelar") encostadas à direita */
+.lista-simples .lista-acoes { margin-left: auto; display: flex; gap: .9rem; align-items: baseline; white-space: nowrap; }
+.lista-simples .lista-acoes form { margin: 0; }
 .lista-simples li.passado { color: var(--tinta-suave); }
 .hora { color: var(--tinta-suave); font-variant-numeric: tabular-nums; font-size: .86rem; min-width: 88px; }
 
@@ -758,6 +760,23 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: 2p
   .dados-pessoais { grid-template-columns: minmax(0, 1fr); }
   .dados-pessoais dt { border-bottom: 0; padding-bottom: 0; }
 }
+
+/* ----- Ata da reunião (ditado ao microfone) ----- */
+.ditado { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; margin: .9rem 0 .4rem; }
+.ditado-estado { color: var(--tinta-suave); font-size: .9rem; font-variant-numeric: tabular-nums; }
+/* A gravar: ponto cheio a piscar ao lado do tempo (sem cor; o movimento respeita "reduzir movimento") */
+.ditado.a-gravar .ditado-estado { color: var(--tinta); font-weight: 600; }
+.ditado.a-gravar .ditado-estado::before { content: "●"; display: inline-block; margin-right: .4rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .ditado.a-gravar .ditado-estado::before { animation: piscar 1.2s ease-in-out infinite; }
+}
+@keyframes piscar { 50% { opacity: .2; } }
+.ditado-provisorio { min-height: 1.5em; margin: 0 0 .6rem; color: var(--tinta-suave); font-style: italic; }
+.formulario-ata textarea[name="ata"] { font-size: 1rem; line-height: 1.6; }
+.ata-texto { white-space: pre-line; line-height: 1.75; max-width: 78ch; }
+details.cartao > summary { cursor: pointer; font-weight: 600; }
+details.cartao[open] > summary { margin-bottom: 1rem; }
+details.cartao > .formulario-ata > .cartao { border: 0; padding: 0; }
 
 /* ----- Impressão (horários, faltas e pautas) ----- */
 @media print {

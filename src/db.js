@@ -158,6 +158,16 @@ async function migrar(ligacao) {
     await ligacao.query('ALTER TABLE turmas ADD CONSTRAINT fk_turma_subdelegado FOREIGN KEY (subdelegado_id) REFERENCES alunos(id) ON DELETE SET NULL');
   }
 
+  // Ata das reuniões de turma (escrita pelo diretor de turma; pode ser ditada ao microfone)
+  if (!(await existeColuna('reunioes_turma', 'ata'))) {
+    await ligacao.query(
+      'ALTER TABLE reunioes_turma ADD COLUMN ata TEXT AFTER assunto, ADD COLUMN ata_por INT UNSIGNED AFTER ata, ADD COLUMN ata_em DATETIME AFTER ata_por'
+    );
+  }
+  if (!(await existeConstraint('reunioes_turma', 'fk_reuniao_ata'))) {
+    await ligacao.query('ALTER TABLE reunioes_turma ADD CONSTRAINT fk_reuniao_ata FOREIGN KEY (ata_por) REFERENCES utilizadores(id) ON DELETE SET NULL');
+  }
+
   // Na primeira vez, deduz as disciplinas de cada professor a partir do horário existente
   const [[{ n }]] = await ligacao.query('SELECT COUNT(*) AS n FROM professor_disciplinas');
   if (n === 0) {

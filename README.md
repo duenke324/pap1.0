@@ -188,6 +188,17 @@ ano letivo, curso, turma, diretor de turma e encarregado de educação) e por ba
   com uma linha por aluno e uma etiqueta por disciplina em que está perto (≥ 7%) ou acima (≥ 10%) do limite de faltas
 - **Reuniões de turma**: o diretor de turma marca (data, hora, local, assunto) e cancela as reuniões da turma;
   os outros professores da turma veem-nas. As que já passaram ficam esbatidas e deixam de poder ser canceladas.
+- **Ata da reunião (ditada ao microfone)**: a partir do dia da reunião aparece «Escrever ata». O diretor de turma
+  carrega em **Começar a gravar** e o browser vai escrevendo, em português, o que é dito (dizer «parágrafo» muda de
+  parágrafo); depois marca os presentes e carrega em **Gerar ata**, que monta a ata formal automaticamente — abertura
+  com a data e a hora por extenso ("Aos quinze dias do mês de novembro…"), presentes, os assuntos ditados e o
+  encerramento com a linha para a assinatura. Revê o texto e guarda. Os outros professores da turma e a direção leem
+  a ata, que se pode imprimir ou guardar em PDF; uma reunião com ata já não pode ser cancelada.
+  - Usa o reconhecimento de voz do próprio browser (Web Speech API), sem dependências novas: funciona no **Chrome,
+    Edge e Safari** (não no Firefox), precisa de **internet** e de autorização para usar o microfone, e só funciona em
+    `https://` ou em `localhost` (num endereço `http://192.168…` da rede o browser bloqueia o microfone).
+  - No Chrome e no Edge o áudio é transcrito pelos serviços da Google e da Microsoft; a aplicação **não guarda o
+    áudio** nem a transcrição em bruto — só o texto final da ata. Sem microfone, a transcrição pode ser escrita à mão.
 - Ficha do aluno: dados pessoais, todas as faltas (pode anular faltas que registou e que ainda não foram justificadas),
   as **ocorrências disciplinares** (leve, grave ou muito grave — qualquer professor da turma regista; cada um só
   apaga as que registou) e a pauta
@@ -212,7 +223,7 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
 ### Painel do Administrador
 - Painel com estatísticas, turmas e faltas recentes por justificar
 - Turmas: criar, editar (nome, ano letivo, curso, diretor de turma, **delegado e subdelegado**) e apagar; ver os alunos,
-  disciplinas, professores e reuniões marcadas de cada turma. Um aluno que muda de turma deixa de ser delegado/subdelegado da antiga.
+  disciplinas, professores e reuniões marcadas de cada turma (e ler as atas já escritas). Um aluno que muda de turma deixa de ser delegado/subdelegado da antiga.
   Só se pode apagar uma turma sem alunos e sem faltas, para não perder histórico.
 - Professores: criar, editar e apagar (com conta de acesso), email institucional (obrigatoriamente
   `@epmontijo.edu.pt`) e escolher as disciplinas que cada um leciona; ficha do professor com o seu horário semanal
@@ -264,9 +275,11 @@ src/
   lib/util.js         Palavras-passe (scrypt), escape de HTML, datas, rótulos
   lib/recursos.js     Localização de public/database/data (diferente quando empacotado em .app)
   lib/auditoria.js    Regista no histórico de auditoria (logs_auditoria) quem fez o quê e quando
+  lib/ata.js          Monta o texto formal da ata da reunião (datas e horas por extenso)
   vistas/layout.js    Estrutura das páginas, menu, avatar, grelha do horário
   rotas/aluno.js      Painel do aluno
   rotas/professor.js  Painel do professor (turmas, Dar aula, testes, horário, Novidades do DT)
+  rotas/atas.js       Atas das reuniões de turma (diretor de turma escreve; professores e direção leem)
   rotas/avaliacao.js  Avaliação por módulos (lançar classificações e pauta do aluno)
   rotas/admin.js      Painel do administrador (alunos, faltas, gráficos de assiduidade)
   rotas/turmas.js     Painel do administrador (turmas)
@@ -277,7 +290,7 @@ src/
   rotas/calendario.js Calendário escolar e avisos (administrador)
   rotas/auditoria.js  Painel do administrador (histórico de auditoria)
 database/escola.sql   Esquema da base de dados MySQL (todas as tabelas)
-public/               CSS, JavaScript do browser (incl. editor-horario.js) e ícone
+public/               CSS, JavaScript do browser (incl. editor-horario.js e ata.js, o ditado ao microfone) e ícone
 public/vendor/        Bibliotecas de terceiros incluídas localmente (Chart.js, para os gráficos de assiduidade)
 data/fotos/           Fotografias dos alunos (a BD guarda o nome do ficheiro)
 scripts/build-mac.sh  Gera o GestaoEscolar.app (npm run build:mac)
@@ -301,7 +314,8 @@ Tudo o que é criado ou alterado na plataforma fica guardado nestas tabelas:
 `notas` (classificação de cada aluno em cada módulo: nota 0–20, NC ou EF) ·
 `calendario` (períodos e interrupções letivas) · `avisos` (para todos ou para uma turma) ·
 `ocorrencias` (ocorrências disciplinares: aluno, gravidade, descrição, data, quem registou) ·
-`reunioes_turma` (data, hora, local e assunto; o delegado e o subdelegado estão em `turmas.delegado_id`/`subdelegado_id`) ·
+`reunioes_turma` (data, hora, local, assunto e a **ata**, com quem a escreveu e quando; o delegado e o subdelegado estão
+em `turmas.delegado_id`/`subdelegado_id`) ·
 `canais`, `canal_membros`, `canal_mensagens` (usadas pela app **Conversas**, não pela Gestão Escolar) ·
 `sessoes` (logins ativos — por isso reiniciar o servidor não obriga a entrar de novo) ·
 `logs_auditoria` (quem criou, editou ou apagou turmas, professores, funcionários, disciplinas e alunos, e quando).

@@ -65,6 +65,7 @@ const ICONES = {
   sair: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H4"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   imprimir: '<path d="M8 9V4h8v5"/><rect x="5" y="9" width="14" height="7" rx="1"/><path d="M8 16v4h8v-4"/>',
+  microfone: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
 };
 
 function icone(nome) {

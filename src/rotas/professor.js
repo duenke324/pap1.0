@@ -176,18 +176,30 @@ function cartaoReunioes(turma, reunioes, ehDiretor) {
   const hojeISO = hoje();
   const proximas = reunioes.filter((r) => r.data >= hojeISO).reverse(); // vêm da mais recente para a mais antiga
   const anteriores = reunioes.filter((r) => r.data < hojeISO).slice(0, 5);
+  // Ata: o diretor de turma escreve-a a partir do dia da reunião (pode gravá-la durante a reunião);
+  // quando existe, todos os professores da turma a podem ler. Uma reunião com ata já não se cancela.
+  const acoes = (r, passada) => {
+    const ata = r.ata
+      ? `<a href="/professor/reunioes/${r.id}/ata">Ver ata</a>`
+      : ehDiretor && r.data <= hojeISO
+        ? `<a href="/professor/reunioes/${r.id}/ata">Escrever ata</a>`
+        : '';
+    const cancelar =
+      ehDiretor && !passada && !r.ata
+        ? `<form method="post" action="/professor/reunioes/${r.id}/apagar" data-confirmar="Cancelar esta reunião?">
+             <input type="hidden" name="voltar" value="/professor/turmas?turma=${turma.id}">
+             <button class="botao-texto perigo">Cancelar</button></form>`
+        : '';
+    return ata || cancelar ? `<div class="lista-acoes">${ata}${cancelar}</div>` : '';
+  };
   const linha = (r, passada) => `<li${passada ? ' class="passado"' : ''}>
           <span class="hora">${h(formatarData(r.data))}<small>${h(r.hora)}</small></span>
           <span><strong>${h(r.assunto || 'Reunião de turma')}</strong>
-            <small>${r.local ? `${h(r.local)} · ` : ''}Marcada por ${h(r.marcada_por_nome || '—')}${passada ? ' · já realizada' : ''}</small>
+            <small>${r.local ? `${h(r.local)} · ` : ''}Marcada por ${h(r.marcada_por_nome || '—')}${passada ? ' · já realizada' : ''}${
+              passada && !r.ata ? ' · sem ata' : ''
+            }</small>
           </span>
-          ${
-            ehDiretor && !passada
-              ? `<form method="post" action="/professor/reunioes/${r.id}/apagar" data-confirmar="Cancelar esta reunião?">
-                   <input type="hidden" name="voltar" value="/professor/turmas?turma=${turma.id}">
-                   <button class="botao-texto perigo">Cancelar</button></form>`
-              : ''
-          }
+          ${acoes(r, passada)}
         </li>`;
   const linhas = reunioes.length
     ? `<ul class="lista-simples">${proximas.map((r) => linha(r, false)).join('')}${anteriores.map((r) => linha(r, true)).join('')}</ul>`
@@ -207,7 +219,8 @@ function cartaoReunioes(turma, reunioes, ehDiretor) {
                <input name="assunto" maxlength="200" placeholder="Ex.: Reunião com os delegados e subdelegados"></label>
              <div class="coluna-toda"><button class="botao">Marcar reunião</button></div>
            </form>
-           <p class="legenda">O delegado e o subdelegado da turma veem esta reunião em destaque no seu painel.</p>`
+           <p class="legenda">O delegado e o subdelegado da turma veem esta reunião em destaque no seu painel.
+             No dia da reunião aparece «Escrever ata»: pode gravá-la ao microfone e a ata é escrita automaticamente.</p>`
         : ''
     }
   </section>`;
@@ -342,6 +355,8 @@ post('/professor/reunioes/:id/apagar', async (req, res) => {
   const reuniao = await um('SELECT r.*, t.diretor_id FROM reunioes_turma r JOIN turmas t ON t.id = r.turma_id WHERE r.id = ?', req.params.id);
   if (!reuniao || reuniao.diretor_id !== req.professor.id) {
     req.flash('erro', 'Só o diretor de turma pode cancelar esta reunião.');
+  } else if (reuniao.ata) {
+    req.flash('erro', 'Esta reunião já tem ata, por isso já não pode ser cancelada.');
   } else {
     await executar('DELETE FROM reunioes_turma WHERE id = ?', reuniao.id);
     req.flash('sucesso', 'Reunião cancelada.');

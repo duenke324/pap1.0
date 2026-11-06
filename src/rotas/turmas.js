@@ -227,7 +227,7 @@ async function paginaTurma(req, res, turma, { dados, erros = {} } = {}, estado =
       ${
         reunioes.length
           ? `<div class="tabela-scroll"><table class="tabela">
-          <thead><tr><th>Data</th><th>Hora</th><th>Local</th><th>Assunto</th><th>Marcada por</th></tr></thead>
+          <thead><tr><th>Data</th><th>Hora</th><th>Local</th><th>Assunto</th><th>Marcada por</th><th>Ata</th></tr></thead>
           <tbody>${reunioes
             .map(
               (r) => `<tr${r.data < hoje() ? ' class="linha-suave" title="Já realizada"' : ''}>
@@ -236,6 +236,7 @@ async function paginaTurma(req, res, turma, { dados, erros = {} } = {}, estado =
               <td>${h(r.local || '—')}</td>
               <td>${h(r.assunto || '—')}</td>
               <td>${h(r.marcada_por_nome || '—')}</td>
+              <td>${r.ata ? `<a href="/admin/reunioes/${r.id}/ata">Ver ata</a>` : '—'}</td>
             </tr>`
             )
             .join('')}</tbody></table></div>`

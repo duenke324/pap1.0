@@ -222,6 +222,7 @@ get('/fotos/:ficheiro', (req, res) => {
 // ---------- Painéis ----------
 require('./rotas/aluno');
 require('./rotas/professor');
+require('./rotas/atas');
 require('./rotas/avaliacao');
 require('./rotas/admin');
 require('./rotas/turmas');
