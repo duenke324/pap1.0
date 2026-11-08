@@ -308,7 +308,7 @@ get('/admin', async (req, res) => {
                       labels: ['Presenças', 'Faltas'],
                       datasets: [{ data: [dados.global, 100 - dados.global], backgroundColor: [corPorTaxa(dados.global), linha], borderWidth: 0 }],
                     },
-                    options: { cutout: '72%', plugins: { legend: { display: false }, tooltip: { enabled: false } } },
+                    options: { cutout: '84%', plugins: { legend: { display: false }, tooltip: { enabled: false } } },
                   }));
                 }
 
@@ -322,7 +322,7 @@ get('/admin', async (req, res) => {
                         label: 'Assiduidade (%)',
                         data: dados.cursos.map(function (c) { return c.assiduidade; }),
                         backgroundColor: dados.cursos.map(function (c) { return corPorTaxa(c.assiduidade); }),
-                        borderRadius: 4,
+                        borderRadius: 0,
                         maxBarThickness: 28,
                       }],
                     },
@@ -339,7 +339,7 @@ get('/admin', async (req, res) => {
                   }));
                 }
               }
-              desenhar();
+              document.fonts.ready.then(desenhar);
               document.addEventListener('tema-alterado', desenhar);
             })();
             </script>`

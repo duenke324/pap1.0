@@ -39,7 +39,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('[data-imprimir]')) window.print();
 });
 
-// Menu lateral em ecrãs pequenos
+// Índice das páginas em ecrãs pequenos
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-alternar-menu]')) document.body.classList.toggle('menu-aberto');
   else if (document.body.classList.contains('menu-aberto') && !e.target.closest('#lateral')) document.body.classList.remove('menu-aberto');

@@ -1,4 +1,4 @@
-// Estrutura base das páginas (cabeçalho, menu lateral e mensagens)
+// Estrutura base das páginas: a mesma caderneta para todos os papéis (cabeçalho, índice, folha com margem)
 const { h, iniciais, DIAS_CURTOS, anoLetivoAtual, CARGOS_FUNCIONARIO } = require('../lib/util');
 
 const MENUS = {
@@ -13,27 +13,27 @@ const MENUS = {
     { href: '/aluno/horario', chave: 'horario', texto: 'Horário' },
   ],
   professor: [
-    { href: '/professor/turmas', chave: 'turmas', texto: 'As minhas turmas', icone: 'grupo' },
-    { href: '/professor/aula', chave: 'aula', texto: 'Dar aula', icone: 'lapis' },
-    { href: '/professor/avaliacao', chave: 'avaliacao', texto: 'Avaliação', icone: 'medalha' },
-    { href: '/professor/testes', chave: 'testes', texto: 'Testes e avaliações', icone: 'calendario' },
-    { href: '/professor/horario', chave: 'horario', texto: 'Horário', icone: 'relogio' },
+    { href: '/professor/turmas', chave: 'turmas', texto: 'As minhas turmas' },
+    { href: '/professor/aula', chave: 'aula', texto: 'Dar aula' },
+    { href: '/professor/avaliacao', chave: 'avaliacao', texto: 'Avaliação' },
+    { href: '/professor/testes', chave: 'testes', texto: 'Testes e avaliações' },
+    { href: '/professor/horario', chave: 'horario', texto: 'Horário' },
   ],
   admin: [
-    { href: '/admin', chave: 'inicio', texto: 'Painel', icone: 'casa' },
-    { href: '/admin/turmas', chave: 'turmas', texto: 'Turmas', icone: 'turma' },
-    { href: '/admin/alunos', chave: 'alunos', texto: 'Alunos', icone: 'grupo' },
-    { href: '/admin/professores', chave: 'professores', texto: 'Professores', icone: 'professor' },
-    { href: '/admin/disciplinas', chave: 'disciplinas', texto: 'Disciplinas', icone: 'livro' },
-    { href: '/admin/horarios', chave: 'horarios', texto: 'Horários', icone: 'relogio' },
-    { href: '/admin/calendario', chave: 'calendario', texto: 'Calendário e avisos', icone: 'calendario' },
-    { href: '/admin/faltas', chave: 'faltas', texto: 'Faltas', icone: 'falta' },
-    { href: '/admin/funcionarios', chave: 'funcionarios', texto: 'Funcionários', icone: 'mala' },
-    { href: '/admin/auditoria', chave: 'auditoria', texto: 'Auditoria', icone: 'auditoria' },
+    { href: '/admin', chave: 'inicio', texto: 'Painel' },
+    { href: '/admin/turmas', chave: 'turmas', texto: 'Turmas' },
+    { href: '/admin/alunos', chave: 'alunos', texto: 'Alunos' },
+    { href: '/admin/professores', chave: 'professores', texto: 'Professores' },
+    { href: '/admin/disciplinas', chave: 'disciplinas', texto: 'Disciplinas' },
+    { href: '/admin/horarios', chave: 'horarios', texto: 'Horários' },
+    { href: '/admin/calendario', chave: 'calendario', texto: 'Calendário e avisos' },
+    { href: '/admin/faltas', chave: 'faltas', texto: 'Faltas' },
+    { href: '/admin/funcionarios', chave: 'funcionarios', texto: 'Funcionários' },
+    { href: '/admin/auditoria', chave: 'auditoria', texto: 'Auditoria' },
   ],
   funcionario: [
-    { href: '/funcionario', chave: 'inicio', texto: 'Painel', icone: 'casa' },
-    { href: '/funcionario/dados', chave: 'dados', texto: 'Dados pessoais', icone: 'professor' },
+    { href: '/funcionario', chave: 'inicio', texto: 'Painel' },
+    { href: '/funcionario/dados', chave: 'dados', texto: 'Dados pessoais' },
   ],
 };
 
@@ -48,18 +48,6 @@ function rotuloPapel(req) {
 }
 
 const ICONES = {
-  casa: '<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/>',
-  falta: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
-  calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-  relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  grupo: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.6c2.6.1 4.4 1.8 5 4.9"/>',
-  turma: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4M7 9h6M7 12h10"/>',
-  professor: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 20c.7-4 3.4-6 7-6s6.3 2 7 6M9.5 14.5 12 17l2.5-2.5"/>',
-  livro: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>',
-  lapis: '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>',
-  medalha: '<circle cx="12" cy="9" r="5.5"/><path d="m8.5 13.5-1.5 7.5 5-2.5 5 2.5-1.5-7.5"/>',
-  auditoria: '<circle cx="11" cy="11" r="7"/><path d="M16 16l5 5M8 11h6"/>',
-  mala: '<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/>',
   lua: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
   sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
   sair: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H4"/>',
@@ -111,6 +99,8 @@ function documento(titulo, corpo, classeBody = '') {
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Gestão Escolar">
   <script>try { var t = localStorage.getItem('tema'); if (t === 'claro' || t === 'escuro') document.documentElement.dataset.tema = t; } catch (e) {}</script>
+  <link rel="preload" href="/static/vendor/fontes/plex-sans-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/vendor/fontes/newsreader.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/estilo.css">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
@@ -123,107 +113,83 @@ ${corpo}
 </html>`;
 }
 
-// Página com menu lateral (depois do login). O aluno tem uma página diferente, com separadores.
-function pagina(req, opcoes, conteudo) {
-  if (req.utilizador.papel === 'aluno') return paginaAluno(req, opcoes, conteudo);
-  const { titulo, ativo, subtitulo = '', acoes = '' } = opcoes;
-  const u = req.utilizador;
-  const menu = MENUS[u.papel]
-    .map(
-      (item) =>
-        `<a href="${item.href}" class="${item.chave === ativo ? 'ativo' : ''}"${item.chave === ativo ? ' aria-current="page"' : ''}>${icone(item.icone)}<span>${h(item.texto)}</span></a>`
-    )
-    .join('');
-  const dataTexto = new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
-  const hojeTexto = dataTexto.charAt(0).toUpperCase() + dataTexto.slice(1);
-
-  return documento(
-    titulo,
-    `
-<div class="app">
-  <aside class="lateral" id="lateral">
-    <div class="marca">
-      ${LOGO}
-      <div><strong>Gestão Escolar</strong><small>Ano letivo ${h(anoLetivoAtual())}</small></div>
-    </div>
-    <nav class="menu" aria-label="Menu principal">${menu}</nav>
-    <div class="utilizador">
-      <span class="avatar pequeno">${h(iniciais(u.nome))}</span>
-      <div class="utilizador-info"><strong>${h(u.nome)}</strong><small>${h(rotuloPapel(req))}</small></div>
-      ${botaoTema()}
-      <form method="post" action="/logout"><button class="botao-icone" title="Terminar sessão" aria-label="Terminar sessão">${icone('sair')}</button></form>
-    </div>
-  </aside>
-  <main class="conteudo">
-    <header class="topo">
-      <button class="botao-icone so-movel" data-alternar-menu aria-label="Abrir menu">${icone('menu')}</button>
-      <div>
-        <p class="data-hoje">${h(hojeTexto)}</p>
-        <h1>${h(titulo)}</h1>
-        ${subtitulo ? `<p class="subtitulo">${subtitulo}</p>` : ''}
-      </div>
-      <div class="acoes-topo">${acoes}</div>
-    </header>
-    ${mensagensFlash(req.lerFlash())}
-    ${conteudo}
-  </main>
-</div>`
-  );
-}
-
-// Página do aluno: barra de topo, ficha de identificação (fotografia + dados) e separadores
-function paginaAluno(req, { titulo, ativo, subtitulo = '', acoes = '' }, conteudo) {
-  const a = req.aluno || { nome: req.utilizador.nome };
-  const separadores = MENUS.aluno
-    .map(
-      (item) =>
-        `<a href="${item.href}" class="${item.chave === ativo ? 'ativo' : ''}"${item.chave === ativo ? ' aria-current="page"' : ''}>${h(item.texto)}</a>`
-    )
-    .join('');
+// Ficha de identificação do aluno, por baixo do índice (o guião pede estes dados sempre visíveis)
+function identificacaoAluno(a) {
   // O title mostra o texto completo quando não cabe na caixa (ex.: nomes de cursos compridos)
-  const campo = (rotulo, valor, classe = '', completo = '') =>
-    `<div class="id-campo ${classe}"><span class="id-rotulo">${rotulo}</span><span class="id-valor"${completo ? ` title="${h(completo)}"` : ''}>${valor}</span></div>`;
+  const campo = (rotulo, valor, completo = '') =>
+    `<div class="id-campo"><dt>${rotulo}</dt><dd${completo ? ` title="${h(completo)}"` : ''}>${valor}</dd></div>`;
   const situacao = a.turma_id
     ? '<strong class="id-situacao ok">Matriculado</strong>'
     : '<strong class="id-situacao">Sem turma</strong>';
 
+  return `<section class="identificacao" aria-label="Identificação do aluno">
+    <div class="id-foto">${avatar(a, 'foto')}</div>
+    <dl class="id-dados">
+      ${campo('Nome', h(a.nome), a.nome)}
+      ${campo('Processo', h(a.numero_processo || '—'))}
+      ${campo('Turma', h(a.turma || '—'))}
+      ${campo('Situação', situacao)}
+      ${campo('Curso', h(a.curso || '—'), a.curso)}
+      ${campo('Ano letivo', h(a.ano_letivo || '—'))}
+      ${campo('Diretor de turma', h(a.diretor || '—'))}
+      ${campo('Encarregado de educação', h(a.encarregado_nome || '—'))}
+    </dl>
+  </section>`;
+}
+
+// Página depois do login: igual para todos os papéis. Cada entrada do índice tem um número, que
+// aparece também na margem da folha ("N.º 03"), como as folhas numeradas de uma caderneta.
+function pagina(req, opcoes, conteudo) {
+  const { titulo, ativo, subtitulo = '', acoes = '' } = opcoes;
+  const u = req.utilizador;
+  const numero = (i) => String(i + 1).padStart(2, '0');
+  const indice = MENUS[u.papel]
+    .map(
+      (item, i) =>
+        `<a href="${item.href}" class="${item.chave === ativo ? 'ativo' : ''}"${item.chave === ativo ? ' aria-current="page"' : ''}><span class="menu-num">${numero(i)}</span><span>${h(item.texto)}</span></a>`
+    )
+    .join('');
+  const posicao = MENUS[u.papel].findIndex((item) => item.chave === ativo);
+  const dataTexto = new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const hojeTexto = dataTexto.charAt(0).toUpperCase() + dataTexto.slice(1);
+  const aluno = u.papel === 'aluno' ? req.aluno || { nome: u.nome } : null;
+
   return documento(
     titulo,
     `
-<header class="barra-aluno">
-  <form method="post" action="/logout"><button class="botao-barra">${icone('sair')}<span>Terminar sessão</span></button></form>
-  <span class="barra-aluno-escola">Gestão Escolar · Ano letivo ${h(a.ano_letivo || anoLetivoAtual())}</span>
-  ${botaoTema()}
-</header>
-<div class="pagina-aluno">
-  <section class="identificacao" aria-label="Identificação do aluno">
-    <div class="id-marca">${LOGO}<span>Gestão<br>Escolar</span></div>
-    <div class="id-foto">${avatar(a, 'foto')}</div>
-    <div class="id-dados">
-      ${campo('Processo', h(a.numero_processo || '—'), 'curto')}
-      ${campo('Nome', h(a.nome), 'largo', a.nome)}
-      ${campo('Situação', situacao, 'fim')}
-      ${campo('Ano letivo', h(a.ano_letivo || '—'), 'curto')}
-      ${campo('Curso', h(a.curso || '—'), 'largo', a.curso)}
-      ${campo('Turma', h(a.turma || '—'), 'fim')}
-      ${campo('Diretor de turma', h(a.diretor || '—'), 'medio')}
-      ${campo('Encarregado de educação', h(a.encarregado_nome || '—'), 'medio')}
+<div class="caderneta">
+  <header class="cabecalho">
+    <a class="marca" href="/">${LOGO}<strong>Gestão Escolar</strong></a>
+    <p class="cabecalho-ano">Ano letivo ${h(aluno?.ano_letivo || anoLetivoAtual())}</p>
+    <div class="utilizador">
+      <div class="utilizador-info"><strong>${h(u.nome)}</strong><small>${h(rotuloPapel(req))}</small></div>
+      ${botaoTema()}
+      <form method="post" action="/logout"><button class="botao-icone" title="Terminar sessão" aria-label="Terminar sessão">${icone('sair')}</button></form>
+      <button class="botao-icone so-movel" data-alternar-menu aria-label="Abrir menu">${icone('menu')}</button>
     </div>
-  </section>
-  <nav class="abas" aria-label="Secções">${separadores}</nav>
-  <main class="abas-painel">
-    <header class="abas-titulo">
-      <div>
-        <h1>${h(titulo)}</h1>
-        ${subtitulo ? `<p class="subtitulo">${subtitulo}</p>` : ''}
+  </header>
+  <nav class="menu" id="lateral" aria-label="Menu principal">${indice}</nav>
+  ${aluno ? identificacaoAluno(aluno) : ''}
+  <div class="folha">
+    <aside class="margem">
+      <div class="margem-folio">
+        ${posicao >= 0 ? `<p class="margem-numero"><small>N.º</small><strong>${numero(posicao)}</strong></p>` : ''}
+        <p class="margem-data">${h(hojeTexto)}</p>
       </div>
-      ${acoes ? `<div class="acoes-topo">${acoes}</div>` : ''}
-    </header>
-    ${mensagensFlash(req.lerFlash())}
-    ${conteudo}
-  </main>
-</div>`,
-    'corpo-aluno'
+    </aside>
+    <main class="conteudo">
+      <header class="topo">
+        <div>
+          <h1>${h(titulo)}</h1>
+          ${subtitulo ? `<p class="subtitulo">${subtitulo}</p>` : ''}
+        </div>
+        ${acoes ? `<div class="acoes-topo">${acoes}</div>` : ''}
+      </header>
+      ${mensagensFlash(req.lerFlash())}
+      ${conteudo}
+    </main>
+  </div>
+</div>`
   );
 }
 
