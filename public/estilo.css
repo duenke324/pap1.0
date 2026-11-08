@@ -4,9 +4,8 @@
    cabeçalho, índice numerado, folha com margem, linhas de régua, campos para
    preencher sobre uma linha e carimbos.
 
-   Só preto, branco e cinzentos. Os estados distinguem-se pela forma:
-   ok = só contorno, aviso = fundo cinzento, perigo = invertido;
-   o que está fora do limite ou bloqueado aparece às riscas.
+   Acento bordô (institucional, "brasão") para ações e estados ativos; ok/aviso/
+   perigo têm cor própria. O que está fora do limite ou bloqueado aparece às riscas.
    O tema escuro é a mesma caderneta em ardósia: giz sobre fundo negro.
 
    Letras em public/vendor/fontes (licença OFL), para funcionar sem internet.
@@ -32,12 +31,16 @@
   --tinta-suave: #595959;
   --linha: #dcdcdc;
   --linha-forte: #949494;
-  --aviso-fundo: #dddddd;
+  --aviso-fundo: #f5e8ce;
+
+  /* Cor de acento: bordô institucional, como um brasão de escola. Usada em ações
+     primárias, ligações e estados "ativo/selecionado" — nunca nos estados abaixo. */
+  --acento: #6d2347;
 
   /* Usados pelos gráficos do painel de administração */
-  --ok: #6e6e6e;
-  --aviso: #3a3a3a;
-  --perigo: #111111;
+  --ok: #3f7a5e;
+  --aviso: #a67c2e;
+  --perigo: #a3342b;
 
   --letra: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --letra-titulos: "Newsreader", Georgia, "Times New Roman", serif;
@@ -56,10 +59,11 @@
   --tinta-suave: #a6a6a6;
   --linha: #303030;
   --linha-forte: #6e6e6e;
-  --aviso-fundo: #383838;
-  --ok: #8c8c8c;
-  --aviso: #c0c0c0;
-  --perigo: #f2f2f2;
+  --aviso-fundo: #362b16;
+  --acento: #c97fa3;
+  --ok: #7fc2a0;
+  --aviso: #d9b468;
+  --perigo: #e08a80;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="claro"]) {
@@ -70,10 +74,11 @@
     --tinta-suave: #a6a6a6;
     --linha: #303030;
     --linha-forte: #6e6e6e;
-    --aviso-fundo: #383838;
-    --ok: #8c8c8c;
-    --aviso: #c0c0c0;
-    --perigo: #f2f2f2;
+    --aviso-fundo: #362b16;
+    --acento: #c97fa3;
+    --ok: #7fc2a0;
+    --aviso: #d9b468;
+    --perigo: #e08a80;
   }
 }
 
@@ -86,7 +91,7 @@ body {
   color: var(--tinta);
   background: var(--papel);
 }
-a { color: var(--tinta); text-decoration: none; }
+a { color: var(--acento); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: .2em; }
 /* Sem cor própria, os links no meio do texto distinguem-se pelo sublinhado */
 a:not([class]) { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
@@ -129,7 +134,7 @@ a.marca:hover { text-decoration: none; }
 .logo-capa { fill: var(--tinta); }
 .logo-lombada { fill: var(--tinta-suave); }
 .logo-linhas { stroke: var(--papel); stroke-width: 1.6; stroke-linecap: round; fill: none; }
-.logo-fita { fill: var(--linha-forte); }
+.logo-fita { fill: var(--acento); }
 
 .utilizador { display: flex; align-items: center; gap: .3rem; margin-left: auto; min-width: 0; }
 .utilizador-info { margin-right: .6rem; min-width: 0; text-align: right; line-height: 1.25; }
@@ -144,7 +149,7 @@ a.marca:hover { text-decoration: none; }
 }
 .menu a:hover, .menu a:focus-visible { background: var(--superficie-2); text-decoration: none; }
 .menu a:focus-visible { outline-offset: -2px; }
-.menu a.ativo { background: var(--tinta); color: var(--papel); }
+.menu a.ativo { background: var(--acento); color: var(--papel); }
 .menu a.ativo:focus-visible { outline-color: var(--papel); }
 .menu-num { font: .68rem var(--letra-dados); color: var(--tinta-suave); }
 .menu a.ativo .menu-num { color: inherit; }
@@ -194,7 +199,7 @@ p:has(> .voltar) { margin-top: 0; }
 .cartao-topo h2 { margin-bottom: 0; }
 .cartao-topo p { margin: 0; }
 /* Em destaque (ex.: reunião para a qual o aluno foi convocado): moldura dupla, como uma etiqueta colada */
-.cartao-destaque { border: 1px solid var(--tinta); outline: 1px solid var(--tinta); outline-offset: 3px; padding: 1rem 1.2rem; margin: 4px 4px 2.8rem; }
+.cartao-destaque { border: 1px solid var(--tinta); outline: 1px solid var(--acento); outline-offset: 3px; padding: 1rem 1.2rem; margin: 4px 4px 2.8rem; }
 .cartao-destaque .etiqueta-forte { transform: rotate(-3deg); }
 .grelha-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.6rem; align-items: start; margin-bottom: 2.8rem; }
 .grelha-2 > .cartao { margin-bottom: 0; }
@@ -221,7 +226,7 @@ a.estatistica:focus-visible { outline: 2px solid var(--tinta); outline-offset: -
 .estatistica span { color: var(--tinta-suave); font: .68rem var(--letra-dados); letter-spacing: .05em; text-transform: uppercase; }
 .estatistica strong { font-family: var(--letra-titulos); font-size: 3.2rem; font-weight: 300; line-height: 1; font-variant-numeric: lining-nums tabular-nums; }
 .estatistica small { font-family: var(--letra); font-size: .9rem; }
-.estatistica.destaque-aviso, a.estatistica.destaque-aviso:hover { background: var(--tinta); color: var(--papel); }
+.estatistica.destaque-aviso, a.estatistica.destaque-aviso:hover { background: var(--aviso); color: var(--papel); }
 .estatistica.destaque-aviso span, .estatistica.destaque-aviso small { color: inherit; }
 a.estatistica.destaque-aviso:focus-visible { outline-color: var(--papel); }
 
@@ -255,15 +260,15 @@ a.estatistica.destaque-aviso:focus-visible { outline-color: var(--papel); }
 /* ----- Botões ----- */
 .botao {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-  padding: .55rem 1.05rem; border: 1px solid var(--tinta); border-radius: 0;
-  background: var(--tinta); color: var(--papel); font: 600 .9rem var(--letra); cursor: pointer; white-space: nowrap;
+  padding: .55rem 1.05rem; border: 1px solid var(--acento); border-radius: 0;
+  background: var(--acento); color: var(--papel); font: 600 .9rem var(--letra); cursor: pointer; white-space: nowrap;
 }
-.botao:hover { background: var(--papel); color: var(--tinta); text-decoration: none; }
+.botao:hover { background: var(--papel); color: var(--acento); text-decoration: none; }
 .botao:active { transform: translateY(1px); }
 .botao-secundario { background: transparent; color: var(--tinta); }
 .botao-secundario:hover { background: var(--tinta); color: var(--papel); }
-.botao-perigo { background: transparent; color: var(--tinta); border-style: dashed; }
-.botao-perigo:hover { background: var(--tinta); color: var(--papel); border-style: solid; }
+.botao-perigo { background: transparent; color: var(--perigo); border-color: var(--perigo); border-style: dashed; }
+.botao-perigo:hover { background: var(--perigo); color: var(--papel); border-style: solid; }
 .botao-bloco { width: 100%; }
 .botao-icone {
   display: inline-grid; place-items: center; width: 34px; height: 34px;
@@ -320,7 +325,7 @@ textarea:focus { outline: 0; background-color: var(--superficie-2); }
 .coluna-toda.barra-acoes { margin-top: 0; }
 .coluna-dupla { grid-column: span 2; }
 .linha-check { flex-direction: row; align-items: center; gap: .5rem; font-size: .9rem; font-weight: 500; }
-input[type="checkbox"] { width: 17px; height: 17px; margin: 0; flex: none; accent-color: var(--tinta); }
+input[type="checkbox"] { width: 17px; height: 17px; margin: 0; flex: none; accent-color: var(--acento); }
 
 .filtros { display: flex; flex-wrap: wrap; gap: .8rem 1.3rem; align-items: flex-end; margin-bottom: 1.2rem; }
 .cartao > .filtros:last-child { margin-bottom: 0; }
@@ -351,21 +356,22 @@ input[type="checkbox"] { width: 17px; height: 17px; margin: 0; flex: none; accen
   position: absolute; inset: 0 auto 0 0; width: 2rem; display: grid; place-items: center;
   background: var(--tinta); color: var(--papel); font-weight: 700;
 }
-.alerta-sucesso::before { content: "✓"; content: "✓" / ""; }
-.alerta-aviso { background: var(--aviso-fundo); }
-.alerta-aviso::before { content: "!"; content: "!" / ""; }
-.alerta-erro { background: var(--tinta); color: var(--papel); }
-.alerta-erro::before { content: "×"; content: "×" / ""; background: var(--papel); color: var(--tinta); }
+.alerta-sucesso { border-color: var(--ok); }
+.alerta-sucesso::before { content: "✓"; content: "✓" / ""; background: var(--ok); }
+.alerta-aviso { background: var(--aviso-fundo); border-color: var(--aviso); }
+.alerta-aviso::before { content: "!"; content: "!" / ""; background: var(--aviso); }
+.alerta-erro { background: var(--perigo); color: var(--papel); border-color: var(--perigo); }
+.alerta-erro::before { content: "×"; content: "×" / ""; background: var(--papel); color: var(--perigo); }
 
 /* ----- Etiquetas: carimbos ----- */
 .etiqueta {
   display: inline-block; padding: .06rem .4rem; white-space: nowrap; border: 1px solid var(--linha-forte);
   color: var(--tinta-suave); font: 500 .68rem/1.5 var(--letra-dados); letter-spacing: .03em; text-transform: uppercase;
 }
-.etiqueta-ok { border-color: var(--tinta-suave); }
-.etiqueta-aviso { background: var(--aviso-fundo); border-color: var(--aviso-fundo); color: var(--tinta); }
-.etiqueta-perigo { background: var(--tinta); border-color: var(--tinta); color: var(--papel); }
-.etiqueta-forte { border: 2px solid var(--tinta); color: var(--tinta); } /* destaque sem ser um problema (ex.: "Convocado") */
+.etiqueta-ok { border-color: var(--ok); color: var(--ok); }
+.etiqueta-aviso { background: var(--aviso-fundo); border-color: var(--aviso); color: var(--tinta); }
+.etiqueta-perigo { background: var(--perigo); border-color: var(--perigo); color: var(--papel); }
+.etiqueta-forte { border: 2px solid var(--acento); color: var(--acento); } /* destaque sem ser um problema (ex.: "Convocado") */
 a.etiqueta:hover { text-decoration: underline; }
 .legenda { margin: 1rem 0 0; color: var(--tinta-suave); font-size: .82rem; line-height: 1.5; letter-spacing: .01em; }
 
@@ -419,7 +425,7 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
 .resumo-disciplinas { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 1.6rem; }
 .resumo-item { display: grid; grid-template-columns: 1fr auto; gap: 0 .5rem; padding: .55rem .2rem; border-bottom: 1px solid var(--linha); color: var(--tinta); }
 .resumo-item:hover { background: var(--superficie-2); text-decoration: none; }
-.resumo-item.ativo { background: var(--tinta); color: var(--papel); }
+.resumo-item.ativo { background: var(--acento); color: var(--papel); }
 .resumo-item span { font-size: .9rem; font-weight: 600; }
 .resumo-item strong { grid-row: span 2; align-self: center; font-family: var(--letra-titulos); font-size: 1.7rem; font-weight: 400; font-variant-numeric: lining-nums; }
 .resumo-item small { color: var(--tinta-suave); }
@@ -429,7 +435,7 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
 .separadores { display: flex; flex-wrap: wrap; gap: .2rem; margin-bottom: 1.4rem; border-bottom: 2px solid var(--tinta); }
 .separadores a { padding: .35rem .85rem; color: var(--tinta-suave); font-size: .9rem; font-weight: 600; box-shadow: inset 0 0 0 1px var(--linha); }
 .separadores a:hover { color: var(--tinta); text-decoration: none; }
-.separadores a.ativo { background: var(--tinta); color: var(--papel); box-shadow: none; }
+.separadores a.ativo { background: var(--acento); color: var(--papel); box-shadow: none; }
 
 .grelha-alunos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 1.6rem; }
 .cartao-aluno { display: flex; align-items: center; gap: .75rem; padding: .55rem .2rem; border-bottom: 1px solid var(--linha); color: var(--tinta); }
@@ -569,7 +575,7 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
 .oferta span small { color: var(--tinta-suave); }
 .oferta .contagem { margin-left: auto; font-style: normal; }
 .oferta:hover { box-shadow: inset 0 0 0 1px var(--tinta); }
-.oferta.selecionada, .aula.selecionada { outline: 2px solid var(--tinta); outline-offset: -2px; }
+.oferta.selecionada, .aula.selecionada { outline: 2px solid var(--acento); outline-offset: -2px; }
 .lixo {
   padding: .8rem; text-align: center; border: 1px dashed var(--tinta); font-size: .85rem; font-weight: 600;
   opacity: .55; transition: opacity .15s, background .15s, color .15s;
@@ -584,7 +590,7 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
 .horario-editor td.bloqueada { background: repeating-linear-gradient(-45deg, var(--linha-forte) 0 1px, transparent 1px 6px); cursor: not-allowed; }
 .horario-editor .arrastavel { position: relative; cursor: grab; }
 /* Tracejado, para não se confundir com a aula selecionada (contorno contínuo) */
-.horario-editor .aula.conflito { outline: 2px dashed var(--tinta); outline-offset: -2px; }
+.horario-editor .aula.conflito { outline: 2px dashed var(--perigo); outline-offset: -2px; }
 .dica-celula { display: grid; place-items: center; height: 100%; font-size: .72rem; opacity: .8; }
 .marca-faltas { position: absolute; top: .25rem; right: .4rem; color: var(--tinta); font-size: .7rem; }
 
