@@ -96,6 +96,7 @@ function paginaLogin(req, { username = '', erro = '' } = {}) {
           ${LOGO}
           <div><strong>Gestão Escolar</strong><small>Faltas, sumários e avaliação</small></div>
         </div>
+        <p class="texto-suave">Indique o seu número de processo e a palavra-passe para entrar.</p>
         ${mensagensFlash(req.lerFlash())}
         ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
         <form method="post" action="/login" class="formulario">
@@ -145,14 +146,15 @@ function paginaDefinirPassword(req, { erro = '' } = {}) {
       <div class="cartao cartao-login">
         <div class="marca marca-login">
           ${LOGO}
-          <div><strong>Gestão Escolar</strong><small>Definir palavra-passe</small></div>
+          <div><strong>Gestão Escolar</strong></div>
         </div>
-        <p>É a primeira vez que entra (ou a sua palavra-passe foi redefinida). Escolha uma nova palavra-passe para continuar.</p>
+        <p class="subtitulo">É a primeira vez que entra, ou a sua palavra-passe foi redefinida por um administrador. Escolha agora uma palavra-passe nova e só sua para continuar.</p>
         ${mensagensFlash(req.lerFlash())}
         ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
         <form method="post" action="/definir-password" class="formulario">
           <label>Nova palavra-passe
             <input name="password" type="password" minlength="6" autocomplete="new-password" required autofocus>
+            <small class="texto-suave">Pelo menos 6 caracteres, diferente da atual.</small>
           </label>
           <label>Confirmar palavra-passe
             <input name="confirmar" type="password" minlength="6" autocomplete="new-password" required>

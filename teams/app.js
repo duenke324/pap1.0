@@ -65,13 +65,18 @@ get('/login', (req, res) => {
 post('/login', async (req, res) => {
   const email = String(req.corpo.email || '').trim();
   const password = String(req.corpo.password || '');
-  // O email vive em professores/alunos, não em utilizadores — por isso o JOIN em vez de um WHERE direto
+  // O email vive em professores/alunos/funcionarios, não em utilizadores — por isso o JOIN em vez de um WHERE
+  // direto. O JOIN a funcionarios é necessário mesmo esta app não lhes dando acesso: sem ele, uma conta de
+  // funcionário nunca é encontrada e cai sempre no erro genérico de "credenciais incorretas" (401) em vez do
+  // 403 "Esta conta não tem acesso a Conversas." que o código abaixo já trata para esse caso.
   const utilizador = await um(
     `SELECT u.* FROM utilizadores u
        LEFT JOIN professores p ON p.utilizador_id = u.id
        LEFT JOIN alunos a ON a.utilizador_id = u.id
-      WHERE p.email = ? OR a.email = ?
+       LEFT JOIN funcionarios f ON f.utilizador_id = u.id
+      WHERE p.email = ? OR a.email = ? OR f.email = ?
       LIMIT 1`,
+    email,
     email,
     email
   );

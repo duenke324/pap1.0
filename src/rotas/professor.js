@@ -278,14 +278,26 @@ get('/professor/turmas', async (req, res) => {
   const ehDiretor = turma.diretor_id === req.professor.id;
   const cartaoReunioesTurma = cartaoReunioes(turma, await reunioesDaTurma(turma.id), ehDiretor);
 
+  // Os separadores só fazem sentido como "abas" quando há mais do que uma turma para escolher;
+  // o título da aba inclui o ano letivo (útil quando duas turmas partilham o mesmo nome em anos diferentes).
   const separadores = turmas
-    .map((t) => `<a href="?turma=${t.id}" class="${t.id === turma.id ? 'ativo' : ''}">${h(t.nome)}</a>`)
+    .map(
+      (t) =>
+        `<a href="?turma=${t.id}" class="${t.id === turma.id ? 'ativo' : ''}"${
+          t.id === turma.id ? ' aria-current="page"' : ''
+        } title="${h(t.nome)} · ${h(t.ano_letivo)}">${h(t.nome)}</a>`
+    )
     .join('');
+
+  // Pesquisa ativa e com resultados parciais: liga visualmente o filtro à grelha, em vez de deixar
+  // o formulário "solto" sem se saber se a pesquisa teve efeito.
+  const resumoPesquisa =
+    pesquisa && alunos.length ? `<p class="texto-suave">${alunos.length} de ${total} aluno(s) encontrado(s).</p>` : '';
 
   const conteudo = `
     ${cartaoNovas}
     ${cartaoAvisos}
-    <nav class="separadores" aria-label="Turmas">${separadores}</nav>
+    ${turmas.length > 1 ? `<nav class="separadores" aria-label="Turmas">${separadores}</nav>` : ''}
     <section class="cartao">
       <div class="cartao-topo">
         <div>
@@ -303,12 +315,15 @@ get('/professor/turmas', async (req, res) => {
       </form>
       ${
         alunos.length
-          ? `<div class="grelha-alunos">${alunos
+          ? `${resumoPesquisa}
+             <div class="grelha-alunos">${alunos
               .map(
                 (a) => `<a class="cartao-aluno" href="/professor/alunos/${a.id}">
                 ${avatar(a)}
                 <div><strong>${h(a.nome)}</strong><small>Proc. ${h(a.numero_processo)}</small></div>
-                <span class="contagem ${a.injustificadas ? 'aviso' : ''}" title="Faltas injustificadas / total">${a.injustificadas}/${a.total_faltas}</span>
+                <span class="contagem ${a.injustificadas ? 'aviso' : ''}" title="${a.injustificadas} falta(s) injustificada(s) de ${a.total_faltas} no total">${
+                  a.injustificadas ? `<strong>${a.injustificadas}</strong>` : a.injustificadas
+                }/${a.total_faltas}</span>
               </a>`
               )
               .join('')}</div>

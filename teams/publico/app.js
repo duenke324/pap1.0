@@ -13,10 +13,31 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// Menu lateral em ecrãs pequenos: abre/fecha com o botão de hambúrguer, fecha ao tocar fora
+// dele (incluindo a cortina semitransparente que o CSS desenha atrás do painel) e com Esc —
+// e mantém aria-expanded sincronizado no(s) botão(ões) que o controlam, para leitores de ecrã.
+function alternarMenu(aberto) {
+  const raiz = document.body;
+  const vaiAbrir = aberto ?? !raiz.classList.contains('menu-aberto');
+  raiz.classList.toggle('menu-aberto', vaiAbrir);
+  document.querySelectorAll('[data-alternar-menu]').forEach((btn) => btn.setAttribute('aria-expanded', String(vaiAbrir)));
+  return vaiAbrir;
+}
+
+document.querySelectorAll('[data-alternar-menu]').forEach((btn) => btn.setAttribute('aria-expanded', 'false'));
+
 document.addEventListener('click', (e) => {
-  if (e.target.closest('[data-alternar-menu]')) document.body.classList.toggle('menu-aberto');
-  else if (document.body.classList.contains('menu-aberto') && !e.target.closest('.lista-canais') && !e.target.closest('[data-alternar-menu]')) {
-    document.body.classList.remove('menu-aberto');
+  if (e.target.closest('[data-alternar-menu]')) {
+    alternarMenu();
+  } else if (document.body.classList.contains('menu-aberto') && !e.target.closest('.lista-canais')) {
+    alternarMenu(false);
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.body.classList.contains('menu-aberto')) {
+    alternarMenu(false);
+    document.querySelector('[data-alternar-menu]')?.focus();
   }
 });
 
@@ -141,6 +162,12 @@ document.addEventListener('click', (e) => {
   });
   ajustarAltura();
   atualizarBotao();
+
+  // Ao abrir um canal/conversa num ecrã grande, o campo de escrever já fica com foco — quem
+  // está a navegar por teclado não precisa de um Tab extra para começar a escrever. Em
+  // ecrãs pequenos isto é evitado: focar um campo de texto faria o teclado virtual aparecer
+  // logo ao entrar, o que é mais intrusivo do que útil num telemóvel.
+  if (textareaEl && matchMedia('(min-width: 861px)').matches) textareaEl.focus();
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();

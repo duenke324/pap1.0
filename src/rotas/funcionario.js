@@ -12,11 +12,15 @@ function semFicha(req, res, titulo, ativo) {
 get('/funcionario', async (req, res) => {
   if (!req.funcionario) return semFicha(req, res, 'Painel', 'inicio');
   const f = req.funcionario;
+  const cargo = h(CARGOS_FUNCIONARIO[f.cargo] || f.cargo);
   const conteudo = `
     <section class="cartao">
-      <h2>Bem-vindo(a), ${h(f.nome)}</h2>
-      <p class="texto-suave">Cargo: <strong>${h(CARGOS_FUNCIONARIO[f.cargo] || f.cargo)}</strong> · N.º de processo ${h(f.numero_processo)}</p>
-      <p class="legenda">Esta é a sua área pessoal. Para consultar ou corrigir os seus dados, veja «Dados pessoais» no menu.</p>
+      <div class="cartao-topo">
+        <h2>Bem-vindo(a), ${h(f.nome)}</h2>
+        <span class="texto-suave">N.º de processo ${h(f.numero_processo)}</span>
+      </div>
+      <p class="texto-suave">Exerce funções de <strong>${cargo}</strong> nesta escola.</p>
+      <p class="legenda">Esta é a sua área pessoal. Para ver os seus dados, veja «Dados pessoais» no menu.</p>
     </section>`;
   res.html(pagina(req, { titulo: 'Painel', ativo: 'inicio' }, conteudo));
 });
@@ -24,12 +28,14 @@ get('/funcionario', async (req, res) => {
 get('/funcionario/dados', async (req, res) => {
   if (!req.funcionario) return semFicha(req, res, 'Dados pessoais', 'dados');
   const f = req.funcionario;
+  const cargo = h(CARGOS_FUNCIONARIO[f.cargo] || f.cargo);
   const conteudo = `
     <section class="cartao">
+      <p class="texto-suave">Os seus dados, tal como estão registados no sistema.</p>
       <dl class="dados-pessoais">
         <dt>Nome completo</dt><dd>${h(f.nome)}</dd>
         <dt>N.º de processo</dt><dd>${h(f.numero_processo)}</dd>
-        <dt>Cargo</dt><dd>${h(CARGOS_FUNCIONARIO[f.cargo] || f.cargo)}</dd>
+        <dt>Cargo</dt><dd>${cargo}</dd>
         <dt>Email</dt><dd>${f.email ? `<a href="mailto:${h(f.email)}">${h(f.email)}</a>` : '—'}</dd>
         <dt>Contacto</dt><dd>${f.contacto ? `<a href="tel:${h(f.contacto)}">${h(f.contacto)}</a>` : '—'}</dd>
       </dl>

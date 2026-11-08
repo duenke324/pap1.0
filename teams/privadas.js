@@ -108,7 +108,10 @@ function corpoNovaConversa(pessoas, pesquisa) {
               .map(
                 (p) => `<form method="post" action="/mensagens/nova">
                 <input type="hidden" name="utilizador_id" value="${p.utilizador_id}">
-                <button type="submit" class="pessoa-item">${avatarHtml(p.nome)}<span>${h(p.nome)}</span></button>
+                <button type="submit" class="pessoa-item">
+                  ${avatarHtml(p.nome)}
+                  <span class="conversa-info"><strong>${h(p.nome)}</strong><small>${p.papel === 'professor' ? 'Professor' : 'Aluno'}</small></span>
+                </button>
               </form>`
               )
               .join('')}
@@ -118,7 +121,7 @@ function corpoNovaConversa(pessoas, pesquisa) {
   return `<div class="nova-conversa">
     <form class="linha nova-conversa-pesquisa" method="get" action="/mensagens/nova">
       <input type="search" name="q" value="${h(pesquisa)}" placeholder="Procurar por nome…" autofocus>
-      <button class="botao botao-secundario">Procurar</button>
+      <button class="botao botao-secundario">${icone('pesquisar')} Procurar</button>
     </form>
     ${grupo('Professores', professores)}
     ${grupo('Alunos', alunos)}
@@ -132,7 +135,10 @@ get('/mensagens', async (req, res) => {
     pagina(
       req,
       { secaoAtiva: 'mensagens', conversas, titulo: 'Mensagens' },
-      ecraVazioDecorado('Escolha uma conversa à esquerda ou inicie uma nova.', '<p><a class="botao" href="/mensagens/nova">Nova conversa</a></p>')
+      ecraVazioDecorado(
+        'Escolha uma conversa à esquerda ou inicie uma nova.',
+        `<p><a class="botao" href="/mensagens/nova">${icone('nova')} Nova conversa</a></p>`
+      )
     )
   );
 });
@@ -177,7 +183,8 @@ get('/mensagens/:id', async (req, res) => {
         conversas,
         conversaAtivaId: conversa.id,
         titulo: conversa.outroNome,
-        subtitulo: conversa.outroPapel === 'professor' ? 'Professor' : 'Aluno',
+        distintivoTitulo: `<span class="distintivo-papel">${conversa.outroPapel === 'professor' ? 'Professor' : 'Aluno'}</span>`,
+        cabecalhoAvatar: avatarHtml(conversa.outroNome),
       },
       conteudo
     )

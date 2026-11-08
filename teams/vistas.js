@@ -71,7 +71,7 @@ function paginaLogin({ email = '', erro = '', mensagens = [] } = {}) {
       <div class="cartao-login">
         <div class="marca">
           ${LOGO}
-          <div><strong>Conversas</strong><small>Escola · canais por turma</small></div>
+          <div><strong>Conversas</strong><small>Mensagens e canais da sua turma, num só lugar</small></div>
         </div>
         ${mensagensFlash(mensagens)}
         ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
@@ -83,6 +83,7 @@ function paginaLogin({ email = '', erro = '', mensagens = [] } = {}) {
             <input name="password" type="password" autocomplete="current-password" required>
           </label>
           <button class="botao botao-bloco">Entrar</button>
+          <p class="texto-suave centro">Use o mesmo email e palavra-passe da Gestão Escolar.</p>
         </form>
       </div>
     </div>`
@@ -98,12 +99,12 @@ function arvoreHtml(estrutura, canalAtivoId) {
     .map(
       ({ turma, canais, podeGerir }) => `
     <div class="turma-grupo">
-      <div class="turma-cabecalho"><span>${h(turma.nome)}</span>${podeGerir ? `<a href="/turma/${turma.id}">Gerir</a>` : ''}</div>
+      <div class="turma-cabecalho"><span title="${h(turma.nome)}">${h(turma.nome)}</span>${podeGerir ? `<a href="/turma/${turma.id}">Gerir</a>` : ''}</div>
       ${
         canais.length
           ? canais
               .map(
-                (c) => `<a href="/turma/${turma.id}/canal/${c.id}" class="canal-link${c.id === canalAtivoId ? ' ativo' : ''}">
+                (c) => `<a href="/turma/${turma.id}/canal/${c.id}" class="canal-link${c.id === canalAtivoId ? ' ativo' : ''}"${c.id === canalAtivoId ? ' aria-current="page"' : ''} title="${h(c.nome)}">
                   <span class="hash">#</span><span>${h(c.nome)}</span>
                   ${c.nao_lidas ? `<span class="badge-nao-lidas">${c.nao_lidas > 99 ? '99+' : c.nao_lidas}</span>` : ''}
                 </a>`
@@ -123,7 +124,7 @@ function listaConversasHtml(conversas, conversaAtivaId) {
   }
   return conversas
     .map(
-      (c) => `<a href="/mensagens/${c.id}" class="conversa-link${c.id === conversaAtivaId ? ' ativo' : ''}">
+      (c) => `<a href="/mensagens/${c.id}" class="conversa-link${c.id === conversaAtivaId ? ' ativo' : ''}"${c.id === conversaAtivaId ? ' aria-current="page"' : ''} title="${h(c.outro_nome)}">
       ${avatarHtml(c.outro_nome, 'avatar conversa-avatar')}
       <span class="conversa-info"><strong>${h(c.outro_nome)}</strong><small>${c.outro_papel === 'professor' ? 'Professor' : 'Aluno'}</small></span>
     </a>`
@@ -133,7 +134,18 @@ function listaConversasHtml(conversas, conversaAtivaId) {
 
 function pagina(
   req,
-  { secaoAtiva = 'equipas', arvore = [], canalAtivoId = null, conversas = [], conversaAtivaId = null, titulo, subtitulo = '', cabecalhoExtra = '' },
+  {
+    secaoAtiva = 'equipas',
+    arvore = [],
+    canalAtivoId = null,
+    conversas = [],
+    conversaAtivaId = null,
+    titulo,
+    subtitulo = '',
+    distintivoTitulo = '',
+    cabecalhoAvatar = '',
+    cabecalhoExtra = '',
+  },
   conteudo
 ) {
   const u = req.utilizador;
@@ -154,8 +166,8 @@ function pagina(
   <nav class="rail" aria-label="Conversas">
     <a href="/" class="rail-logo" title="Conversas" aria-label="Página inicial">${LOGO}</a>
     <div class="rail-nav">
-      <a href="/" class="rail-botao${equipasAtivo ? ' ativo' : ''}" title="Equipas" aria-label="Equipas">${icone('equipas')}</a>
-      <a href="/mensagens" class="rail-botao${!equipasAtivo ? ' ativo' : ''}" title="Mensagens" aria-label="Mensagens">${icone('mensagens')}</a>
+      <a href="/" class="rail-botao${equipasAtivo ? ' ativo' : ''}"${equipasAtivo ? ' aria-current="page"' : ''} title="Equipas" aria-label="Equipas">${icone('equipas')}</a>
+      <a href="/mensagens" class="rail-botao${!equipasAtivo ? ' ativo' : ''}"${!equipasAtivo ? ' aria-current="page"' : ''} title="Mensagens" aria-label="Mensagens">${icone('mensagens')}</a>
     </div>
     <div class="rail-fim">
       ${botaoTema()}
@@ -167,7 +179,11 @@ function pagina(
   <main class="conteudo">
     <header class="topo-canal">
       <button class="botao-icone so-movel" data-alternar-menu aria-label="Abrir menu">${icone('menu')}</button>
-      <div class="topo-canal-titulo"><span class="etiqueta-turma">${subtitulo ? h(subtitulo) : ''}</span><h1>${canalAtivoId ? '# ' : ''}${h(titulo)}</h1></div>
+      ${cabecalhoAvatar}
+      <div class="topo-canal-titulo">
+        ${subtitulo ? `<span class="etiqueta-turma">${h(subtitulo)}</span>` : ''}
+        <h1>${canalAtivoId ? '<span class="texto-suave">#</span> ' : ''}${h(titulo)}${distintivoTitulo ? ` ${distintivoTitulo}` : ''}</h1>
+      </div>
       <div class="topo-canal-extra">${cabecalhoExtra}</div>
     </header>
     ${mensagensFlash(req.lerFlash())}
@@ -202,9 +218,10 @@ function rotuloPapel(papel) {
 }
 
 function mensagemHtml(m, meuId) {
+  const removido = !m.autor;
   const autor = m.autor || 'Utilizador removido';
-  const papel = rotuloPapel(m.autor_papel);
-  return `<div class="mensagem${m.utilizador_id === meuId ? ' minha' : ''}" data-mensagem-id="${m.id}" data-autor-id="${m.utilizador_id ?? ''}" data-criado-em="${h(String(m.criado_em))}">
+  const papel = removido ? 'Conta removida' : rotuloPapel(m.autor_papel);
+  return `<article class="mensagem${m.utilizador_id === meuId ? ' minha' : ''}" data-mensagem-id="${m.id}" data-autor-id="${m.utilizador_id ?? ''}" data-criado-em="${h(String(m.criado_em))}">
     ${avatarHtml(autor, 'avatar mensagem-avatar')}
     <div class="mensagem-corpo">
       <div class="mensagem-cabecalho">
@@ -214,7 +231,7 @@ function mensagemHtml(m, meuId) {
       </div>
       <p>${h(m.texto)}</p>
     </div>
-  </div>`;
+  </article>`;
 }
 
 function vazio(texto) {

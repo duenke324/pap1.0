@@ -157,6 +157,7 @@ function pagina(req, opcoes, conteudo) {
   return documento(
     titulo,
     `
+<a href="#conteudo-principal" class="ligacao-saltar">Saltar para o conteúdo</a>
 <div class="caderneta">
   <header class="cabecalho">
     <a class="marca" href="/">${LOGO}<strong>Gestão Escolar</strong></a>
@@ -165,7 +166,7 @@ function pagina(req, opcoes, conteudo) {
       <div class="utilizador-info"><strong>${h(u.nome)}</strong><small>${h(rotuloPapel(req))}</small></div>
       ${botaoTema()}
       <form method="post" action="/logout"><button class="botao-icone" title="Terminar sessão" aria-label="Terminar sessão">${icone('sair')}</button></form>
-      <button class="botao-icone so-movel" data-alternar-menu aria-label="Abrir menu">${icone('menu')}</button>
+      <button class="botao-icone so-movel" data-alternar-menu aria-controls="lateral" aria-expanded="false" aria-label="Abrir menu">${icone('menu')}</button>
     </div>
   </header>
   <nav class="menu" id="lateral" aria-label="Menu principal">${indice}</nav>
@@ -177,7 +178,7 @@ function pagina(req, opcoes, conteudo) {
         <p class="margem-data">${h(hojeTexto)}</p>
       </div>
     </aside>
-    <main class="conteudo">
+    <main class="conteudo" id="conteudo-principal" tabindex="-1">
       <header class="topo">
         <div>
           <h1>${h(titulo)}</h1>

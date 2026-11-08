@@ -215,30 +215,28 @@ get('/aluno', async (req, res) => {
     <div class="grelha-informacoes">
       <aside>${cartaoCalendario(anoLetivo, calendario)}</aside>
       <div>
+        <section class="cartao">
+          <div class="cartao-topo"><h2>Aulas de hoje</h2><a href="/aluno/horario">Ver horário</a></div>
+          ${
+            aulasHoje.length
+              ? `<ul class="lista-simples">${aulasHoje
+                  .map(
+                    (a) => `<li><span class="hora">${h(a.hora_inicio)}–${h(a.hora_fim)}</span>
+                      <span><strong>${h(a.disciplina)}</strong><small>${h(a.professor || '')}${a.sala ? ` · Sala ${h(a.sala)}` : ''}</small></span></li>`
+                  )
+                  .join('')}</ul>`
+              : vazio('Não tem aulas hoje.')
+          }
+        </section>
         ${cartaoReuniao(aluno, proximaReuniao)}
         <section class="cartao">
           <h2>Avisos</h2>
           ${listaAvisos(avisos)}
         </section>
-        <div class="grelha-2">
-          <section class="cartao">
-            <div class="cartao-topo"><h2>Aulas de hoje</h2><a href="/aluno/horario">Ver horário</a></div>
-            ${
-              aulasHoje.length
-                ? `<ul class="lista-simples">${aulasHoje
-                    .map(
-                      (a) => `<li><span class="hora">${h(a.hora_inicio)}–${h(a.hora_fim)}</span>
-                        <span><strong>${h(a.disciplina)}</strong><small>${h(a.professor || '')}${a.sala ? ` · Sala ${h(a.sala)}` : ''}</small></span></li>`
-                    )
-                    .join('')}</ul>`
-                : vazio('Não tem aulas hoje.')
-            }
-          </section>
-          <section class="cartao">
-            <div class="cartao-topo"><h2>Próximas avaliações</h2><a href="/aluno/testes">Ver todas</a></div>
-            ${listaTestes(proximos.slice(0, 4))}
-          </section>
-        </div>
+        <section class="cartao">
+          <div class="cartao-topo"><h2>Próximas avaliações</h2><a href="/aluno/testes">Ver todas</a></div>
+          ${listaTestes(proximos.slice(0, 4))}
+        </section>
       </div>
     </div>`;
 

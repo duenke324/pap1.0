@@ -217,6 +217,9 @@ get('/admin', async (req, res) => {
        FROM turmas t LEFT JOIN alunos a ON a.turma_id = t.id
       GROUP BY t.id ORDER BY t.nome`
   );
+  // Só para a apresentação (a consulta e a ordem alfabética de "porTurma" não se alteram):
+  // as turmas com faltas por justificar sobem ao topo, para serem vistas primeiro.
+  const porTurmaOrdenada = [...porTurma].sort((a, b) => b.injustificadas - a.injustificadas || a.nome.localeCompare(b.nome));
   const recentes = await todos(
     `SELECT f.*, a.nome AS aluno, a.id AS aluno_id, t.nome AS turma, d.nome AS disciplina
        FROM faltas f JOIN alunos a ON a.id = f.aluno_id LEFT JOIN turmas t ON t.id = a.turma_id
@@ -232,12 +235,43 @@ get('/admin', async (req, res) => {
 
   const conteudo = `
     <section class="estatisticas">
+      <a class="estatistica ${stats.porJustificar ? 'destaque-aviso' : ''}" href="/admin/faltas"><span>Faltas por justificar</span><strong>${stats.porJustificar}</strong></a>
       <a class="estatistica" href="/admin/alunos"><span>Alunos</span><strong>${stats.alunos}</strong></a>
       <a class="estatistica" href="/admin/turmas"><span>Turmas</span><strong>${stats.turmas}</strong></a>
       <div class="estatistica"><span>Professores</span><strong>${stats.professores}</strong></div>
       <a class="estatistica" href="/admin/funcionarios"><span>Funcionários</span><strong>${stats.funcionarios}</strong></a>
-      <a class="estatistica ${stats.porJustificar ? 'destaque-aviso' : ''}" href="/admin/faltas"><span>Faltas por justificar</span><strong>${stats.porJustificar}</strong></a>
     </section>
+    <div class="grelha-2">
+      <section class="cartao">
+        <div class="cartao-topo"><h2>Faltas recentes por justificar</h2><a href="/admin/faltas">Ver todas</a></div>
+        ${
+          recentes.length
+            ? `<ul class="lista-simples">${recentes
+                .map(
+                  (f) => `<li><span class="hora">${h(formatarData(f.data))}</span>
+                  <span><a href="/admin/faltas?aluno=${f.aluno_id}&estado=injustificadas"><strong>${h(f.aluno)}</strong></a>
+                  <small>${h(f.turma || '')} · ${h(f.disciplina)}</small></span>
+                  <span class="etiqueta etiqueta-aviso">${h(TIPOS_FALTA[f.tipo])}</span></li>`
+                )
+                .join('')}</ul>`
+            : vazio('Não há faltas por justificar.')
+        }
+      </section>
+      <section class="cartao">
+        <div class="cartao-topo"><h2>Turmas</h2><a href="/admin/turmas">+ Nova turma</a></div>
+        ${
+          porTurmaOrdenada.length
+            ? `<table class="tabela"><thead><tr><th>Turma</th><th class="direita">Alunos</th><th class="direita">Por justificar</th></tr></thead><tbody>${porTurmaOrdenada
+                .map(
+                  (t) => `<tr><td><a href="/admin/turmas/${t.id}">${h(t.nome)}</a> <small class="texto-suave">${h(t.ano_letivo)}</small></td>
+                  <td class="direita">${t.alunos}</td>
+                  <td class="direita">${t.injustificadas ? `<a class="etiqueta etiqueta-aviso" href="/admin/faltas?turma=${t.id}">${t.injustificadas}</a>` : '<span class="etiqueta etiqueta-ok">0</span>'}</td></tr>`
+                )
+                .join('')}</tbody></table>`
+            : vazio('Sem turmas.')
+        }
+      </section>
+    </div>
     <section class="cartao">
       <div class="cartao-topo"><h2>Assiduidade</h2><span class="texto-suave">Presenças nas aulas já dadas (lições registadas)</span></div>
       ${
@@ -344,37 +378,7 @@ get('/admin', async (req, res) => {
             })();
             </script>`
       }
-    </section>
-    <div class="grelha-2">
-      <section class="cartao">
-        <div class="cartao-topo"><h2>Turmas</h2><a href="/admin/turmas">+ Nova turma</a></div>
-        ${
-          porTurma.length
-            ? `<table class="tabela"><thead><tr><th>Turma</th><th class="direita">Alunos</th><th class="direita">Por justificar</th></tr></thead><tbody>${porTurma
-                .map(
-                  (t) => `<tr><td><a href="/admin/turmas/${t.id}">${h(t.nome)}</a> <small class="texto-suave">${h(t.ano_letivo)}</small></td>
-                  <td class="direita">${t.alunos}</td>
-                  <td class="direita">${t.injustificadas ? `<a href="/admin/faltas?turma=${t.id}">${t.injustificadas}</a>` : '0'}</td></tr>`
-                )
-                .join('')}</tbody></table>`
-            : vazio('Sem turmas.')
-        }
-      </section>
-      <section class="cartao">
-        <div class="cartao-topo"><h2>Faltas recentes por justificar</h2><a href="/admin/faltas">Ver todas</a></div>
-        ${
-          recentes.length
-            ? `<ul class="lista-simples">${recentes
-                .map(
-                  (f) => `<li><span class="hora">${h(formatarData(f.data))}</span>
-                  <span><a href="/admin/faltas?aluno=${f.aluno_id}&estado=injustificadas"><strong>${h(f.aluno)}</strong></a>
-                  <small>${h(f.turma || '')} · ${h(f.disciplina)} · ${h(TIPOS_FALTA[f.tipo])}</small></span></li>`
-                )
-                .join('')}</ul>`
-            : vazio('Não há faltas por justificar.')
-        }
-      </section>
-    </div>`;
+    </section>`;
 
   res.html(pagina(req, { titulo: 'Painel de administração', ativo: 'inicio' }, conteudo));
 });

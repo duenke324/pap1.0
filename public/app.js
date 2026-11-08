@@ -40,9 +40,20 @@ document.addEventListener('click', (e) => {
 });
 
 // Índice das páginas em ecrãs pequenos
+function alternarMenuMovel(aberto) {
+  document.body.classList.toggle('menu-aberto', aberto);
+  document.querySelector('[data-alternar-menu]')?.setAttribute('aria-expanded', String(aberto));
+}
 document.addEventListener('click', (e) => {
-  if (e.target.closest('[data-alternar-menu]')) document.body.classList.toggle('menu-aberto');
-  else if (document.body.classList.contains('menu-aberto') && !e.target.closest('#lateral')) document.body.classList.remove('menu-aberto');
+  if (e.target.closest('[data-alternar-menu]')) alternarMenuMovel(!document.body.classList.contains('menu-aberto'));
+  else if (document.body.classList.contains('menu-aberto') && !e.target.closest('#lateral')) alternarMenuMovel(false);
+});
+// Esc fecha o índice móvel e devolve o foco ao botão que o abriu
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.body.classList.contains('menu-aberto')) {
+    alternarMenuMovel(false);
+    document.querySelector('[data-alternar-menu]')?.focus();
+  }
 });
 
 // Selecionar todas as faltas (painel de administrador)

@@ -92,13 +92,20 @@ a:hover { text-decoration: underline; text-underline-offset: .2em; }
 a:not([class]) { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
 a:not([class]):hover { text-decoration-thickness: 2px; }
 h1, h2, h3 { margin: 0; font-family: var(--letra-titulos); font-weight: 500; }
-h1 { font-size: 3.1rem; line-height: 1.05; letter-spacing: -.02em; }
-h2 { font-size: 1.5rem; line-height: 1.2; letter-spacing: -.005em; margin-bottom: .8rem; }
-h3 { font-size: 1.15rem; line-height: 1.3; margin: 1.3rem 0 .6rem; }
+h1 { font-size: 3.1rem; font-weight: 400; line-height: 1.05; letter-spacing: -.025em; }
+h2 { font-size: 1.5rem; font-weight: 600; line-height: 1.2; letter-spacing: -.005em; margin-bottom: .9rem; }
+h3 { font-size: 1.15rem; font-weight: 600; line-height: 1.3; margin: 1.3rem 0 .6rem; }
 small { font-size: .82rem; }
 :focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
 ::selection { background: var(--tinta); color: var(--papel); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Ligação "saltar para o conteúdo": invisível até ganhar foco pelo teclado */
+.ligacao-saltar {
+  position: absolute; top: -3rem; left: .6rem; z-index: 20;
+  padding: .5rem .9rem; background: var(--tinta); color: var(--papel);
+  font: 600 .85rem var(--letra); text-decoration: none; transition: top .15s ease;
+}
+.ligacao-saltar:focus-visible { top: .6rem; outline: 2px solid var(--papel); outline-offset: 2px; }
 .texto-suave { color: var(--tinta-suave); }
 .bloco { display: block; }
 .direita { text-align: right; }
@@ -131,9 +138,14 @@ a.marca:hover { text-decoration: none; }
 .utilizador form { margin: 0; }
 
 .menu { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--tinta); }
-.menu a { display: inline-flex; align-items: baseline; gap: .4rem; padding: .55rem .8rem; color: var(--tinta); font-size: .9rem; font-weight: 500; }
-.menu a:hover { background: var(--superficie-2); text-decoration: none; }
+.menu a {
+  display: inline-flex; align-items: baseline; gap: .4rem; padding: .6rem .85rem; color: var(--tinta);
+  font-size: .9rem; font-weight: 500; transition: background-color .12s ease;
+}
+.menu a:hover, .menu a:focus-visible { background: var(--superficie-2); text-decoration: none; }
+.menu a:focus-visible { outline-offset: -2px; }
 .menu a.ativo { background: var(--tinta); color: var(--papel); }
+.menu a.ativo:focus-visible { outline-color: var(--papel); }
 .menu-num { font: .68rem var(--letra-dados); color: var(--tinta-suave); }
 .menu a.ativo .menu-num { color: inherit; }
 
@@ -167,7 +179,7 @@ p:has(> .voltar) { margin-top: 0; }
 .icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ----- Secções: sem caixa, um filete grosso em cima e um número ----- */
-.cartao { border-top: 2px solid var(--tinta); padding-top: .85rem; margin-bottom: 2.6rem; }
+.cartao { border-top: 2px solid var(--tinta); padding-top: 1.1rem; margin-bottom: 2.8rem; }
 /* Uma secção só com filtros não precisa de separar nada */
 .cartao:has(> .filtros:only-child) { border-top: 1px solid var(--linha); margin-bottom: 1rem; }
 .cartao > h2, .cartao-topo h2 { counter-increment: seccao; }
@@ -175,13 +187,16 @@ p:has(> .voltar) { margin-top: 0; }
   content: counter(seccao, decimal-leading-zero);
   margin-right: .6em; color: var(--tinta-suave); font: .72rem var(--letra-dados); letter-spacing: 0; vertical-align: .22em;
 }
-.cartao-topo { display: flex; align-items: baseline; justify-content: space-between; gap: .4rem 1rem; margin-bottom: .8rem; flex-wrap: wrap; }
+.cartao-topo {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .4rem 1rem;
+  margin-bottom: 1rem; padding-bottom: .65rem; border-bottom: 1px solid var(--linha); flex-wrap: wrap;
+}
 .cartao-topo h2 { margin-bottom: 0; }
 .cartao-topo p { margin: 0; }
 /* Em destaque (ex.: reunião para a qual o aluno foi convocado): moldura dupla, como uma etiqueta colada */
 .cartao-destaque { border: 1px solid var(--tinta); outline: 1px solid var(--tinta); outline-offset: 3px; padding: 1rem 1.2rem; margin: 4px 4px 2.8rem; }
 .cartao-destaque .etiqueta-forte { transform: rotate(-3deg); }
-.grelha-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.6rem; align-items: start; margin-bottom: 2.6rem; }
+.grelha-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.6rem; align-items: start; margin-bottom: 2.8rem; }
 .grelha-2 > .cartao { margin-bottom: 0; }
 .vazio {
   padding: 1.4rem 1rem; text-align: center; color: var(--tinta-suave);
@@ -194,19 +209,21 @@ details.cartao > .formulario-ata > .cartao { border: 0; padding: 0; }
 /* ----- Totais: uma linha fechada por filete duplo, como no fim de uma página de contas ----- */
 .estatisticas {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  margin-bottom: 2.6rem; border-top: 2px solid var(--tinta); border-bottom: 4px double var(--tinta);
+  margin-bottom: 2.8rem; border-top: 2px solid var(--tinta); border-bottom: 4px double var(--tinta);
 }
 .estatistica {
-  display: flex; flex-direction: column-reverse; gap: .3rem; padding: .9rem 1.1rem .8rem; color: var(--tinta);
-  border-right: 1px solid var(--linha);
+  display: flex; flex-direction: column-reverse; gap: .35rem; padding: 1.05rem 1.2rem .95rem; color: var(--tinta);
+  border-right: 1px solid var(--linha); transition: background-color .15s ease;
 }
 .estatistica:last-child { border-right: 0; }
-a.estatistica:hover { background: var(--superficie-2); text-decoration: none; }
+a.estatistica:hover, a.estatistica:focus-visible { background: var(--superficie-2); text-decoration: none; }
+a.estatistica:focus-visible { outline: 2px solid var(--tinta); outline-offset: -3px; }
 .estatistica span { color: var(--tinta-suave); font: .68rem var(--letra-dados); letter-spacing: .05em; text-transform: uppercase; }
 .estatistica strong { font-family: var(--letra-titulos); font-size: 3.2rem; font-weight: 300; line-height: 1; font-variant-numeric: lining-nums tabular-nums; }
 .estatistica small { font-family: var(--letra); font-size: .9rem; }
 .estatistica.destaque-aviso, a.estatistica.destaque-aviso:hover { background: var(--tinta); color: var(--papel); }
 .estatistica.destaque-aviso span, .estatistica.destaque-aviso small { color: inherit; }
+a.estatistica.destaque-aviso:focus-visible { outline-color: var(--papel); }
 
 /* ----- Gráficos (painel de administração) ----- */
 .grelha-graficos { display: grid; grid-template-columns: minmax(170px, 230px) 1fr; gap: 2.2rem; align-items: center; }
@@ -282,7 +299,7 @@ select {
 select option { background: var(--papel); color: var(--tinta); }
 input::placeholder, textarea::placeholder { color: var(--tinta-suave); opacity: .8; }
 input:not([type="checkbox"], [type="radio"], [type="file"]):focus, select:focus {
-  outline: 0; background-color: var(--superficie-2); box-shadow: 0 1px 0 0 var(--tinta);
+  outline: 0; background-color: var(--superficie-2); box-shadow: 0 2px 0 0 var(--tinta);
 }
 input.invalido, select.invalido { border-bottom-style: dashed; border-bottom-width: 2px; }
 .erro-campo { color: var(--tinta); font-weight: 600; }
@@ -350,7 +367,7 @@ input[type="checkbox"] { width: 17px; height: 17px; margin: 0; flex: none; accen
 .etiqueta-perigo { background: var(--tinta); border-color: var(--tinta); color: var(--papel); }
 .etiqueta-forte { border: 2px solid var(--tinta); color: var(--tinta); } /* destaque sem ser um problema (ex.: "Convocado") */
 a.etiqueta:hover { text-decoration: underline; }
-.legenda { margin: .9rem 0 0; color: var(--tinta-suave); font-size: .82rem; }
+.legenda { margin: 1rem 0 0; color: var(--tinta-suave); font-size: .82rem; line-height: 1.5; letter-spacing: .01em; }
 
 /* ----- Tabelas: folhas de registo ----- */
 .tabela-scroll { overflow-x: auto; }
@@ -428,7 +445,7 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
 .lista-etiquetas .etiqueta { white-space: normal; } /* no telemóvel, parte em vez de sair da página */
 
 /* ----- Ficha do aluno ----- */
-.grelha-ficha { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 2.6rem; align-items: start; margin-bottom: 2.6rem; }
+.grelha-ficha { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 2.6rem; align-items: start; margin-bottom: 2.8rem; }
 .grelha-ficha > .cartao { margin-bottom: 0; }
 .ficha h2 { margin: .8rem 0 .9rem; counter-increment: none; font-size: 1.6rem; }
 .ficha h2::before { content: none; }
@@ -514,6 +531,11 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
   box-shadow: 0 0 0 5px var(--papel), 0 0 0 6px var(--tinta), 0 0 0 16px var(--papel);
 }
 .cartao-login { max-width: 400px; }
+/* Entrada suave do cartão de login/erro (respeita "reduzir movimento") */
+@media (prefers-reduced-motion: no-preference) {
+  .ecra-centro .cartao { animation: entrarCartao .4s ease both; }
+}
+@keyframes entrarCartao { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .marca-login { flex-direction: column; text-align: center; gap: .5rem; margin-bottom: 1.5rem; padding-bottom: 1.1rem; border-bottom: 4px double var(--tinta); }
 .marca-login .logo { width: 40px; height: 40px; }
 .marca-login strong { font-size: 2.4rem; }
@@ -601,7 +623,7 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
 .modulo-nome small { margin-left: .35rem; color: var(--tinta-suave); }
 
 /* ----- Área do aluno: ficha de identificação por baixo do índice ----- */
-.identificacao { display: flex; align-items: center; gap: 1.4rem; padding: .9rem 0; border-bottom: 1px solid var(--tinta); }
+.identificacao { display: flex; align-items: center; gap: 1.4rem; padding: 1.1rem 0; border-bottom: 1px solid var(--tinta); }
 .id-foto { flex: none; }
 .id-dados { flex: 1; min-width: 0; display: grid; grid-template-columns: 1.6fr .8fr .8fr 1.2fr; gap: .45rem 1.6rem; margin: 0; }
 .id-campo { min-width: 0; padding-bottom: .2rem; border-bottom: 1px solid var(--linha); }
@@ -648,6 +670,19 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
 .ditado-provisorio { min-height: 1.5em; margin: 0 0 .6rem; color: var(--tinta-suave); font: italic 1.08rem var(--letra-titulos); }
 .ata-texto { max-width: 74ch; white-space: pre-line; font: 1.15rem/1.75 var(--letra-titulos); }
 
+/* ----- Foco visível: sempre por contorno (nunca por cor), mesmo sobre fundos invertidos ----- */
+.separadores a:focus-visible,
+a.resumo-item:focus-visible,
+a.cartao-aluno:focus-visible,
+a.aluno-linha:focus-visible,
+a.etiqueta:focus-visible {
+  outline: 2px solid var(--tinta); outline-offset: -2px; text-decoration: none;
+}
+.separadores a.ativo:focus-visible, .resumo-item.ativo:focus-visible { outline-color: var(--papel); }
+.caixa:focus-within { outline: 2px solid var(--tinta); outline-offset: 2px; }
+.oferta:focus-visible { outline: 2px solid var(--tinta); outline-offset: -2px; }
+.botao-icone:focus-visible { outline-offset: 2px; }
+
 /* ----- Ecrãs pequenos ----- */
 @media (max-width: 1100px) {
   .grelha-2, .grelha-ficha, .grelha-graficos, .grelha-informacoes { grid-template-columns: minmax(0, 1fr); }
@@ -676,17 +711,25 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
   .marca strong { font-size: 1.4rem; }
   .logo { width: 26px; height: 26px; }
   .botao-icone.so-movel { display: inline-grid; }
-  /* O índice abre e fecha com o botão de menu */
-  .menu { display: none; }
-  .menu-aberto .menu { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* O índice abre e fecha com o botão de menu, com uma transição suave (sem isto deixa de se poder navegar por teclado enquanto fechado) */
+  .menu {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%;
+    max-height: 0; overflow: hidden; opacity: 0; visibility: hidden; border-bottom: 0;
+  }
+  .menu-aberto .menu { max-height: 70vh; overflow-y: auto; opacity: 1; visibility: visible; border-bottom: 1px solid var(--tinta); }
   h1 { font-size: 2.3rem; }
   h2 { font-size: 1.35rem; }
   .estatistica strong { font-size: 2.5rem; }
   .estatistica { padding: .7rem .8rem; }
   .coluna-dupla { grid-column: 1 / -1; }
+  .marca-login strong { font-size: 1.9rem; }
   .fundo-login::before { width: 1rem; }
   .ecra-centro { padding: 1.5rem 1.2rem 1.5rem 2.2rem; }
   .ecra-centro .cartao { padding: 1.4rem; box-shadow: 0 0 0 4px var(--papel), 0 0 0 5px var(--tinta), 0 0 0 10px var(--papel); }
+}
+@media (max-width: 800px) and (prefers-reduced-motion: no-preference) {
+  .menu { transition: max-height .22s ease, opacity .18s ease, visibility 0s linear .22s; }
+  .menu-aberto .menu { transition: max-height .22s ease, opacity .18s ease; }
 }
 @media (max-width: 640px) {
   .identificacao { align-items: flex-start; gap: .9rem; }
@@ -710,12 +753,15 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
     --linha: #ccc; --linha-forte: #888; --aviso-fundo: #ddd;
   }
   .cabecalho, .menu, .margem, .so-movel, .barra-acoes, .filtros, .canto-tema,
-  .acoes-topo, .no-imprimir, .botao-texto, .resumo-item, .contador { display: none !important; }
+  .acoes-topo, .no-imprimir, .botao-texto, .resumo-item, .contador, .ligacao-saltar,
+  .barra-justificar { display: none !important; }
+  /* Caixas de seleção em massa (ex.: justificar faltas) não fazem sentido numa folha impressa */
+  [data-selecionar], [data-selecionar-todos] { display: none !important; }
   .caderneta { max-width: none; padding: 0; }
   .folha { display: block; }
   .conteudo { padding: 0; }
   h1 { font-size: 2rem; }
-  .cartao, .tabela, .horario { break-inside: avoid; }
+  .cartao, .tabela, .horario, .estatisticas, .identificacao, .cartao-destaque { break-inside: avoid; }
   /* Os filetes e as tramas têm de sair na impressão */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

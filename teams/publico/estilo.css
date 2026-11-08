@@ -98,9 +98,10 @@ h1, h2, h3 { margin: 0; line-height: 1.25; font-weight: 700; }
 h1 { font-size: 1.2rem; }
 button, input, textarea, select { font: inherit; }
 :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
-/* Em botões com fundo já na cor de acento, um anel de foco da mesma cor quase não se vê —
-   usa-se branco, que contrasta sempre com esse fundo. */
-.botao:focus-visible, .botao-enviar:focus-visible, .rail-botao.ativo:focus-visible { outline-color: #fff; }
+/* Em botões com fundo já na cor de acento (ou em toda a faixa lateral escura), um anel de
+   foco roxo quase não se vê — usa-se branco, que contrasta sempre com esses fundos. */
+.botao:focus-visible, .botao-enviar:focus-visible, .rail-botao.ativo:focus-visible,
+.rail a:focus-visible, .rail button:focus-visible { outline-color: #fff; }
 ::selection { background: var(--acento-fundo); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .texto-suave { color: var(--tinta-suave); }
@@ -125,15 +126,27 @@ button, input, textarea, select { font: inherit; }
   display: flex; flex-direction: column; align-items: center;
   background: var(--lateral); padding: .9rem 0; gap: 1.4rem; z-index: 20;
 }
-.rail-logo { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; flex: none; }
+.rail-logo { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; flex: none; transition: background .15s ease; }
 .rail-logo svg { width: 24px; height: 24px; fill: var(--acento); }
 .rail-logo:hover { background: var(--lateral-ativo); text-decoration: none; }
-.rail-nav { display: flex; flex-direction: column; gap: .4rem; }
-.rail-botao { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; color: var(--lateral-suave); }
+.rail-nav { display: flex; flex-direction: column; gap: .4rem; position: relative; }
+.rail-botao {
+  display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
+  color: var(--lateral-suave); position: relative; transition: background .15s ease, color .15s ease;
+}
 .rail-botao:hover { background: var(--lateral-ativo); color: #fff; text-decoration: none; }
 .rail-botao.ativo { background: var(--acento); color: #fff; }
+/* Travessão junto à borda esquerda do ícone ativo: reforça qual secção está selecionada
+   mesmo antes de notar a cor de fundo (útil também para quem distingue mal cores). */
+.rail-botao.ativo::before {
+  content: ""; position: absolute; left: -10px; top: 50%; translate: 0 -50%;
+  width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: #fff;
+}
 .rail-botao .icone { width: 20px; height: 20px; }
-.rail-fim { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: .7rem; }
+.rail-fim {
+  margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: .7rem;
+  padding-top: .9rem; border-top: 1px solid var(--lateral-ativo);
+}
 .rail-fim form { margin: 0; }
 .rail-avatar { width: 30px; height: 30px; font-size: .7rem; cursor: default; }
 
@@ -160,11 +173,13 @@ button, input, textarea, select { font: inherit; }
 .canal-link {
   display: flex; align-items: center; gap: .55rem; padding: .45rem .6rem .45rem .7rem;
   margin: 1px 0; border-radius: 4px; color: var(--tinta-suave); font-size: .9rem;
+  transition: background .12s ease, color .12s ease;
 }
-.canal-link .hash { font-weight: 700; opacity: .6; width: 1em; text-align: center; flex: none; }
+.canal-link .hash { font-weight: 700; opacity: .6; width: 1em; text-align: center; flex: none; transition: opacity .12s ease; }
 .canal-link:hover { background: var(--superficie-2); color: var(--tinta); text-decoration: none; }
+.canal-link:hover .hash { opacity: .85; }
 .canal-link.ativo { background: var(--acento-fundo); color: var(--acento-forte); font-weight: 600; box-shadow: inset 3px 0 0 var(--acento); }
-.canal-link.ativo .hash { opacity: 1; }
+.canal-link.ativo .hash { opacity: 1; color: var(--acento); }
 .badge-nao-lidas {
   margin-left: auto; flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
   background: var(--acento); color: var(--acento-texto); font-size: .68rem; font-weight: 700;
@@ -173,7 +188,7 @@ button, input, textarea, select { font: inherit; }
 .turma-vazia { padding: .3rem .6rem 1rem .7rem; color: var(--tinta-suave); font-size: .82rem; }
 
 /* ----- Lista de conversas privadas ----- */
-.conversa-link { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; margin: 1px 0; border-radius: 8px; color: var(--tinta); }
+.conversa-link { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; margin: 1px 0; border-radius: 8px; color: var(--tinta); transition: background .12s ease; }
 .conversa-link:hover { background: var(--superficie-2); text-decoration: none; }
 .conversa-link.ativo { background: var(--acento-fundo); box-shadow: inset 3px 0 0 var(--acento); }
 .conversa-avatar { width: 30px; height: 30px; font-size: .68rem; }
@@ -269,15 +284,25 @@ button, input, textarea, select { font: inherit; }
 
 /* ----- Mensagens (estilo canal: avatar + nome, agrupadas quando consecutivas) ----- */
 .corpo-canal { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.mensagens { flex: 1; overflow-y: auto; padding: 1rem 1.4rem; display: flex; flex-direction: column; justify-content: flex-end; }
-.mensagem { display: flex; gap: .7rem; padding: .3rem .6rem; border-radius: 6px; }
+/* Largura máxima de leitura: em ecrãs muito largos, linhas de texto a estenderem-se de ponta
+   a ponta ficam difíceis de seguir. O preenchimento horizontal cresce para empurrar o
+   conteúdo para uma coluna confortável, mas o fundo e os limites continuam a ocupar a
+   largura toda — sem isto, um ecrã largo fica com uma "mancha" de cor a flutuar ao centro. */
+.mensagens {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end;
+  padding-block: 1rem; padding-inline: max(1.4rem, calc((100% - 900px) / 2));
+}
+.mensagem { display: flex; gap: .7rem; padding: .3rem .6rem; border-radius: 6px; transition: background .1s ease; }
 .mensagem:hover { background: var(--superficie-2); }
 .mensagem.agrupada { padding-top: .05rem; padding-bottom: .05rem; }
 .mensagem.agrupada .mensagem-avatar { visibility: hidden; }
 .mensagem.agrupada .mensagem-cabecalho { display: none; }
 .mensagem-avatar { margin-top: .1rem; }
 .mensagem-corpo { flex: 1; min-width: 0; }
-.mensagem.minha { background: var(--acento-fundo); }
+/* Mensagens próprias ganham um friso lateral na cor de acento — o mesmo motivo visual usado
+   no canal/conversa ativos — para se distinguirem das dos outros mesmo sem reparar na cor
+   de fundo (daltonismo, ecrãs mal calibrados, etc.). */
+.mensagem.minha { background: var(--acento-fundo); box-shadow: inset 3px 0 0 var(--acento); }
 .mensagem.minha:hover { background: color-mix(in srgb, var(--acento-fundo) 70%, var(--superficie-2)); }
 .mensagem.minha .mensagem-cabecalho strong { color: var(--acento-forte); }
 .mensagem-cabecalho { display: flex; flex-wrap: wrap; gap: .6rem; align-items: baseline; margin-bottom: .1rem; }
@@ -294,7 +319,11 @@ button, input, textarea, select { font: inherit; }
 .separador-dia::before, .separador-dia::after { content: ""; flex: 1; height: 1px; background: var(--linha); }
 .separador-dia:first-child { margin-top: 0; }
 
-.compositor { display: flex; gap: .6rem; align-items: flex-end; padding: .8rem 1.4rem 1.1rem; background: var(--superficie); flex: none; }
+.compositor {
+  display: flex; gap: .6rem; align-items: flex-end; flex: none;
+  padding: .8rem max(1.4rem, calc((100% - 900px) / 2)) 1.1rem;
+  background: var(--superficie); border-top: 1px solid var(--linha);
+}
 .compositor-caixa {
   flex: 1; display: flex; align-items: flex-end; border: 1px solid var(--linha-forte); border-radius: 10px;
   background: var(--campo); padding: .4rem .3rem .4rem .8rem;
@@ -308,9 +337,11 @@ button, input, textarea, select { font: inherit; }
 .botao-enviar {
   flex: none; width: 38px; height: 38px; border-radius: 50%; display: inline-grid; place-items: center;
   border: 0; background: var(--acento); color: #fff; cursor: pointer;
+  transition: background .12s ease, transform .12s ease;
 }
-.botao-enviar:hover { background: var(--acento-forte); }
-.botao-enviar:disabled { background: var(--linha-forte); cursor: default; }
+.botao-enviar:hover { background: var(--acento-forte); transform: translateY(-1px); }
+.botao-enviar:active { transform: translateY(0); }
+.botao-enviar:disabled { background: var(--linha-forte); cursor: default; transform: none; }
 
 .ecra-vazio { flex: 1; display: grid; place-items: center; padding: 2rem; }
 .ecra-vazio-caixa { max-width: 420px; text-align: center; color: var(--tinta-suave); }
@@ -335,14 +366,27 @@ button, input, textarea, select { font: inherit; }
 .ecra-centro .mancha-1 { width: 46vmax; height: 46vmax; left: -16vmax; top: -18vmax; background: var(--acento); }
 .ecra-centro .mancha-2 { width: 36vmax; height: 36vmax; right: -12vmax; bottom: -16vmax; background: var(--acento-2); animation-duration: 26s; animation-delay: -6s; }
 .ecra-centro .mancha-3 { width: 30vmax; height: 30vmax; left: 30vmax; top: 10vmax; background: var(--acento-3); animation-duration: 30s; animation-delay: -12s; }
-@media (prefers-color-scheme: dark) { .ecra-centro .mancha { opacity: .2; } }
+:root[data-tema="escuro"] .ecra-centro .mancha { opacity: .2; }
+@media (prefers-color-scheme: dark) { :root:not([data-tema="claro"]) .ecra-centro .mancha { opacity: .2; } }
 @keyframes deriva { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(3vmax, 2.5vmax) scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .ecra-centro .mancha { animation: none; } }
-.cartao-login { position: relative; z-index: 1; width: 100%; max-width: 380px; padding: 2rem; background: var(--superficie); border: 1px solid var(--linha); border-radius: 8px; }
-.cartao-login .marca { display: flex; align-items: center; gap: .6rem; padding: 0 0 1.3rem; justify-content: center; text-align: center; flex-direction: column; }
+.cartao-login {
+  position: relative; z-index: 1; width: 100%; max-width: 380px; padding: 2.2rem 2rem;
+  background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px;
+  box-shadow: 0 24px 60px -24px color-mix(in srgb, var(--acento-forte) 35%, #0d0d16 65%), 0 2px 10px -4px rgba(15, 15, 30, .12);
+  animation: cartao-entrar .4s ease-out;
+}
+/* Friso colorido no topo do cartão: pequeno toque de marca sem recorrer a imagens. */
+.cartao-login::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; border-radius: 12px 12px 0 0;
+  background: linear-gradient(90deg, var(--acento), var(--acento-2), var(--acento-3));
+}
+@keyframes cartao-entrar { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .cartao-login { animation: none; } }
+.cartao-login .marca { display: flex; align-items: center; gap: .6rem; padding: 0 0 1.4rem; justify-content: center; text-align: center; flex-direction: column; }
 .cartao-login .marca svg { width: 26px; height: 26px; fill: var(--acento); }
-.cartao-login .marca strong { display: block; color: var(--tinta); font-size: 1.2rem; }
-.cartao-login .marca small { color: var(--tinta-suave); }
+.cartao-login .marca strong { display: block; color: var(--tinta); font-size: 1.25rem; }
+.cartao-login .marca small { color: var(--tinta-suave); letter-spacing: .01em; }
 .formulario { display: flex; flex-direction: column; gap: 1rem; }
 .formulario label { display: flex; flex-direction: column; gap: .3rem; font-weight: 600; font-size: .85rem; }
 .formulario input {
@@ -358,12 +402,31 @@ button, input, textarea, select { font: inherit; }
 /* ----- Ecrãs pequenos ----- */
 @media (max-width: 860px) {
   .lista-canais {
-    position: fixed; inset: 0 auto 0 var(--largura-rail); width: var(--largura-lateral);
+    position: fixed; inset: 0 auto 0 var(--largura-rail);
+    width: min(var(--largura-lateral), calc(100vw - var(--largura-rail)));
     transform: translateX(-100%); transition: transform .2s ease; border-right: 1px solid var(--linha-forte); z-index: 15;
+    box-shadow: 12px 0 32px -16px rgba(10, 10, 20, .35);
   }
   .menu-aberto .lista-canais { transform: none; }
+  /* Fundo semitransparente atrás do painel aberto: ajuda a perceber que é um painel
+     temporário sobre o conteúdo (e não parte fixa do ecrã) e convida a tocar fora para
+     fechar — o próprio toque já é tratado em app.js. */
+  body.menu-aberto::before {
+    content: ""; position: fixed; inset: 0; z-index: 14; background: rgba(8, 8, 16, .4);
+    animation: cortina-entrar .15s ease-out;
+  }
   .topo-canal .so-movel { display: inline-grid; }
   .contagem-membros { display: none; }
   .pesquisa-canal input { width: 110px; }
   .gestao-corpo { flex-direction: column; }
+}
+@keyframes cortina-entrar { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { body.menu-aberto::before { animation: none; } }
+
+@media (max-width: 480px) {
+  .topo-canal { padding: .7rem 1rem; }
+  .mensagens { padding-inline: 1rem; }
+  .compositor { padding: .7rem 1rem .9rem; }
+  .cartao-login { padding: 1.6rem 1.4rem; max-width: 100%; }
+  .nova-conversa { padding: 0 1rem; }
 }

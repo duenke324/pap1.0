@@ -226,23 +226,18 @@ get('/turma/:id', async (req, res) => {
   const arvore = await arvoreDoUtilizador(req);
   const jaTemCanais = Boolean(arvore.find((g) => g.turma.id === turmaId)?.canais.length);
   const disponiveis = await disciplinasDisponiveis(req.professor.id, turmaId);
-  const conteudo = `
-    <div class="ecra-vazio"><div class="ecra-vazio-caixa">
-      ${vazio(
-        disponiveis.length
-          ? jaTemCanais
-            ? `Criar mais um canal em ${turma.nome} — escolha a disciplina:`
-            : `Ainda não há canais em ${turma.nome}. Escolha uma disciplina para criar o primeiro:`
-          : 'Já criou um canal para todas as disciplinas que leciona nesta turma.'
-      )}
-      ${
-        disponiveis.length
-          ? `<form class="lista-disciplinas" method="post" action="/turma/${turma.id}/canais">
-              ${disponiveis.map((d) => `<button class="botao botao-secundario" type="submit" name="disciplina_id" value="${d.id}">${h(d.nome)}</button>`).join('')}
-            </form>`
-          : ''
-      }
-    </div></div>`;
+  const conteudo = ecraVazioDecorado(
+    disponiveis.length
+      ? jaTemCanais
+        ? `Criar mais um canal em ${turma.nome} — escolha a disciplina:`
+        : `Ainda não há canais em ${turma.nome}. Escolha uma disciplina para criar o primeiro:`
+      : 'Já criou um canal para todas as disciplinas que leciona nesta turma.',
+    disponiveis.length
+      ? `<form class="lista-disciplinas" method="post" action="/turma/${turma.id}/canais">
+          ${disponiveis.map((d) => `<button class="botao botao-secundario" type="submit" name="disciplina_id" value="${d.id}">${h(d.nome)}</button>`).join('')}
+        </form>`
+      : ''
+  );
   res.html(pagina(req, { secaoAtiva: 'equipas', arvore, titulo: turma.nome, subtitulo: 'Novo canal' }, conteudo));
 });
 
