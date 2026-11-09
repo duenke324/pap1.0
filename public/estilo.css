@@ -487,6 +487,14 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
   display: flex; flex-wrap: wrap; gap: .8rem 1.3rem; align-items: flex-end;
   padding: .9rem 1rem; margin-bottom: 1rem; background: var(--superficie-2);
 }
+.barra-justificar input[type="file"] { width: auto; max-width: 100%; font-size: .88rem; }
+/* Justificativo enviado pelo encarregado de educação: um pedido por bloco, separados por uma linha */
+.justificativo { padding: 1.2rem 0; border-top: 1px solid var(--linha); }
+.justificativo:first-of-type { border-top: 0; padding-top: 0; }
+.justificativo .cartao-topo { margin-bottom: .6rem; }
+.justificativo p { margin: .35rem 0; }
+.justificativo-faltas { margin: .4rem 0 .6rem; padding-left: 1.2rem; }
+.justificativo .barra-justificar { margin: .9rem 0 0; }
 .titulo-faltas { margin: 1.6rem 0 .4rem; }
 .titulo-faltas small { font-family: var(--letra); font-weight: 400; }
 .lista-licoes li { align-items: flex-start; }

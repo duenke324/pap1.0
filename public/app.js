@@ -62,6 +62,50 @@ document.addEventListener('change', (e) => {
   e.target.form.querySelectorAll('[data-selecionar]').forEach((c) => (c.checked = e.target.checked));
 });
 
+// Justificativo de faltas (encarregado de educação): o ficheiro escolhido é lido no browser e
+// enviado em base64 num campo escondido, tal como a fotografia do aluno. O servidor volta a
+// verificar o tipo e o tamanho — esta verificação aqui serve só para avisar mais cedo.
+document.querySelectorAll('[data-formulario-justificativo]').forEach((form) => {
+  const entrada = form.querySelector('[data-ficheiro-justificativo]');
+  const dados = form.querySelector('[data-dados-justificativo]');
+  if (!entrada || !dados) return;
+  const TAMANHO_MAXIMO = 3 * 1024 * 1024;
+
+  entrada.addEventListener('change', () => {
+    dados.value = '';
+    const ficheiro = entrada.files[0];
+    if (!ficheiro) return;
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(ficheiro.type)) {
+      alert('Escolha um ficheiro PDF, JPG ou PNG.');
+      entrada.value = '';
+      return;
+    }
+    if (ficheiro.size > TAMANHO_MAXIMO) {
+      alert('O ficheiro é demasiado grande (máx. 3 MB).');
+      entrada.value = '';
+      return;
+    }
+    const leitor = new FileReader();
+    leitor.onload = () => (dados.value = leitor.result);
+    leitor.onerror = () => {
+      alert('Não foi possível ler o ficheiro.');
+      entrada.value = '';
+    };
+    leitor.readAsDataURL(ficheiro);
+  });
+
+  form.addEventListener('submit', (e) => {
+    if (!form.querySelector('[data-selecionar]:checked')) {
+      e.preventDefault();
+      alert('Selecione pelo menos uma falta.');
+    } else if (!dados.value) {
+      // ficheiro ainda a ser lido (ou a leitura falhou)
+      e.preventDefault();
+      alert('Aguarde um momento: o justificativo ainda está a ser preparado.');
+    }
+  });
+});
+
 // Fotografia do aluno: reduz a imagem no browser (máx. 480px, JPEG) e envia-a em base64
 document.querySelectorAll('[data-formulario-foto]').forEach((form) => {
   const entrada = form.querySelector('[data-ficheiro-foto]');

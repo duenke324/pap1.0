@@ -253,6 +253,18 @@ async function semear() {
       );
     }
 
+    // Encarregados de educação com conta (código "EE" + n.º de processo do educando, palavra-passe ee123):
+    // a mãe da Beatriz (2450, 10.º) e a mãe do Gonçalo (2310, 11.º)
+    const hashEncarregado = gerarHash('ee123');
+    for (const [codigo, nome, alunoId] of [
+      ['EE2450', 'Carla Santos', idsAlunos[0][0]],
+      ['EE2310', 'Fátima Teixeira', idsAlunos[1][0]],
+    ]) {
+      const u = await inserir(`INSERT INTO utilizadores (username, password_hash, papel, nome) VALUES (?, ?, 'encarregado', ?)`, codigo, hashEncarregado, nome);
+      const e = await inserir('INSERT INTO encarregados (utilizador_id, nome) VALUES (?, ?)', u, nome);
+      await executar('UPDATE alunos SET encarregado_id = ? WHERE id = ?', e, alunoId);
+    }
+
     // Faltas nos últimos dias úteis (pseudo-aleatórias mas sempre iguais)
     let semente = 7;
     const aleatorio = () => (semente = (semente * 9301 + 49297) % 233280) / 233280;
@@ -356,24 +368,27 @@ module.exports = { semearSeVazia };
 // Execução direta (npm run seed): apaga a base de dados e cria tudo de novo
 if (require.main === module) {
   (async () => {
-    const { pool, CONFIG, PASTA_FOTOS, prepararBaseDeDados } = require('./db');
+    const { pool, CONFIG, PASTA_FOTOS, PASTA_JUSTIFICATIVOS, prepararBaseDeDados } = require('./db');
     const mysql = require('mysql2/promise');
     try {
       const ligacao = await mysql.createConnection({ host: CONFIG.host, port: CONFIG.port, user: CONFIG.user, password: CONFIG.password });
       // Apaga só as fotografias desta base de dados (a pasta data/fotos pode ser partilhada por outras)
       let fotos = [];
+      let justificativos = [];
       try {
         [fotos] = await ligacao.query(`SELECT fotografia FROM \`${CONFIG.database}\`.alunos WHERE fotografia IS NOT NULL`);
+        [justificativos] = await ligacao.query(`SELECT ficheiro FROM \`${CONFIG.database}\`.justificativos`);
       } catch {
-        // a base de dados ainda não existe
+        // a base de dados (ou a tabela, numa versão anterior) ainda não existe
       }
       await ligacao.query(`DROP DATABASE IF EXISTS \`${CONFIG.database}\``);
       await ligacao.end();
       for (const { fotografia } of fotos) fs.rmSync(path.join(PASTA_FOTOS, path.basename(fotografia)), { force: true });
+      for (const { ficheiro } of justificativos) fs.rmSync(path.join(PASTA_JUSTIFICATIVOS, path.basename(ficheiro)), { force: true });
       await prepararBaseDeDados();
       await semear();
       console.log(`Base de dados "${CONFIG.database}" recriada com dados de demonstração.`);
-      console.log('  1000 / admin123   ·   1001…1005 / prof123   ·   3001…3008 / func123   ·   2450…2456, 2310…2315 / aluno123');
+      console.log('  1000 / admin123   ·   1001…1005 / prof123   ·   3001…3008 / func123   ·   2450…2456, 2310…2315 / aluno123   ·   EE2450, EE2310 / ee123');
     } catch (erro) {
       console.error('Erro ao criar a base de dados:', erro.message);
       console.error('Confirme que o MySQL está ligado no painel do XAMPP.');

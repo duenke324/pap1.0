@@ -17,6 +17,7 @@ const TIPOS_MIME = {
   '.ico': 'image/x-icon',
   '.webmanifest': 'application/manifest+json',
   '.woff2': 'font/woff2',
+  '.pdf': 'application/pdf',
 };
 
 const LIMITE_CORPO = 6 * 1024 * 1024; // 6 MB (a fotografia vem em base64 no formulário)
@@ -192,6 +193,8 @@ function criarServidor({ pastaPublica, antesDaRota, paginaErro, nomeCookie = 'si
       res.redirecionar = (destino) => responder(303, { Location: destino });
       res.json = (objeto, estado = 200) =>
         responder(estado, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, JSON.stringify(objeto));
+      // Página de erro a partir de uma rota (ex.: res.erro(404) quando o registo pedido não existe)
+      res.erro = (estado) => paginaErro(req, res, estado);
       req.flash = (tipo, mensagem) => {
         (req.sessao.dados.flash ||= []).push({ tipo, mensagem });
       };

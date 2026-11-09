@@ -8,6 +8,7 @@ const { pagina, vazio, avatar, botaoImprimir } = require('../vistas/layout');
 const { etiquetaFalta } = require('./aluno');
 const { pautaDoAluno } = require('./avaliacao');
 const { registarLog } = require('../lib/auditoria');
+const { cartaoEncarregado } = require('./encarregados');
 const {
   h,
   hoje,
@@ -572,6 +573,7 @@ get('/admin/alunos/:id', async (req, res) => {
         }
       </section>
     </div>
+    ${await cartaoEncarregado(aluno.id)}
     <section class="cartao"><h2>Avaliação por módulos</h2>${await pautaDoAluno(aluno)}</section>`;
   res.html(pagina(req, { titulo: 'Ficha do aluno', ativo: 'alunos', acoes: botaoImprimir() }, conteudo));
 });
@@ -702,7 +704,9 @@ get('/admin/faltas', async (req, res) => {
 
   const faltas = await todos(
     `SELECT fa.*, a.nome AS aluno, a.numero_processo, a.fotografia, a.id AS aluno_id, t.nome AS turma,
-            d.nome AS disciplina, hr.hora_inicio, u.nome AS justificada_por_nome
+            d.nome AS disciplina, hr.hora_inicio, u.nome AS justificada_por_nome,
+            EXISTS (SELECT 1 FROM justificativo_faltas jf JOIN justificativos j ON j.id = jf.justificativo_id
+                     WHERE jf.falta_id = fa.id AND j.estado = 'pendente') AS pendente
        FROM faltas fa
        JOIN alunos a ON a.id = fa.aluno_id
        LEFT JOIN turmas t ON t.id = a.turma_id
@@ -739,7 +743,9 @@ get('/admin/faltas', async (req, res) => {
       <td>${etiquetaFalta(x)}${
         x.justificada
           ? `<small class="bloco texto-suave">${h(x.justificacao)}${x.justificada_por_nome ? ` — ${h(x.justificada_por_nome)}` : ''}${x.justificada_em ? `, ${h(formatarData(x.justificada_em))}` : ''}</small>`
-          : ''
+          : x.pendente
+            ? `<small class="bloco"><a href="/admin/justificativos">Ver o justificativo enviado</a></small>`
+            : ''
       }</td>
       <td class="direita">${
         x.justificada

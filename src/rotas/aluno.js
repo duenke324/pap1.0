@@ -21,7 +21,9 @@ const {
 // ---------- Consultas ----------
 function faltasDoAluno(alunoId) {
   return todos(
-    `SELECT f.*, d.nome AS disciplina, d.sigla, d.id AS disciplina_id, hr.hora_inicio, hr.hora_fim
+    `SELECT f.*, d.nome AS disciplina, d.sigla, d.id AS disciplina_id, hr.hora_inicio, hr.hora_fim,
+            EXISTS (SELECT 1 FROM justificativo_faltas jf JOIN justificativos j ON j.id = jf.justificativo_id
+                     WHERE jf.falta_id = f.id AND j.estado = 'pendente') AS pendente
        FROM faltas f
        JOIN horario hr ON hr.id = f.horario_id
        JOIN disciplinas d ON d.id = hr.disciplina_id
@@ -56,10 +58,12 @@ function horarioDaTurma(turmaId) {
 }
 
 // ---------- Componentes ----------
+// "pendente": o encarregado já enviou um justificativo para esta falta e aguarda validação
+// (só vem preenchido nas consultas que o calculam, como faltasDoAluno).
 function etiquetaFalta(f) {
-  return f.justificada
-    ? `<span class="etiqueta etiqueta-ok">Justificada</span>`
-    : `<span class="etiqueta etiqueta-aviso">Injustificada</span>`;
+  if (f.justificada) return `<span class="etiqueta etiqueta-ok">Justificada</span>`;
+  if (f.pendente) return `<span class="etiqueta etiqueta-forte">Pendente de validação</span>`;
+  return `<span class="etiqueta etiqueta-aviso">Injustificada</span>`;
 }
 
 function etiquetaPrazo(data) {

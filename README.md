@@ -1,7 +1,7 @@
 # Sistema de Gestão Escolar — versão beta (0.1)
 
-Plataforma web para consulta e gestão de informação escolar, com três painéis:
-**Aluno**, **Professor** e **Administrador**.
+Plataforma web para consulta e gestão de informação escolar, com painéis para o
+**Aluno**, o **Professor**, o **Encarregado de educação**, o **Funcionário** e o **Administrador**.
 
 ## Como executar
 
@@ -78,8 +78,11 @@ partir do browser — fica com ícone próprio e abre em janela própria, sem ba
 | Professor     | `1001`…`1005` (Ana, Rui, Marta, João, Pedro)                                                                     | `prof123`     |
 | Funcionário   | `3001`…`3008` (informático, auxiliar escolar, RH, biblioteca, secretaria, centro de recursos, cozinha, portaria) | `func123`     |
 | Aluno         | `2450`…`2456` (10.º), `2310`…`2315` (11.º)                                                                       | `aluno123`    |
+| Encarregado   | `EE2450` (mãe da Beatriz, 10.º) e `EE2310` (mãe do Gonçalo, 11.º)                                                | `ee123`       |
 
 Todos entram com o **número de processo** na Gestão Escolar — não há nomes de utilizador à parte.
+A exceção é o encarregado de educação, que não tem número de processo: entra com um **código** (`EE` + número de
+processo do educando), criado pela administração na ficha do aluno.
 Para entrar na app **Conversas** (que usa email, não número de processo), o email de cada conta de
 demonstração é `primeironome.ultimonome@epmontijo.edu.pt` para professores (ex.: `rui.costa@epmontijo.edu.pt`)
 e `primeironome.ultimonome.numerodeprocesso@epmontijo.edu.pt` para alunos (ex.: `beatriz.oliveira.2450@epmontijo.edu.pt`).
@@ -213,6 +216,20 @@ ano letivo, curso, turma, diretor de turma e encarregado de educação) e por ba
 - Testes e avaliações: marcar e desmarcar testes, trabalhos e apresentações (é daqui que vêm os testes que o aluno vê)
 - Horário do professor
 
+### Painel do Encarregado de Educação
+- Painel: um cartão por educando (assiduidade, total de faltas, faltas por justificar e pedidos à espera de
+  validação), o contacto do diretor de turma e os avisos da escola
+- Faltas: lista das faltas do educando; seleciona as faltas, indica o motivo e **anexa o justificativo**
+  (PDF, JPG ou PNG, até 3 MB — por exemplo, uma fotografia do atestado médico)
+- Justificativos: histórico dos pedidos enviados, com o estado (**pendente de validação**, aceite ou recusado)
+  e a resposta da escola. Um pedido recusado não fecha a falta: pode enviar outro documento
+- Um encarregado com vários educandos (irmãos) tem uma só conta e escolhe o educando num separador
+
+**Circuito da justificação**: o encarregado envia → a falta fica «Pendente de validação» (o aluno também vê) →
+o **diretor de turma** (menu «Justificativos» do professor) ou a **administração** abre o documento e aceita ou
+recusa. Ao aceitar, as faltas do pedido passam a justificadas com o motivo indicado; para recusar é obrigatório
+escrever o motivo, que o encarregado lê.
+
 ### Painel do Funcionário
 Área de consulta para o pessoal não-docente (informático, auxiliar escolar, RH, biblioteca, secretaria,
 centro de recursos, cozinha e portaria): um painel de boas-vindas com o cargo e os dados pessoais
@@ -250,6 +267,10 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
   dois numa mensagem só uma vez, para copiar e dar ao aluno. Depois de criado, o email pode ser editado
   à mão na ficha, se for preciso corrigir.
 - Faltas: filtros (estado, turma, datas, aluno), justificar várias de uma vez com um motivo, retirar justificação
+- **Justificativos**: os documentos enviados pelos encarregados de educação, de todas as turmas — abrir o ficheiro,
+  aceitar ou recusar (com motivo), e consultar os já decididos
+- **Conta do encarregado de educação** (na ficha do aluno): criar a conta (o código e a palavra-passe temporária
+  aparecem uma só vez), associar uma conta que já existe a outro aluno (irmãos), repor a palavra-passe e desassociar
 - **Assiduidade (gráficos)**: no painel principal, um gráfico de assiduidade global e um gráfico por curso
   (biblioteca **Chart.js**, incluída localmente em `public/vendor/` — não depende de internet).
   Debaixo do gráfico por curso fica sempre uma lista com os mesmos números, para a informação não depender de JavaScript.
@@ -289,10 +310,15 @@ src/
   rotas/horarios.js   Editor de horários (página e gravação)
   rotas/calendario.js Calendário escolar e avisos (administrador)
   rotas/auditoria.js  Painel do administrador (histórico de auditoria)
+  rotas/encarregado.js  Painel do encarregado de educação (faltas do educando, envio de justificativos)
+  rotas/encarregados.js Painel do administrador (contas dos encarregados, na ficha do aluno)
+  rotas/justificativos.js Validação dos justificativos (administração e diretor de turma) e acesso ao ficheiro
+  lib/justificativos.js Guarda os ficheiros, lê os pedidos e aplica a decisão de aceitar/recusar
 database/escola.sql   Esquema da base de dados MySQL (todas as tabelas)
 public/               CSS, JavaScript do browser (incl. editor-horario.js e ata.js, o ditado ao microfone) e ícone
 public/vendor/        Bibliotecas de terceiros incluídas localmente (Chart.js, para os gráficos de assiduidade)
 data/fotos/           Fotografias dos alunos (a BD guarda o nome do ficheiro)
+data/justificativos/  Justificativos enviados pelos encarregados (a BD guarda o nome do ficheiro)
 scripts/build-mac.sh  Gera o GestaoEscolar.app (npm run build:mac)
 teams/                App separada "Conversas" (npm run conversas) — visual e servidor próprios,
                       mesma base de dados (usa src/db.js e src/lib/util.js da Gestão Escolar)
@@ -310,6 +336,8 @@ Tudo o que é criado ou alterado na plataforma fica guardado nestas tabelas:
 `professor_disciplinas` · `tempos` (tempos letivos do dia) ·
 `horario` (cada linha é um tempo letivo semanal: turma, disciplina, professor, dia, horas, sala, ativo) ·
 `faltas` (aluno, aula do horário, data, tipo, justificação, quem registou e quem justificou) · `testes` ·
+`encarregados` (encarregados de educação com conta; a ligação ao educando está em `alunos.encarregado_id`) ·
+`justificativos` (motivo, ficheiro, estado, quem enviou e quem decidiu) e `justificativo_faltas` (as faltas de cada pedido) ·
 `modulos` (módulos de cada disciplina) · `licoes` (aulas dadas: aula do horário, data, módulo e sumário) ·
 `notas` (classificação de cada aluno em cada módulo: nota 0–20, NC ou EF) ·
 `calendario` (períodos e interrupções letivas) · `avisos` (para todos ou para uma turma) ·
@@ -332,6 +360,9 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - Todo o texto é escapado antes de ir para o HTML (proteção contra XSS)
 - Verificação da origem dos pedidos POST (proteção básica contra CSRF)
 - Fotografias validadas (tipo e assinatura do ficheiro) e servidas apenas a utilizadores autenticados
+- Justificativos: só PDF, JPG e PNG até 3 MB, confirmados pelos primeiros bytes do ficheiro (não pelo nome nem pelo
+  tipo que o browser indica) e guardados com um nome aleatório. O ficheiro só é servido à administração, ao
+  encarregado do aluno e ao diretor de turma do aluno; o encarregado só vê as faltas e as fotografias dos seus educandos
 - Sempre que o administrador cria uma conta (ou redefine a palavra-passe de um professor/aluno),
   a pessoa é obrigada a escolher uma palavra-passe nova em `/definir-password` antes de aceder ao resto da aplicação —
   e essa palavra-passe nova tem de ser diferente da que lhe foi atribuída (não pode "voltar atrás")
@@ -346,8 +377,11 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - Não há recuperação de palavra-passe (esqueci-me da palavra-passe); só o administrador a pode redefinir
 - Fora do primeiro acesso forçado, não há alteração voluntária da palavra-passe pelo próprio utilizador
 - Sem HTTPS — para uso real deve ficar atrás de um servidor com HTTPS (ex.: nginx, Caddy)
-- Ainda não existe o estado "Pendente de Validação" nas faltas — o cartão "Novidades nas suas turmas" mostra
-  as novas faltas por justificar no seu lugar (as ocorrências com gravidade já existem)
+- O encarregado de educação não recebe notificações (email ou SMS): tem de entrar na aplicação para ver as faltas
+  e a resposta aos justificativos
+- Apagar um aluno não apaga a conta do encarregado; essa conta fica sem educandos até ser associada a outro aluno
+- Uma base de dados criada antes do papel Encarregado não tem as contas de demonstração `EE2450`/`EE2310`: crie a
+  conta na ficha do aluno, ou use `npm run seed`
 - Uma base de dados criada antes do papel Funcionário não tem as contas de demonstração 3001…3008: o arranque só
   preenche dados numa base vazia. `npm run seed` recria tudo com os dados de demonstração (e apaga os atuais)
 

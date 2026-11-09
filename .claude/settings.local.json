@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(lsof -nP -iTCP:3000 -iTCP:3100 -iTCP:3200 -sTCP:LISTEN)",
+      "Bash(sed -n 1,60p \"/Users/duenke/Desktop/Claude-mem/Cerevbro/Instrucoes.md\")",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)",
+      "Bash(python3 /tmp/refaz_layout.py)",
+      "Bash(rm /tmp/refaz_layout.py)",
+      "Bash(/opt/homebrew/bin/node --check src/vistas/layout.js)",
+      "Bash(/opt/homebrew/bin/node --check src/rotas/admin.js)"
     ]
   }
 }

@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS utilizadores (
   id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   username                VARCHAR(50)  NOT NULL UNIQUE,
   password_hash           VARCHAR(200) NOT NULL,
-  papel                   ENUM('aluno', 'professor', 'admin', 'funcionario') NOT NULL,
+  papel                   ENUM('aluno', 'professor', 'admin', 'funcionario', 'encarregado') NOT NULL,
   nome                    VARCHAR(120) NOT NULL,
   deve_redefinir_password TINYINT(1)   NOT NULL DEFAULT 0,
   criado_em               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -66,6 +66,22 @@ CREATE TABLE IF NOT EXISTS funcionarios (
   CONSTRAINT fk_funcionario_utilizador FOREIGN KEY (utilizador_id) REFERENCES utilizadores(id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
+-- Encarregados de educação com conta de acesso. Entram com um código próprio (ex.: "EE2450"),
+-- criado pela administração na ficha do aluno. Um encarregado pode ter vários educandos
+-- (irmãos): a ligação está em alunos.encarregado_id.
+CREATE TABLE IF NOT EXISTS encarregados (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  utilizador_id INT UNSIGNED NOT NULL UNIQUE,
+  nome          VARCHAR(120) NOT NULL,
+  email         VARCHAR(120),
+  contacto      VARCHAR(20),
+  criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_encarregado_utilizador FOREIGN KEY (utilizador_id) REFERENCES utilizadores(id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+-- encarregado_nome: nome escrito na ficha (existe sempre). encarregado_id: só quando o
+-- encarregado tem conta de acesso (a chave estrangeira é criada em db.js, para também
+-- chegar às bases de dados criadas antes de existir esta coluna).
 CREATE TABLE IF NOT EXISTS alunos (
   id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   utilizador_id    INT UNSIGNED UNIQUE,
@@ -75,6 +91,7 @@ CREATE TABLE IF NOT EXISTS alunos (
   data_nascimento  DATE,
   contacto         VARCHAR(20),
   encarregado_nome VARCHAR(120),
+  encarregado_id   INT UNSIGNED,
   fotografia       VARCHAR(100),
   email            VARCHAR(120),
   criado_em        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -213,6 +230,34 @@ CREATE TABLE IF NOT EXISTS faltas (
   CONSTRAINT fk_falta_horario     FOREIGN KEY (horario_id)      REFERENCES horario(id)      ON DELETE CASCADE,
   CONSTRAINT fk_falta_justificou  FOREIGN KEY (justificada_por) REFERENCES utilizadores(id) ON DELETE SET NULL,
   CONSTRAINT fk_falta_registou    FOREIGN KEY (registada_por)   REFERENCES utilizadores(id) ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+-- Justificativos enviados pelo encarregado de educação: um motivo e um ficheiro (PDF ou imagem,
+-- guardado em data/justificativos) para uma ou mais faltas do educando. Ficam "pendente" até o
+-- diretor de turma ou a administração aceitar (as faltas passam a justificadas) ou recusar.
+CREATE TABLE IF NOT EXISTS justificativos (
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  aluno_id     INT UNSIGNED NOT NULL,
+  enviado_por  INT UNSIGNED,
+  motivo       VARCHAR(200) NOT NULL,
+  ficheiro     VARCHAR(100) NOT NULL,
+  estado       ENUM('pendente', 'aceite', 'recusado') NOT NULL DEFAULT 'pendente',
+  resposta     VARCHAR(200),
+  decidido_por INT UNSIGNED,
+  decidido_em  DATETIME,
+  criado_em    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_justificativos_estado (estado, criado_em),
+  CONSTRAINT fk_justificativo_aluno   FOREIGN KEY (aluno_id)     REFERENCES alunos(id)       ON DELETE CASCADE,
+  CONSTRAINT fk_justificativo_enviou  FOREIGN KEY (enviado_por)  REFERENCES utilizadores(id) ON DELETE SET NULL,
+  CONSTRAINT fk_justificativo_decidiu FOREIGN KEY (decidido_por) REFERENCES utilizadores(id) ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS justificativo_faltas (
+  justificativo_id INT UNSIGNED NOT NULL,
+  falta_id         INT UNSIGNED NOT NULL,
+  PRIMARY KEY (justificativo_id, falta_id),
+  CONSTRAINT fk_jf_justificativo FOREIGN KEY (justificativo_id) REFERENCES justificativos(id) ON DELETE CASCADE,
+  CONSTRAINT fk_jf_falta         FOREIGN KEY (falta_id)         REFERENCES faltas(id)         ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
 -- Ocorrências disciplinares dos alunos, com gravidade. Registadas por qualquer professor que lecione

@@ -15,6 +15,7 @@ const MENUS = {
   professor: [
     { href: '/professor/turmas', chave: 'turmas', texto: 'As minhas turmas' },
     { href: '/professor/aula', chave: 'aula', texto: 'Dar aula' },
+    { href: '/professor/justificativos', chave: 'justificativos', texto: 'Justificativos' },
     { href: '/professor/avaliacao', chave: 'avaliacao', texto: 'Avaliação' },
     { href: '/professor/testes', chave: 'testes', texto: 'Testes e avaliações' },
     { href: '/professor/horario', chave: 'horario', texto: 'Horário' },
@@ -28,6 +29,7 @@ const MENUS = {
     { href: '/admin/horarios', chave: 'horarios', texto: 'Horários' },
     { href: '/admin/calendario', chave: 'calendario', texto: 'Calendário e avisos' },
     { href: '/admin/faltas', chave: 'faltas', texto: 'Faltas' },
+    { href: '/admin/justificativos', chave: 'justificativos', texto: 'Justificativos' },
     { href: '/admin/funcionarios', chave: 'funcionarios', texto: 'Funcionários' },
     { href: '/admin/auditoria', chave: 'auditoria', texto: 'Auditoria' },
   ],
@@ -35,9 +37,20 @@ const MENUS = {
     { href: '/funcionario', chave: 'inicio', texto: 'Painel' },
     { href: '/funcionario/dados', chave: 'dados', texto: 'Dados pessoais' },
   ],
+  encarregado: [
+    { href: '/encarregado', chave: 'inicio', texto: 'Painel' },
+    { href: '/encarregado/faltas', chave: 'faltas', texto: 'Faltas' },
+    { href: '/encarregado/justificativos', chave: 'justificativos', texto: 'Justificativos' },
+  ],
 };
 
-const NOMES_PAPEL = { aluno: 'Aluno', professor: 'Professor', admin: 'Administrador', funcionario: 'Funcionário' };
+const NOMES_PAPEL = {
+  aluno: 'Aluno',
+  professor: 'Professor',
+  admin: 'Administrador',
+  funcionario: 'Funcionário',
+  encarregado: 'Encarregado de educação',
+};
 
 // O funcionário mostra o cargo (ex.: "Biblioteca") em vez do rótulo genérico "Funcionário"
 function rotuloPapel(req) {

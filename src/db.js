@@ -17,7 +17,11 @@ const PASTA_DADOS = path.join(pastaBase(), 'data');
 const PASTA_FOTOS = path.join(PASTA_DADOS, 'fotos');
 const FICHEIRO_ESQUEMA = path.join(pastaBase(), 'database', 'escola.sql');
 
+// Justificativos de faltas enviados pelos encarregados de educação (PDF ou imagem)
+const PASTA_JUSTIFICATIVOS = path.join(PASTA_DADOS, 'justificativos');
+
 fs.mkdirSync(PASTA_FOTOS, { recursive: true });
+fs.mkdirSync(PASTA_JUSTIFICATIVOS, { recursive: true });
 
 const pool = mysql.createPool({
   ...CONFIG,
@@ -69,8 +73,11 @@ async function migrar(ligacao) {
     `SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'utilizadores' AND COLUMN_NAME = 'papel'`,
     [CONFIG.database]
   );
-  if (!tipoPapel.includes('funcionario')) {
-    await ligacao.query(`ALTER TABLE utilizadores MODIFY COLUMN papel ENUM('aluno', 'professor', 'admin', 'funcionario') NOT NULL`);
+  // (o mesmo para o papel "encarregado", que veio depois)
+  if (!tipoPapel.includes('funcionario') || !tipoPapel.includes('encarregado')) {
+    await ligacao.query(
+      `ALTER TABLE utilizadores MODIFY COLUMN papel ENUM('aluno', 'professor', 'admin', 'funcionario', 'encarregado') NOT NULL`
+    );
   }
   if (!(await existeColuna('alunos', 'email'))) {
     await ligacao.query('ALTER TABLE alunos ADD COLUMN email VARCHAR(120) AFTER fotografia');
@@ -168,6 +175,16 @@ async function migrar(ligacao) {
     await ligacao.query('ALTER TABLE reunioes_turma ADD CONSTRAINT fk_reuniao_ata FOREIGN KEY (ata_por) REFERENCES utilizadores(id) ON DELETE SET NULL');
   }
 
+  // Conta de acesso do encarregado de educação, ligada ao(s) educando(s)
+  if (!(await existeColuna('alunos', 'encarregado_id'))) {
+    await ligacao.query('ALTER TABLE alunos ADD COLUMN encarregado_id INT UNSIGNED AFTER encarregado_nome');
+  }
+  if (!(await existeConstraint('alunos', 'fk_aluno_encarregado'))) {
+    await ligacao.query(
+      'ALTER TABLE alunos ADD CONSTRAINT fk_aluno_encarregado FOREIGN KEY (encarregado_id) REFERENCES encarregados(id) ON DELETE SET NULL'
+    );
+  }
+
   // Na primeira vez, deduz as disciplinas de cada professor a partir do horário existente
   const [[{ n }]] = await ligacao.query('SELECT COUNT(*) AS n FROM professor_disciplinas');
   if (n === 0) {
@@ -214,4 +231,4 @@ async function transacao(fn) {
   }
 }
 
-module.exports = { pool, todos, um, executar, transacao, prepararBaseDeDados, CONFIG, PASTA_DADOS, PASTA_FOTOS };
+module.exports = { pool, todos, um, executar, transacao, prepararBaseDeDados, CONFIG, PASTA_DADOS, PASTA_FOTOS, PASTA_JUSTIFICATIVOS };

@@ -9,14 +9,20 @@ const { semearSeVazia } = require('./seed');
 
 const PORTA = Number(process.env.PORT) || 3000;
 const PASTA_PUBLICA = path.join(pastaBase(), 'public');
-const PAGINA_INICIAL = { aluno: '/aluno', professor: '/professor/turmas', admin: '/admin', funcionario: '/funcionario' };
+const PAGINA_INICIAL = {
+  aluno: '/aluno',
+  professor: '/professor/turmas',
+  admin: '/admin',
+  funcionario: '/funcionario',
+  encarregado: '/encarregado',
+};
 
 // ---------- Páginas de erro ----------
 const MENSAGENS_ERRO = {
   400: 'O endereço ou o pedido não é válido.',
   403: 'Não tem permissão para aceder a esta página.',
   404: 'A página que procura não existe.',
-  413: 'O pedido é demasiado grande (a fotografia pode ser demasiado pesada).',
+  413: 'O pedido é demasiado grande (a fotografia ou o justificativo pode ser demasiado pesado).',
   500: 'Ocorreu um erro inesperado. Tente novamente.',
 };
 
@@ -63,7 +69,7 @@ async function antesDaRota(req, res) {
   }
 
   const area = req.caminho.split('/')[1];
-  if (['aluno', 'professor', 'admin', 'funcionario'].includes(area) && req.utilizador.papel !== area) {
+  if (['aluno', 'professor', 'admin', 'funcionario', 'encarregado'].includes(area) && req.utilizador.papel !== area) {
     paginaErro(req, res, 403);
     return false;
   }
@@ -82,6 +88,8 @@ async function antesDaRota(req, res) {
     req.professor = await um('SELECT * FROM professores WHERE utilizador_id = ?', req.utilizador.id);
   } else if (req.utilizador?.papel === 'funcionario') {
     req.funcionario = await um('SELECT * FROM funcionarios WHERE utilizador_id = ?', req.utilizador.id);
+  } else if (req.utilizador?.papel === 'encarregado') {
+    req.encarregado = await um('SELECT * FROM encarregados WHERE utilizador_id = ?', req.utilizador.id);
   }
   return true;
 }
@@ -96,11 +104,11 @@ function paginaLogin(req, { username = '', erro = '' } = {}) {
           ${LOGO}
           <div><strong>Gestão Escolar</strong><small>Faltas, sumários e avaliação</small></div>
         </div>
-        <p class="texto-suave">Indique o seu número de processo e a palavra-passe para entrar.</p>
+        <p class="texto-suave">Indique o seu número de processo e a palavra-passe para entrar. Os encarregados de educação entram com o código que a escola lhes deu (ex.: EE2450).</p>
         ${mensagensFlash(req.lerFlash())}
         ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
         <form method="post" action="/login" class="formulario">
-          <label>Número de processo
+          <label>Número de processo ou código
             <input name="username" value="${h(username)}" autocomplete="username" required autofocus>
           </label>
           <label>Palavra-passe
@@ -214,10 +222,14 @@ get('/offline.html', (req, res) => {
 });
 
 // Fotografias dos alunos: só utilizadores autenticados.
-// Um aluno só pode ver a sua própria fotografia.
-get('/fotos/:ficheiro', (req, res) => {
+// Um aluno só pode ver a sua própria fotografia; um encarregado, só as dos seus educandos.
+get('/fotos/:ficheiro', async (req, res) => {
   const ficheiro = path.basename(req.params.ficheiro);
   if (req.utilizador.papel === 'aluno' && req.aluno?.fotografia !== ficheiro) return paginaErro(req, res, 403);
+  if (req.utilizador.papel === 'encarregado') {
+    const educando = await um('SELECT 1 FROM alunos WHERE encarregado_id = ? AND fotografia = ?', req.encarregado?.id ?? 0, ficheiro);
+    if (!educando) return paginaErro(req, res, 403);
+  }
   if (!enviarFicheiro(res, PASTA_FOTOS, ficheiro, 300)) paginaErro(req, res, 404);
 });
 
@@ -234,6 +246,9 @@ require('./rotas/funcionarios');
 require('./rotas/horarios');
 require('./rotas/calendario');
 require('./rotas/auditoria');
+require('./rotas/encarregado');
+require('./rotas/encarregados');
+require('./rotas/justificativos');
 
 // ---------- Arranque ----------
 async function iniciar() {

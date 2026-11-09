@@ -4,7 +4,7 @@ const { todos, um } = require('../db');
 const { pagina, vazio } = require('../vistas/layout');
 const { h, formatarDataLonga } = require('../lib/util');
 
-const NOMES_ENTIDADE = { turma: 'Turma', professor: 'Professor', funcionario: 'Funcionário', aluno: 'Aluno', disciplina: 'Disciplina' };
+const NOMES_ENTIDADE = { turma: 'Turma', professor: 'Professor', funcionario: 'Funcionário', aluno: 'Aluno', disciplina: 'Disciplina', encarregado: 'Encarregado' };
 const NOMES_ACAO = { criar: 'Criou', editar: 'Editou', apagar: 'Apagou' };
 const ETIQUETA_ACAO = { criar: 'etiqueta-ok', editar: 'etiqueta-aviso', apagar: 'etiqueta-perigo' };
 
