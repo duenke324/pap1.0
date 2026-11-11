@@ -71,6 +71,45 @@ const ICONES = {
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   imprimir: '<path d="M8 9V4h8v5"/><rect x="5" y="9" width="14" height="7" rx="1"/><path d="M8 16v4h8v-4"/>',
   microfone: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
+  // Ícones do menu lateral (um por entrada; ver ICONE_MENU)
+  casa: '<path d="M4 11.5 12 5l8 6.5"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/>',
+  pessoas: '<circle cx="9" cy="9" r="3.2"/><circle cx="16.5" cy="10.3" r="2.6"/><path d="M3.3 19c.5-3.2 2.8-5 5.7-5s5.2 1.8 5.7 5"/><path d="M15.3 14.4c2 .3 3.5 1.8 3.9 4.6"/>',
+  pessoa: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.6-4 3.4-6 7-6s6.4 2 7 6"/>',
+  livro: '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/><path d="M9 7h6"/>',
+  calendario: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  relogio: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
+  visto: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  ficheiro: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+  quadro: '<rect x="3.5" y="4" width="17" height="11" rx="1.5"/><path d="M12 15v3M8 21l4-3 4 3"/>',
+  estrela: '<path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.4l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z"/>',
+  lapis: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  grafico: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/>',
+  cartao: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M5.8 16c.4-1.4 1.5-2.2 2.7-2.2s2.3.8 2.7 2.2M14 10h4M14 13h3"/>',
+  texto: '<path d="M5 6h14M5 10h14M5 14h9M5 18h6"/>',
+  lista: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/>',
+  maleta: '<rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M9 7V5h6v2M3.5 12h17"/>',
+};
+
+// Ícone de cada entrada do menu lateral, pela sua chave (ver MENUS)
+const ICONE_MENU = {
+  inicio: 'casa',
+  turmas: 'pessoas',
+  alunos: 'pessoa',
+  professores: 'maleta',
+  disciplinas: 'livro',
+  horarios: 'relogio',
+  horario: 'relogio',
+  calendario: 'calendario',
+  faltas: 'visto',
+  justificativos: 'ficheiro',
+  funcionarios: 'pessoas',
+  auditoria: 'lista',
+  aula: 'quadro',
+  avaliacao: 'estrela',
+  testes: 'lapis',
+  estatisticas: 'grafico',
+  dados: 'cartao',
+  sumarios: 'texto',
 };
 
 function icone(nome) {
@@ -114,7 +153,8 @@ function estatico(ficheiro) {
   return `/static/${ficheiro}?v=${versao}`;
 }
 
-function documento(titulo, corpo, classeBody = '') {
+// estilosExtra: folhas de estilo de public/ carregadas depois de estilo.css (ex.: ['painel.css'])
+function documento(titulo, corpo, classeBody = '', estilosExtra = []) {
   return `<!doctype html>
 <html lang="pt-PT">
 <head>
@@ -131,6 +171,7 @@ function documento(titulo, corpo, classeBody = '') {
   <link rel="preload" href="/static/vendor/fontes/plex-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/vendor/fontes/newsreader.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="${estatico('estilo.css')}">
+  ${estilosExtra.map((f) => `<link rel="stylesheet" href="${estatico(f)}">`).join('\n  ')}
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="${estatico('favicon.svg')}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
@@ -190,19 +231,17 @@ function identificacaoAluno(a) {
   </section>`;
 }
 
-// Página depois do login: igual para todos os papéis. Cada entrada do índice tem um número, que
-// aparece também na margem da folha ("N.º 03"), como as folhas numeradas de uma caderneta.
+// Página depois do login: igual para todos os papéis da escola. Menu lateral escuro com a escola
+// e as secções, barra no topo com a data e a conta, e o conteúdo em cartões (estilos em painel.css).
 function pagina(req, opcoes, conteudo) {
   const { titulo, ativo, subtitulo = '', acoes = '' } = opcoes;
   const u = req.utilizador;
-  const numero = (i) => String(i + 1).padStart(2, '0');
   const indice = MENUS[u.papel]
     .map(
-      (item, i) =>
-        `<a href="${item.href}" class="${item.chave === ativo ? 'ativo' : ''}"${item.chave === ativo ? ' aria-current="page"' : ''}><span class="menu-num">${numero(i)}</span><span>${h(item.texto)}</span></a>`
+      (item) =>
+        `<a href="${item.href}" class="${item.chave === ativo ? 'ativo' : ''}"${item.chave === ativo ? ' aria-current="page"' : ''}>${icone(ICONE_MENU[item.chave] || 'lista')}<span>${h(item.texto)}</span></a>`
     )
     .join('');
-  const posicao = MENUS[u.papel].findIndex((item) => item.chave === ativo);
   const dataTexto = new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
   const hojeTexto = dataTexto.charAt(0).toUpperCase() + dataTexto.slice(1);
   const aluno = u.papel === 'aluno' ? req.aluno || { nome: u.nome } : null;
@@ -211,27 +250,27 @@ function pagina(req, opcoes, conteudo) {
     titulo,
     `
 <a href="#conteudo-principal" class="ligacao-saltar">Saltar para o conteúdo</a>
-<div class="caderneta">
-  <header class="cabecalho">
-    <a class="marca" href="/">${LOGO}<strong>${h(escolaAtual().nome)}</strong></a>
-    <p class="cabecalho-ano">Ano letivo ${h(aluno?.ano_letivo || anoLetivoAtual())}</p>
-    <div class="utilizador">
-      <div class="utilizador-info"><strong>${h(u.nome)}</strong><small>${h(rotuloPapel(req))}</small></div>
-      ${botaoTema()}
-      <form method="post" action="/logout"><button class="botao-icone" title="Terminar sessão" aria-label="Terminar sessão">${icone('sair')}</button></form>
-      <button class="botao-icone so-movel" data-alternar-menu aria-controls="lateral" aria-expanded="false" aria-label="Abrir menu">${icone('menu')}</button>
+<div class="app">
+  <aside class="lateral" id="lateral">
+    <a class="marca lateral-marca" href="/">${LOGO}<span><strong>${h(escolaAtual().nome)}</strong><small>Ano letivo ${h(aluno?.ano_letivo || anoLetivoAtual())}</small></span></a>
+    <nav class="menu" aria-label="Menu principal">${indice}</nav>
+    <div class="lateral-conta">
+      <span class="lateral-iniciais" aria-hidden="true">${h(iniciais(u.nome))}</span>
+      <span><strong>${h(u.nome)}</strong><small>${h(rotuloPapel(req))}</small></span>
     </div>
-  </header>
-  <nav class="menu" id="lateral" aria-label="Menu principal">${indice}</nav>
-  ${aluno ? identificacaoAluno(aluno) : ''}
-  <div class="folha">
-    <aside class="margem">
-      <div class="margem-folio">
-        ${posicao >= 0 ? `<p class="margem-numero"><small>N.º</small><strong>${numero(posicao)}</strong></p>` : ''}
-        <p class="margem-data">${h(hojeTexto)}</p>
+  </aside>
+  <div class="area">
+    <header class="barra-topo">
+      <button class="botao-icone so-movel" data-alternar-menu aria-controls="lateral" aria-expanded="false" aria-label="Abrir menu">${icone('menu')}</button>
+      <p class="barra-data">${h(hojeTexto)}</p>
+      <div class="utilizador">
+        <div class="utilizador-info"><strong>${h(u.nome)}</strong><small>${h(rotuloPapel(req))}</small></div>
+        ${botaoTema()}
+        <form method="post" action="/logout"><button class="botao-icone" title="Terminar sessão" aria-label="Terminar sessão">${icone('sair')}</button></form>
       </div>
-    </aside>
+    </header>
     <main class="conteudo" id="conteudo-principal" tabindex="-1">
+      ${aluno ? identificacaoAluno(aluno) : ''}
       <header class="topo">
         <div>
           <h1>${h(titulo)}</h1>
@@ -243,7 +282,9 @@ function pagina(req, opcoes, conteudo) {
       ${conteudo}
     </main>
   </div>
-</div>`
+</div>`,
+    'app-escola',
+    ['painel.css']
   );
 }
 

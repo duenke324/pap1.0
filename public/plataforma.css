@@ -1,0 +1,264 @@
+/* =====================================================================
+   Painel da plataforma (o gestor das escolas)
+   Propositadamente diferente dos painéis das escolas: uma consola escura,
+   azul-noite com acento âmbar, barra de navegação em cima (sem menu lateral),
+   escolas em cartões e números grandes. Fica sempre escura, seja qual for o
+   tema do sistema, para nunca se confundir com o painel de uma escola.
+   Só se aplica a <body class="plataforma"> (ver src/rotas/plataforma.js).
+   ===================================================================== */
+
+.plataforma {
+  color-scheme: dark;
+  --pf-fundo: #0a0f1d;
+  --pf-fundo-2: #0e1527;
+  --pf-cartao: #121a2e;
+  --pf-cartao-2: #18223b;
+  --pf-linha: #222e4a;
+  --pf-linha-forte: #34446a;
+  --pf-texto: #e7eaf3;
+  --pf-suave: #8f9ab4;
+  --pf-acento: #f4b740;
+  --pf-acento-forte: #ffcb63;
+  --pf-acento-texto: #1c1406;
+  --pf-azul: #7c8cff;
+  --pf-ok: #5fd39a;
+  --pf-aviso: #f4b740;
+  --pf-perigo: #ff7b72;
+  --pf-raio: 14px;
+  --pf-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* tons usados pelos componentes de estilo.css (mensagens, etc.) */
+  --papel: var(--pf-cartao); --tinta: var(--pf-texto); --tinta-suave: var(--pf-suave);
+  --linha: var(--pf-linha); --linha-forte: var(--pf-linha-forte); --superficie-2: var(--pf-cartao-2);
+  --acento: var(--pf-acento); --ok: var(--pf-ok); --aviso: var(--pf-aviso); --perigo: var(--pf-perigo);
+  --aviso-fundo: #3a2e14;
+  min-height: 100vh;
+  color: var(--pf-texto);
+  font: 15px/1.55 var(--letra);
+  background:
+    radial-gradient(1100px 520px at 85% -10%, rgba(124, 140, 255, .16), transparent 60%),
+    radial-gradient(900px 480px at -5% 10%, rgba(244, 183, 64, .09), transparent 60%),
+    var(--pf-fundo);
+  background-attachment: fixed;
+}
+.plataforma a { color: var(--pf-acento); }
+.plataforma code { font: 500 .85em var(--pf-mono); color: var(--pf-azul); }
+.plataforma ::selection { background: var(--pf-acento); color: var(--pf-acento-texto); }
+.plataforma :focus-visible { outline: 2px solid var(--pf-acento); outline-offset: 2px; }
+.pf-icone { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.pf-suave { color: var(--pf-suave); }
+.pf-pequeno { font-size: .82rem; }
+.pf-direita { text-align: right; }
+
+/* ----- Barra de navegação ----- */
+.pf-topo {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 2rem;
+  padding: .85rem 2rem; background: rgba(10, 15, 29, .82); border-bottom: 1px solid var(--pf-linha);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.pf-marca { display: flex; align-items: center; gap: .7rem; color: var(--pf-texto); }
+.pf-marca:hover { text-decoration: none; }
+.pf-marca .logo {
+  width: 40px; height: 40px; padding: 7px; border-radius: 11px; stroke: var(--pf-acento-texto);
+  background: linear-gradient(135deg, var(--pf-acento-forte), var(--pf-acento));
+}
+.pf-marca strong { display: block; font: 700 1.05rem/1.2 var(--letra); letter-spacing: .01em; }
+.pf-marca small { display: block; color: var(--pf-suave); font: 500 .68rem var(--pf-mono); letter-spacing: .08em; text-transform: uppercase; }
+.pf-nav { display: flex; gap: .3rem; }
+.pf-nav a {
+  display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .85rem; border-radius: 999px;
+  color: var(--pf-suave); font-size: .9rem; font-weight: 600;
+}
+.pf-nav a:hover { color: var(--pf-texto); background: var(--pf-cartao); text-decoration: none; }
+.pf-nav a.ativo { color: var(--pf-acento-texto); background: var(--pf-acento); }
+.pf-conta { display: flex; align-items: center; gap: .7rem; margin-left: auto; }
+.pf-conta form { margin: 0; }
+.pf-iniciais {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--pf-cartao-2); border: 1px solid var(--pf-linha-forte); color: var(--pf-acento); font-weight: 700; font-size: .78rem;
+}
+.pf-conta-nome { line-height: 1.25; }
+.pf-conta-nome strong { display: block; font-size: .86rem; }
+.pf-conta-nome small { color: var(--pf-suave); font-size: .74rem; }
+.pf-sair {
+  display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--pf-linha); border-radius: 10px;
+  background: transparent; color: var(--pf-suave); cursor: pointer;
+}
+.pf-sair:hover { color: var(--pf-texto); border-color: var(--pf-linha-forte); background: var(--pf-cartao); }
+
+/* ----- Conteúdo ----- */
+.pf-conteudo { width: 100%; max-width: 1380px; margin: 0 auto; padding: 2rem 2rem 4rem; }
+.pf-conteudo:focus { outline: 0; }
+.pf-cabeca { display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
+.pf-cabeca h1 { margin: .2rem 0 .35rem; font: 700 2.4rem/1.1 var(--letra); letter-spacing: -.025em; }
+.pf-cabeca p { margin: 0; }
+.pf-cabeca form { margin: 0; }
+.pf-sobre { color: var(--pf-acento); font: 600 .76rem var(--pf-mono); letter-spacing: .08em; text-transform: uppercase; }
+.pf-voltar { display: inline-flex; align-items: center; gap: .35rem; margin-bottom: 1rem; color: var(--pf-suave); font-size: .88rem; font-weight: 600; }
+.pf-voltar:hover { color: var(--pf-texto); text-decoration: none; }
+.pf-estreito { max-width: 560px; margin: 2rem auto; }
+
+/* ----- Números grandes ----- */
+.pf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 1.8rem; }
+.pf-kpi {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; gap: .1rem;
+  padding: 1.1rem 1.25rem; border: 1px solid var(--pf-linha); border-radius: var(--pf-raio);
+  background: linear-gradient(180deg, var(--pf-cartao-2), var(--pf-cartao));
+}
+.pf-kpi::after { content: ""; position: absolute; inset: 0 auto auto 0; width: 100%; height: 2px; background: linear-gradient(90deg, var(--pf-acento), transparent 70%); }
+.pf-kpi span { color: var(--pf-suave); font: 600 .72rem var(--pf-mono); letter-spacing: .08em; text-transform: uppercase; }
+.pf-kpi strong { font: 700 2.4rem/1.1 var(--letra); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.pf-kpi small { color: var(--pf-suave); font-size: .8rem; }
+
+/* ----- Grelha: escolas à esquerda, formulários à direita ----- */
+.pf-grelha { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 1.6rem; align-items: start; }
+.pf-escolas { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.1rem; }
+.pf-lado { position: sticky; top: 5.2rem; display: flex; flex-direction: column; gap: 1.1rem; }
+
+.pf-cartao {
+  padding: 1.25rem 1.35rem; border: 1px solid var(--pf-linha); border-radius: var(--pf-raio); background: var(--pf-cartao);
+}
+.pf-cartao h2 { display: flex; align-items: center; gap: .55rem; margin: 0 0 .5rem; font: 700 1.05rem var(--letra); }
+.pf-cartao h2 .pf-icone { color: var(--pf-acento); }
+.pf-cartao > p { margin: 0 0 1rem; font-size: .88rem; }
+.pf-cartao-destaque { border-color: color-mix(in srgb, var(--pf-acento) 45%, var(--pf-linha)); box-shadow: 0 0 0 1px rgba(244, 183, 64, .08), 0 20px 50px -30px rgba(244, 183, 64, .45); }
+.pf-cartao-alerta { border-color: var(--pf-acento); }
+
+/* Uma escola */
+.pf-escola {
+  display: flex; flex-direction: column; gap: .9rem; padding: 1.2rem 1.25rem;
+  border: 1px solid var(--pf-linha); border-radius: var(--pf-raio); background: var(--pf-cartao);
+  transition: border-color .15s ease, transform .15s ease;
+}
+.pf-escola:hover { border-color: var(--pf-linha-forte); }
+.pf-escola.inativa { opacity: .62; }
+.pf-escola-topo { display: flex; align-items: flex-start; gap: .85rem; }
+.pf-escola-sigla {
+  display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(124, 140, 255, .35), rgba(124, 140, 255, .12));
+  border: 1px solid rgba(124, 140, 255, .35); color: #dfe3ff; font-weight: 700;
+}
+.pf-escola-nome { flex: 1; min-width: 0; }
+.pf-escola-nome h3 { margin: 0 0 .15rem; font: 700 1.02rem/1.3 var(--letra); }
+.pf-escola-nome p { margin: 0; color: var(--pf-suave); font-size: .82rem; word-break: break-word; }
+.pf-escola-nome a { color: var(--pf-suave); }
+.pf-escola-nome a:hover { color: var(--pf-acento); }
+.pf-numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: 0; }
+.pf-numeros div { padding: .55rem .7rem; border-radius: 10px; background: var(--pf-fundo-2); border: 1px solid var(--pf-linha); }
+.pf-numeros dt { color: var(--pf-suave); font: 600 .66rem var(--pf-mono); letter-spacing: .06em; text-transform: uppercase; }
+.pf-numeros dd { margin: 0; font: 700 1.35rem/1.25 var(--letra); font-variant-numeric: tabular-nums; }
+.pf-escola > .pf-pequeno { margin: 0; }
+.pf-escola-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.pf-escola-acoes form { margin: 0; }
+.pf-escola-acoes form:last-child { margin-left: auto; }
+.pf-editar { border-top: 1px dashed var(--pf-linha); padding-top: .7rem; }
+.pf-editar summary { cursor: pointer; color: var(--pf-suave); font-size: .84rem; font-weight: 600; }
+.pf-editar summary:hover { color: var(--pf-texto); }
+.pf-editar[open] summary { margin-bottom: .8rem; }
+.pf-editar .pf-pequeno { margin: .6rem 0 0; }
+
+/* ----- Estados ----- */
+.pf-estado {
+  display: inline-flex; align-items: center; gap: .35rem; padding: .12rem .6rem; border-radius: 999px; white-space: nowrap;
+  border: 1px solid var(--pf-linha-forte); color: var(--pf-suave); font: 600 .72rem/1.5 var(--letra);
+}
+.pf-estado::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pf-estado.ok { color: var(--pf-ok); border-color: rgba(95, 211, 154, .35); background: rgba(95, 211, 154, .08); }
+.pf-estado.aviso { color: var(--pf-aviso); border-color: rgba(244, 183, 64, .4); background: rgba(244, 183, 64, .08); }
+.pf-estado.perigo { color: var(--pf-perigo); border-color: rgba(255, 123, 114, .4); background: rgba(255, 123, 114, .08); }
+.pf-contagem { padding: .15rem .6rem; border-radius: 999px; background: var(--pf-fundo-2); border: 1px solid var(--pf-linha); color: var(--pf-suave); font: 600 .76rem var(--pf-mono); }
+
+/* ----- Botões ----- */
+.pf-botao {
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .55rem .95rem;
+  border: 1px solid var(--pf-acento); border-radius: 10px; background: var(--pf-acento); color: var(--pf-acento-texto);
+  font: 700 .86rem var(--letra); cursor: pointer; white-space: nowrap; transition: background-color .12s ease, border-color .12s ease;
+}
+.plataforma a.pf-botao { color: var(--pf-acento-texto); }
+.pf-botao:hover { background: var(--pf-acento-forte); border-color: var(--pf-acento-forte); text-decoration: none; }
+.pf-botao-sec, .plataforma a.pf-botao-sec { background: transparent; border-color: var(--pf-linha-forte); color: var(--pf-texto); }
+.pf-botao-sec:hover { background: var(--pf-cartao-2); border-color: var(--pf-suave); }
+.pf-botao-bloco { width: 100%; }
+.pf-botao-texto {
+  display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .45rem; border: 0; border-radius: 8px;
+  background: none; color: var(--pf-acento); font: 600 .84rem var(--letra); cursor: pointer;
+}
+.pf-botao-texto:hover { background: rgba(244, 183, 64, .1); text-decoration: none; }
+.pf-botao-texto.perigo { color: var(--pf-perigo); }
+.pf-botao-texto.perigo:hover { background: rgba(255, 123, 114, .1); }
+
+/* ----- Formulários ----- */
+.pf-form { display: flex; flex-direction: column; gap: .85rem; }
+.pf-form label { display: flex; flex-direction: column; gap: .3rem; color: var(--pf-texto); font-size: .82rem; font-weight: 600; }
+.pf-form label small { color: var(--pf-suave); font-weight: 400; }
+.plataforma input:not([type="checkbox"], [type="radio"], [type="file"]) {
+  width: 100%; min-height: 40px; padding: .5rem .75rem; border: 1px solid var(--pf-linha-forte); border-radius: 10px;
+  background: var(--pf-fundo-2); color: var(--pf-texto); font: 400 .92rem var(--letra);
+}
+.plataforma input::placeholder { color: #5d6886; opacity: 1; }
+.plataforma input:not([type="checkbox"], [type="radio"], [type="file"]):focus {
+  outline: 0; border-color: var(--pf-acento); background: var(--pf-fundo-2); box-shadow: 0 0 0 3px rgba(244, 183, 64, .18);
+}
+
+.pf-pesquisa {
+  display: flex; align-items: center; gap: .6rem; margin: 0 0 1.4rem; padding: .35rem .5rem .35rem .9rem;
+  border: 1px solid var(--pf-linha); border-radius: 12px; background: var(--pf-cartao);
+}
+.pf-pesquisa .pf-icone { color: var(--pf-suave); }
+.plataforma .pf-pesquisa input { min-height: 36px; border: 0; background: transparent; padding-left: 0; }
+.plataforma .pf-pesquisa input:focus { box-shadow: none; }
+.pf-pesquisa:focus-within { border-color: var(--pf-acento); }
+
+/* ----- Turmas e alunos ----- */
+.pf-turma { margin-bottom: 1.1rem; padding: 0; overflow: hidden; }
+.pf-turma-topo { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; padding: 1rem 1.3rem; border-bottom: 1px solid var(--pf-linha); background: var(--pf-cartao-2); }
+.pf-turma-topo > div { flex: 1; min-width: 180px; }
+.pf-turma-topo h2 { margin: 0; }
+.pf-turma-topo p { margin: .1rem 0 0; }
+.pf-turma-topo form { margin: 0; }
+.pf-tabela-scroll { overflow-x: auto; }
+.pf-tabela { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.pf-tabela th {
+  padding: .6rem 1.3rem; text-align: left; white-space: nowrap; color: var(--pf-suave);
+  font: 600 .7rem var(--pf-mono); letter-spacing: .07em; text-transform: uppercase; border-bottom: 1px solid var(--pf-linha);
+}
+.pf-tabela td { padding: .6rem 1.3rem; border-bottom: 1px solid var(--pf-linha); vertical-align: middle; }
+.pf-tabela tbody tr:last-child td { border-bottom: 0; }
+.pf-tabela tbody tr:hover { background: rgba(124, 140, 255, .06); }
+.pf-tabela td form { margin: 0; display: inline; }
+.pf-vazio { margin: 0; padding: 1.4rem 1.3rem; color: var(--pf-suave); text-align: center; border: 1px dashed var(--pf-linha-forte); border-radius: 12px; }
+.pf-turma .pf-vazio { border: 0; border-radius: 0; }
+
+/* ----- Mensagens (componentes de estilo.css, com os tons da consola) ----- */
+.plataforma .alerta { margin-bottom: 1.3rem; border-radius: 12px; overflow: hidden; background: var(--pf-cartao); border: 1px solid var(--pf-linha-forte); color: var(--pf-texto); }
+.plataforma .alerta-sucesso { border-color: rgba(95, 211, 154, .5); background: rgba(95, 211, 154, .08); }
+.plataforma .alerta-sucesso::before { background: var(--pf-ok); color: #06200f; }
+.plataforma .alerta-erro { border-color: rgba(255, 123, 114, .5); background: rgba(255, 123, 114, .08); color: var(--pf-texto); }
+.plataforma .alerta-erro::before { background: var(--pf-perigo); color: #2a0806; }
+
+/* ----- Entrada da plataforma ----- */
+.pf-entrada { display: grid; place-items: center; min-height: 100vh; padding: 2rem 1rem; }
+.pf-entrada-cartao {
+  width: 100%; max-width: 400px; padding: 2rem 1.8rem; border: 1px solid var(--pf-linha); border-radius: 18px;
+  background: rgba(18, 26, 46, .9); box-shadow: 0 30px 80px -40px rgba(0, 0, 0, .8);
+}
+.pf-entrada-cartao .pf-marca { margin-bottom: 1.6rem; }
+.pf-entrada-cartao h1 { margin: 0 0 .3rem; font: 700 1.7rem var(--letra); letter-spacing: -.02em; }
+.pf-entrada-cartao > p { margin: 0 0 1.3rem; font-size: .9rem; }
+.pf-entrada-cartao .pf-botao { margin-top: .3rem; min-height: 42px; }
+
+/* ----- Ecrãs pequenos ----- */
+@media (max-width: 1100px) {
+  .pf-grelha { grid-template-columns: minmax(0, 1fr); }
+  .pf-lado { position: static; order: -1; }
+}
+@media (max-width: 720px) {
+  .pf-topo { gap: .8rem; padding: .7rem 1rem; }
+  .pf-marca small, .pf-conta-nome { display: none; }
+  .pf-nav a span { display: none; }
+  .pf-conteudo { padding: 1.3rem 1rem 3rem; }
+  .pf-cabeca h1 { font-size: 1.8rem; }
+  .pf-escolas { grid-template-columns: minmax(0, 1fr); }
+  .pf-kpi strong { font-size: 1.9rem; }
+  .pf-tabela th, .pf-tabela td { padding-inline: .8rem; }
+  .pf-turma-topo { padding: .9rem 1rem; }
+}

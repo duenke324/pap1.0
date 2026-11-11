@@ -8,6 +8,7 @@
     "start": "node src/app.js",
     "dev": "node --watch src/app.js",
     "seed": "node src/seed.js",
+    "atualizar-bd": "node src/atualizar-bd.js",
     "build:mac": "bash scripts/build-mac.sh",
     "conversas": "node teams/app.js",
     "conversas:dev": "node --watch teams/app.js",

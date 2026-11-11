@@ -22,6 +22,7 @@ const BD_PLATAFORMA = process.env.DB_PLATAFORMA || (process.env.DB_NAME ? `${pro
 const PASTA_DADOS = path.join(pastaBase(), 'data');
 const PASTA_FOTOS = path.join(PASTA_DADOS, 'fotos');
 const FICHEIRO_ESQUEMA = path.join(pastaBase(), 'database', 'escola.sql');
+const FICHEIRO_ESQUEMA_PLATAFORMA = path.join(pastaBase(), 'database', 'plataforma.sql');
 
 // Justificativos de faltas enviados pelos encarregados de educação (PDF ou imagem)
 const PASTA_JUSTIFICATIVOS = path.join(PASTA_DADOS, 'justificativos');
@@ -105,39 +106,9 @@ async function prepararPlataforma() {
   if (!nomeBdValido(BD_PLATAFORMA)) throw new Error(`Nome de base de dados inválido: ${BD_PLATAFORMA}`);
   const ligacao = await ligacaoDeAdministracao();
   try {
-    await ligacao.query(`
-      CREATE DATABASE IF NOT EXISTS \`${BD_PLATAFORMA}\` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
-      USE \`${BD_PLATAFORMA}\`;
-
-      -- codigo: aparece no endereço de entrada da escola (/escola/<codigo>)
-      -- dominio_email: o que vem depois do @ nos emails institucionais da escola
-      -- base_dados: a base de dados onde vivem os alunos, faltas, etc. desta escola
-      CREATE TABLE IF NOT EXISTS escolas (
-        id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        codigo        VARCHAR(40)  NOT NULL UNIQUE,
-        nome          VARCHAR(120) NOT NULL,
-        dominio_email VARCHAR(120) NOT NULL UNIQUE,
-        base_dados    VARCHAR(64)  NOT NULL UNIQUE,
-        direcao_nome  VARCHAR(120),
-        ativa         TINYINT(1)   NOT NULL DEFAULT 1,
-        criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE = InnoDB;
-
-      CREATE TABLE IF NOT EXISTS gestores (
-        id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        username                VARCHAR(50)  NOT NULL UNIQUE,
-        password_hash           VARCHAR(200) NOT NULL,
-        nome                    VARCHAR(120) NOT NULL,
-        deve_redefinir_password TINYINT(1)   NOT NULL DEFAULT 0
-      ) ENGINE = InnoDB;
-
-      CREATE TABLE IF NOT EXISTS sessoes (
-        token         CHAR(64) PRIMARY KEY,
-        dados         TEXT NOT NULL,
-        ultimo_acesso DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_sessoes_acesso (ultimo_acesso)
-      ) ENGINE = InnoDB;
-    `);
+    // O esquema está em database/plataforma.sql (tal como o de cada escola está em escola.sql)
+    const sql = fs.readFileSync(FICHEIRO_ESQUEMA_PLATAFORMA, 'utf8').replaceAll('gestao_plataforma', BD_PLATAFORMA);
+    await ligacao.query(sql);
   } finally {
     await ligacao.end();
   }

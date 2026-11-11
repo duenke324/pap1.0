@@ -10,6 +10,8 @@ const {
   nomeBdValido,
   executar,
   um,
+  todos,
+  transacao,
   CONFIG,
   BD_PLATAFORMA,
 } = require('../db');
@@ -116,7 +118,9 @@ async function criarEscola({ nome, dominio, direcao, codigo }) {
   if (codigo.length < 3 || !/^[a-z]/.test(codigo)) codigo = gerarCodigo(nome);
   if (codigo.length < 3 || !/^[a-z]/.test(codigo)) return { erro: 'Não foi possível criar um código para a escola a partir do domínio nem do nome.' };
 
-  const baseDados = `gestao_${codigo}`;
+  // Numa instalação de testes (DB_NAME definido, ex.: gestao_escolar_teste) as escolas novas ficam com
+  // esse prefixo, para nunca reutilizarem a base de dados de uma escola verdadeira no mesmo servidor
+  const baseDados = process.env.DB_NAME ? `${CONFIG.database}_${codigo}` : `gestao_${codigo}`;
   if (!nomeBdValido(baseDados) || baseDados === BD_PLATAFORMA) return { erro: 'O código da escola não é válido.' };
   const repetida = await plataforma.um(
     'SELECT codigo, dominio_email FROM escolas WHERE codigo = ? OR dominio_email = ? OR base_dados = ?',
@@ -167,7 +171,77 @@ async function reporPasswordDirecao(escola) {
   });
 }
 
+// ---------- Alunos de uma escola (para o painel da plataforma) ----------
+// Tudo corre na base de dados da escola indicada, seja qual for a escola do pedido.
+const naEscola = (escola, fn) => correrNoContexto(contextoDaEscola(escola), fn);
+
+async function alunosPorTurma(escola, pesquisa = '') {
+  return naEscola(escola, async () => {
+    const turmas = await todos('SELECT id, nome, curso, ano_letivo FROM turmas ORDER BY nome');
+    const alunos = await todos(
+      `SELECT a.id, a.numero_processo, a.nome, a.email, a.turma_id, a.utilizador_id,
+              u.username, u.deve_redefinir_password
+         FROM alunos a LEFT JOIN utilizadores u ON u.id = a.utilizador_id
+        WHERE (? = '' OR a.nome LIKE ? OR a.numero_processo LIKE ? OR a.email LIKE ?)
+        ORDER BY a.nome`,
+      pesquisa,
+      `%${pesquisa}%`,
+      `%${pesquisa}%`,
+      `%${pesquisa}%`
+    );
+    const grupos = turmas.map((t) => ({ turma: t, alunos: alunos.filter((a) => a.turma_id === t.id) }));
+    const semTurma = alunos.filter((a) => !a.turma_id || !turmas.some((t) => t.id === a.turma_id));
+    if (semTurma.length) grupos.push({ turma: { id: 0, nome: 'Sem turma', curso: '' }, alunos: semTurma });
+    return { grupos, total: alunos.length };
+  });
+}
+
+// Gera palavras-passe temporárias novas para alunos com conta. A pessoa é obrigada a escolher uma
+// sua no primeiro acesso seguinte, e as sessões abertas dessas contas terminam.
+// filtro: { alunoId } | { turmaId } (0 = sem turma) | {} (todos). Devolve as linhas com a palavra-passe,
+// que só existe aqui: na base de dados fica apenas o hash.
+async function gerarPasswordsAlunos(escola, filtro = {}) {
+  return naEscola(escola, async () => {
+    const condicoes = ['a.utilizador_id IS NOT NULL'];
+    const params = [];
+    if (filtro.alunoId) {
+      condicoes.push('a.id = ?');
+      params.push(filtro.alunoId);
+    } else if (filtro.turmaId === 0) {
+      condicoes.push('(a.turma_id IS NULL OR a.turma_id NOT IN (SELECT id FROM turmas))');
+    } else if (filtro.turmaId) {
+      condicoes.push('a.turma_id = ?');
+      params.push(filtro.turmaId);
+    }
+    const alunos = await todos(
+      `SELECT a.id, a.utilizador_id, a.numero_processo, a.nome, a.email, u.username, t.nome AS turma
+         FROM alunos a JOIN utilizadores u ON u.id = a.utilizador_id LEFT JOIN turmas t ON t.id = a.turma_id
+        WHERE ${condicoes.join(' AND ')}
+        ORDER BY t.nome, a.nome`,
+      ...params
+    );
+    const resultado = alunos.map((a) => ({ ...a, password: gerarPasswordTemporaria() }));
+    await transacao(async (tx) => {
+      for (const a of resultado) {
+        await tx.executar('UPDATE utilizadores SET password_hash = ?, deve_redefinir_password = 1 WHERE id = ?', gerarHash(a.password), a.utilizador_id);
+        await tx.executar(`DELETE FROM sessoes WHERE JSON_VALUE(dados, '$.utilizadorId') = ?`, a.utilizador_id);
+      }
+      if (resultado.length) {
+        const quem = resultado.length === 1 ? `do aluno "${resultado[0].nome}" (n.º ${resultado[0].numero_processo})` : `de ${resultado.length} alunos`;
+        await tx.executar(
+          `INSERT INTO logs_auditoria (utilizador_id, acao, entidade, entidade_id, detalhe) VALUES (NULL, 'editar', 'aluno', ?, ?)`,
+          resultado.length === 1 ? resultado[0].id : null,
+          `O gestor da plataforma gerou uma palavra-passe temporária nova ${quem}.`
+        );
+      }
+    });
+    return resultado;
+  });
+}
+
 module.exports = {
+  alunosPorTurma,
+  gerarPasswordsAlunos,
   COOKIE_ESCOLA,
   contextoPlataforma,
   contextoDaEscola,

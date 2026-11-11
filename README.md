@@ -14,6 +14,7 @@ npm install        # só na primeira vez (instala o mysql2, a ligação ao MySQL
 npm start          # inicia em http://localhost:3000
 npm run dev        # reinicia sozinho quando se altera o código
 npm run seed       # APAGA a base de dados e recria os dados de demonstração
+npm run atualizar-bd  # atualiza todas as bases de dados (central e de cada escola) sem apagar dados
 ```
 
 Na primeira execução, a base de dados **`gestao_escolar`** é criada automaticamente no MySQL
@@ -51,6 +52,14 @@ Como funciona por dentro:
   acesso a nada, porque a sessão não existe lá. As fotografias e os justificativos de cada escola ficam numa subpasta própria.
 - No painel dá para **editar** o nome, o domínio e a direção, **repor a palavra-passe da direção** e **desativar** uma
   escola (ninguém dela entra; os dados ficam guardados). Não há botão para apagar uma escola.
+- **Ver alunos** (em cada escola) mostra os alunos por turma, com pesquisa, e o estado da conta de cada um.
+  Daí dá para **gerar uma palavra-passe nova** para um aluno (aparece uma só vez no ecrã), ou para uma turma ou a
+  escola toda de uma vez, que **descarrega um ficheiro CSV** (abre no Excel) com o n.º de processo, o nome, o email
+  e a palavra-passe temporária de cada aluno, para entregar. As palavras-passe atuais nunca podem ser vistas nem
+  exportadas (só se guarda uma versão cifrada): por isso exportar gera sempre palavras-passe novas, as antigas deixam
+  de funcionar, cada aluno é obrigado a escolher uma sua no próximo acesso, e fica registado na auditoria da escola.
+- O painel da plataforma tem um aspeto próprio, escuro (consola azul-noite com acento âmbar, em `public/plataforma.css`),
+  para nunca se confundir com o painel de uma escola (`public/painel.css`: menu lateral verde-escuro e cartões claros).
 - A conta do gestor é criada no primeiro arranque: utilizador `plataforma`, palavra-passe inicial `plataforma123`
   (ou a da variável de ambiente `PLATAFORMA_PASSWORD`), que **tem de ser trocada no primeiro acesso**.
 - Código: [src/lib/contexto.js](src/lib/contexto.js) (a escola de cada pedido), [src/lib/escolas.js](src/lib/escolas.js)
@@ -371,7 +380,8 @@ src/
   lib/escolas.js        Escolhe a escola de cada pedido, prepara as bases de dados no arranque e cria escolas
   rotas/recuperacao.js  Recuperação de palavra-passe (pedido e ligação enviada por email)
   lib/email.js          Envio de email por SMTP (ou para a consola, se o SMTP não estiver configurado)
-database/escola.sql   Esquema da base de dados MySQL (todas as tabelas)
+database/escola.sql   Esquema da base de dados de cada escola (todas as tabelas)
+database/plataforma.sql Esquema da base de dados central (escolas, gestor e sessões do gestor)
 public/               CSS, JavaScript do browser (incl. editor-horario.js e ata.js, o ditado ao microfone) e ícone
 public/vendor/        Bibliotecas de terceiros incluídas localmente (Chart.js, para os gráficos de assiduidade)
 data/fotos/           Fotografias dos alunos (a BD guarda o nome do ficheiro)
@@ -389,7 +399,11 @@ teams/                App separada "Conversas" (npm run conversas) — visual e 
 
 Cada escola tem uma base de dados com estas tabelas (a da primeira escola chama-se `gestao_escolar`; as seguintes,
 `gestao_<código>`). À parte, a base de dados central `gestao_plataforma` tem só três tabelas: `escolas` (código, nome,
-domínio de email, base de dados, direção, ativa), `gestores` (a conta do gestor da plataforma) e `sessoes` (os logins dele).
+domínio de email, base de dados, direção, ativa), `gestores` (a conta do gestor da plataforma) e `sessoes` (os logins dele);
+o esquema está em [database/plataforma.sql](database/plataforma.sql).
+
+`npm run atualizar-bd` atualiza todas de uma vez, sem arrancar o servidor: cria a central se faltar e acrescenta as
+tabelas e colunas novas à base de dados de cada escola, sem apagar dados (é o que a aplicação faz sozinha ao arrancar).
 
 Tudo o que é criado ou alterado numa escola fica guardado nestas tabelas:
 

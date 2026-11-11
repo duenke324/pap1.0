@@ -1,0 +1,368 @@
+/* =====================================================================
+   Painéis das escolas (direção, professores, alunos, encarregados, funcionários)
+   Uma aplicação moderna: menu lateral escuro com a escola, barra no topo,
+   conteúdo em cartões brancos sobre fundo cinzento claro, cantos arredondados.
+   Só se aplica às páginas com <body class="app-escola"> (ver pagina() em
+   src/vistas/layout.js); estilo.css continua a ter os componentes base, e
+   esta folha muda-lhes o aspeto. O painel da plataforma tem outra (plataforma.css).
+   ===================================================================== */
+
+/* ----- Tons ----- */
+.app-escola {
+  --fundo: #f2f5f7;
+  --papel: #ffffff;
+  --superficie-2: #f1f4f6;
+  --tinta: #1b2631;
+  --tinta-suave: #5c6977;
+  --linha: #e1e6eb;
+  --linha-forte: #b8c2cb;
+  --acento: #007a6e;
+  --acento-forte: #005f56;
+  --acento-suave: #e2f3f0;
+  --ok: #2f7d57;     --ok-fundo: #e3f3ea;
+  --aviso: #a46d12;  --aviso-fundo: #fbf0da;
+  --perigo: #b4372d; --perigo-fundo: #fbe7e5;
+  --lateral-fundo: #0c3a36;
+  --lateral-texto: #d3ebe7;
+  --lateral-suave: #8db9b3;
+  --lateral-ativo: rgba(255, 255, 255, .12);
+  --sombra: 0 1px 2px rgba(16, 24, 40, .05), 0 2px 6px rgba(16, 24, 40, .06);
+  --raio: 12px;
+  --raio-pequeno: 8px;
+  /* Letras: tudo em sans-serif (o caderno antigo usava serifa e monoespaçada) */
+  --letra-titulos: var(--letra);
+  --letra-dados: var(--letra);
+  color: var(--tinta);
+  background: var(--fundo);
+}
+:root[data-tema="escuro"] .app-escola {
+  --fundo: #0d1316;
+  --papel: #151d22;
+  --superficie-2: #1c262c;
+  --tinta: #e4ebf0;
+  --tinta-suave: #98a6b1;
+  --linha: #243038;
+  --linha-forte: #3b4952;
+  --acento: #4cc2b3;
+  --acento-forte: #79d6ca;
+  --acento-suave: #123430;
+  --ok: #7fc2a0;     --ok-fundo: #15302a;
+  --aviso: #e0b45f;  --aviso-fundo: #3a2e17;
+  --perigo: #ec8a80; --perigo-fundo: #3a201d;
+  --lateral-fundo: #091012;
+  --lateral-texto: #cfe3df;
+  --lateral-suave: #7e9e9a;
+  --sombra: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) .app-escola {
+    --fundo: #0d1316;
+    --papel: #151d22;
+    --superficie-2: #1c262c;
+    --tinta: #e4ebf0;
+    --tinta-suave: #98a6b1;
+    --linha: #243038;
+    --linha-forte: #3b4952;
+    --acento: #4cc2b3;
+    --acento-forte: #79d6ca;
+    --acento-suave: #123430;
+    --ok: #7fc2a0;     --ok-fundo: #15302a;
+    --aviso: #e0b45f;  --aviso-fundo: #3a2e17;
+    --perigo: #ec8a80; --perigo-fundo: #3a201d;
+    --lateral-fundo: #091012;
+    --lateral-texto: #cfe3df;
+    --lateral-suave: #7e9e9a;
+    --sombra: none;
+  }
+}
+
+/* ----- Estrutura: menu lateral + área ----- */
+.app-escola .app { display: grid; grid-template-columns: 252px minmax(0, 1fr); min-height: 100vh; }
+
+.app-escola .lateral {
+  position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 1.2rem;
+  padding: 1.2rem .85rem 1rem; overflow-y: auto;
+  background: var(--lateral-fundo); color: var(--lateral-texto);
+}
+.app-escola .lateral-marca { display: flex; align-items: center; gap: .7rem; padding: .2rem .45rem .9rem; color: #fff; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.app-escola .lateral-marca:hover { text-decoration: none; }
+.app-escola .lateral-marca .logo { width: 34px; height: 34px; stroke: #6fdccd; }
+.app-escola .lateral-marca strong { display: block; font: 700 .98rem/1.25 var(--letra); letter-spacing: -.005em; }
+.app-escola .lateral-marca small { display: block; margin-top: .15rem; color: var(--lateral-suave); font-size: .74rem; }
+
+.app-escola .menu { display: flex; flex-direction: column; gap: 2px; border: 0; }
+.app-escola .menu a {
+  display: flex; align-items: center; gap: .75rem; padding: .58rem .7rem; border-radius: var(--raio-pequeno);
+  color: var(--lateral-texto); font-size: .9rem; font-weight: 500; transition: background-color .12s ease, color .12s ease;
+}
+.app-escola .menu a .icone { width: 19px; height: 19px; opacity: .8; }
+.app-escola .menu a:hover, .app-escola .menu a:focus-visible { background: rgba(255, 255, 255, .07); color: #fff; text-decoration: none; }
+.app-escola .menu a.ativo { background: var(--lateral-ativo); color: #fff; box-shadow: inset 3px 0 0 #6fdccd; }
+.app-escola .menu a.ativo .icone { opacity: 1; stroke: #6fdccd; }
+.app-escola .menu a:focus-visible { outline: 2px solid #6fdccd; outline-offset: -2px; }
+
+.app-escola .lateral-conta {
+  display: flex; align-items: center; gap: .65rem; margin-top: auto; padding: .85rem .45rem 0;
+  border-top: 1px solid rgba(255, 255, 255, .1); font-size: .82rem; line-height: 1.3;
+}
+.app-escola .lateral-conta strong { display: block; color: #fff; font-weight: 600; }
+.app-escola .lateral-conta small { color: var(--lateral-suave); }
+.app-escola .lateral-iniciais {
+  display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%;
+  background: #6fdccd; color: #0c3a36; font-weight: 700; font-size: .8rem;
+}
+
+.app-escola .area { min-width: 0; display: flex; flex-direction: column; }
+.app-escola .barra-topo {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 1rem;
+  padding: .7rem 2rem; background: color-mix(in srgb, var(--fundo) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--linha);
+}
+.app-escola .barra-data { margin: 0; color: var(--tinta-suave); font-size: .86rem; }
+.app-escola .utilizador-info strong { font-size: .88rem; }
+.app-escola .conteudo { width: 100%; max-width: 1360px; padding: 1.8rem 2rem 3.5rem; }
+.app-escola .topo { align-items: flex-end; margin-bottom: 1.5rem; }
+
+/* ----- Títulos ----- */
+.app-escola h1 { font: 700 1.85rem/1.2 var(--letra); letter-spacing: -.02em; }
+.app-escola h2 { font: 600 1.08rem/1.3 var(--letra); letter-spacing: -.005em; margin-bottom: .9rem; }
+.app-escola h3 { font: 600 .98rem/1.35 var(--letra); }
+.app-escola .subtitulo { margin-top: .3rem; color: var(--tinta-suave); font: 400 .98rem/1.4 var(--letra); }
+.app-escola a { color: var(--acento); }
+.app-escola :focus-visible { outline-color: var(--acento); }
+.app-escola ::selection { background: var(--acento); color: #fff; }
+
+/* ----- Cartões ----- */
+.app-escola .cartao {
+  margin-bottom: 1.4rem; padding: 1.25rem 1.4rem; background: var(--papel);
+  border: 1px solid var(--linha); border-radius: var(--raio); box-shadow: var(--sombra);
+}
+.app-escola .cartao:has(> .filtros:only-child) { margin-bottom: 1rem; padding-block: 1rem; border-top: 1px solid var(--linha); }
+.app-escola .cartao > h2::before, .app-escola .cartao-topo h2::before { content: none; }
+.app-escola .cartao-topo { align-items: center; padding-bottom: .75rem; margin-bottom: 1rem; border-bottom-color: var(--linha); }
+.app-escola .cartao-destaque { margin: 0 0 1.4rem; outline: 0; border: 1px solid var(--acento); border-left-width: 5px; background: var(--acento-suave); }
+.app-escola .cartao-destaque .etiqueta-forte { transform: none; }
+.app-escola .grelha-2 { gap: 1.4rem; margin-bottom: 1.4rem; }
+.app-escola .vazio {
+  padding: 1.6rem 1rem; border: 1px dashed var(--linha-forte); border-radius: var(--raio-pequeno);
+  background: var(--superficie-2); font: 400 .95rem var(--letra);
+}
+
+/* ----- Totais: um cartão por número ----- */
+.app-escola .estatisticas {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem;
+  margin-bottom: 1.5rem; border: 0;
+}
+.app-escola .estatistica {
+  flex-direction: column-reverse; gap: .2rem; padding: 1rem 1.15rem; border: 1px solid var(--linha);
+  border-radius: var(--raio); background: var(--papel); box-shadow: var(--sombra);
+  transition: border-color .15s ease, transform .15s ease;
+}
+.app-escola .estatistica span { font-size: .8rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.app-escola .estatistica strong { font: 700 2rem/1.1 var(--letra); letter-spacing: -.02em; }
+.app-escola a.estatistica:hover { background: var(--papel); border-color: var(--acento); text-decoration: none; }
+.app-escola .estatistica.destaque-aviso, .app-escola a.estatistica.destaque-aviso:hover {
+  background: var(--aviso-fundo); color: var(--tinta); border-color: var(--aviso); box-shadow: inset 4px 0 0 var(--aviso);
+}
+.app-escola .estatistica.destaque-aviso span { color: var(--tinta-suave); }
+
+/* ----- Botões ----- */
+.app-escola .botao {
+  padding: .55rem 1rem; border-radius: var(--raio-pequeno); font-weight: 600;
+  background: var(--acento); border-color: var(--acento); color: #fff; transition: background-color .12s ease, border-color .12s ease;
+}
+.app-escola .botao:hover { background: var(--acento-forte); border-color: var(--acento-forte); color: #fff; }
+:root[data-tema="escuro"] .app-escola .botao:not(.botao-secundario):not(.botao-perigo) { color: #08201d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) .app-escola .botao:not(.botao-secundario):not(.botao-perigo) { color: #08201d; }
+}
+.app-escola .botao-secundario { background: var(--papel); border-color: var(--linha-forte); color: var(--tinta); }
+.app-escola .botao-secundario:hover { background: var(--superficie-2); border-color: var(--tinta-suave); color: var(--tinta); }
+.app-escola .botao-perigo { background: transparent; border: 1px solid var(--perigo); color: var(--perigo); }
+.app-escola .botao-perigo:hover { background: var(--perigo); border-color: var(--perigo); color: #fff; }
+.app-escola .botao-icone { border-radius: var(--raio-pequeno); color: var(--tinta-suave); }
+.app-escola .botao-icone:hover { background: var(--superficie-2); color: var(--tinta); }
+.app-escola .botao-texto { color: var(--acento); text-decoration: none; font-weight: 600; }
+.app-escola .botao-texto:hover { text-decoration: underline; }
+.app-escola .botao-texto.perigo { color: var(--perigo); }
+
+/* ----- Formulários: caixas com contorno ----- */
+.app-escola label { gap: .3rem; color: var(--tinta); font-size: .84rem; font-weight: 600; }
+.app-escola input:not([type="checkbox"], [type="radio"], [type="file"]), .app-escola select {
+  min-height: 40px; padding: .45rem .7rem; border: 1px solid var(--linha-forte); border-radius: var(--raio-pequeno);
+  background-color: var(--papel); font: 400 .95rem var(--letra);
+}
+.app-escola select { padding-right: 2rem; background-position: right .95rem center, right .65rem center; }
+.app-escola input:not([type="checkbox"], [type="radio"], [type="file"]):focus, .app-escola select:focus {
+  border-color: var(--acento); background-color: var(--papel); box-shadow: 0 0 0 3px var(--acento-suave);
+}
+.app-escola input.invalido, .app-escola select.invalido { border-color: var(--perigo); border-style: solid; border-width: 1px; box-shadow: 0 0 0 3px var(--perigo-fundo); }
+.app-escola .erro-campo { color: var(--perigo); }
+.app-escola textarea {
+  padding: .6rem .75rem; border: 1px solid var(--linha-forte); border-radius: var(--raio-pequeno);
+  background: var(--papel); font: 400 1rem/1.6 var(--letra);
+}
+.app-escola textarea:focus { border-color: var(--acento); background: var(--papel); box-shadow: 0 0 0 3px var(--acento-suave); }
+.app-escola .barra-justificar { border-radius: var(--raio-pequeno); background: var(--superficie-2); border: 1px solid var(--linha); }
+.app-escola .grupo-checks { border-radius: var(--raio-pequeno); border-color: var(--linha); }
+.app-escola .pre-visualizacao { border-radius: var(--raio-pequeno); border-color: var(--linha-forte); }
+.app-escola .campo-nota, .app-escola input.campo-nota:not([type="checkbox"]) { width: 3.8rem; padding: .25rem; font: 600 1.05rem var(--letra); }
+
+/* ----- Mensagens ----- */
+.app-escola .alerta { overflow: hidden; border-radius: var(--raio-pequeno); border-color: var(--linha); background: var(--papel); }
+.app-escola .alerta-sucesso { background: var(--ok-fundo); border-color: var(--ok); }
+.app-escola .alerta-aviso { background: var(--aviso-fundo); border-color: var(--aviso); }
+.app-escola .alerta-erro { background: var(--perigo-fundo); border-color: var(--perigo); color: var(--tinta); }
+.app-escola .alerta-erro::before { background: var(--perigo); color: #fff; }
+
+/* ----- Etiquetas: pílulas ----- */
+.app-escola .etiqueta {
+  padding: .1rem .55rem; border-radius: 999px; border: 1px solid var(--linha);
+  background: var(--superficie-2); color: var(--tinta-suave);
+  font: 600 .72rem/1.5 var(--letra); letter-spacing: 0; text-transform: none;
+}
+.app-escola .etiqueta-ok { background: var(--ok-fundo); border-color: transparent; color: var(--ok); }
+.app-escola .etiqueta-aviso { background: var(--aviso-fundo); border-color: transparent; color: var(--aviso); }
+.app-escola .etiqueta-perigo { background: var(--perigo-fundo); border-color: transparent; color: var(--perigo); }
+.app-escola .etiqueta-forte { background: var(--acento-suave); border: 1px solid var(--acento); color: var(--acento); }
+.app-escola .contagem { padding: .05rem .45rem; border-radius: 999px; box-shadow: none; background: var(--superficie-2); font: 600 .76rem var(--letra); }
+.app-escola .contagem.aviso { background: var(--aviso-fundo); color: var(--aviso); }
+.app-escola .id-situacao { border-radius: 999px; font: 600 .72rem/1.6 var(--letra); padding: 0 .55rem; text-transform: none; letter-spacing: 0; }
+.app-escola .id-situacao.ok { border: 0; background: var(--ok-fundo); color: var(--ok); }
+
+/* ----- Tabelas ----- */
+.app-escola .tabela-scroll { border-radius: var(--raio-pequeno); }
+.app-escola .tabela th {
+  padding: .6rem .75rem; background: var(--superficie-2); border-bottom: 1px solid var(--linha);
+  font: 600 .74rem var(--letra); letter-spacing: .02em; text-transform: uppercase;
+}
+.app-escola .tabela th:first-child { border-top-left-radius: var(--raio-pequeno); }
+.app-escola .tabela th:last-child { border-top-right-radius: var(--raio-pequeno); }
+.app-escola .tabela td { padding: .65rem .75rem; border-bottom-color: var(--linha); }
+.app-escola .tabela tbody tr:last-child td { border-bottom-color: transparent; }
+.app-escola .tabela tbody tr:hover { background: color-mix(in srgb, var(--acento-suave) 55%, transparent); }
+
+/* ----- Listas e separadores ----- */
+.app-escola .separadores {
+  display: inline-flex; gap: .25rem; padding: .25rem; margin-bottom: 1.2rem;
+  border: 1px solid var(--linha); border-radius: 10px; background: var(--superficie-2);
+}
+.app-escola .separadores a { padding: .38rem .85rem; border-radius: var(--raio-pequeno); box-shadow: none; color: var(--tinta-suave); font-weight: 600; }
+.app-escola .separadores a:hover { background: var(--papel); color: var(--tinta); }
+.app-escola .separadores a.ativo { background: var(--papel); color: var(--acento); box-shadow: var(--sombra), 0 0 0 1px var(--linha); }
+.app-escola .resumo-item, .app-escola .cartao-aluno { border-radius: var(--raio-pequeno); padding-inline: .55rem; }
+.app-escola .resumo-item.ativo { background: var(--acento-suave); color: var(--tinta); box-shadow: inset 3px 0 0 var(--acento); }
+.app-escola .resumo-item strong { font: 700 1.4rem var(--letra); }
+.app-escola .hora { font: 500 .8rem var(--letra); }
+.app-escola .data-bloco { border: 1px solid var(--linha); border-radius: var(--raio-pequeno); overflow: hidden; background: var(--papel); }
+.app-escola .data-bloco span { background: var(--acento); color: #fff; font: 700 .64rem var(--letra); }
+.app-escola .data-bloco strong { font: 700 1.3rem/1.35 var(--letra); }
+.app-escola .calendario-agora { border-radius: var(--raio-pequeno); background: var(--acento-suave); color: var(--acento); }
+.app-escola .lista-licoes .sumario { font: 400 .98rem/1.55 var(--letra); }
+.app-escola .lista-licoes li.faltou { box-shadow: inset 3px 0 0 var(--aviso); }
+.app-escola .ata-texto { font: 400 1.02rem/1.75 var(--letra); }
+.app-escola .ditado-provisorio { font: italic .98rem var(--letra); }
+.app-escola .resumo-avaliacao { border-radius: var(--raio-pequeno); }
+.app-escola .pauta-cabecalho { border-bottom-color: var(--linha); }
+.app-escola .pauta-cabecalho strong { font: 600 1rem var(--letra); }
+.app-escola .dados { border-top-color: var(--linha); }
+.app-escola .dados-pessoais dt, .app-escola .dados dt { font: 500 .8rem/1.9 var(--letra); letter-spacing: 0; text-transform: none; }
+
+/* ----- Fotografias: cantos redondos; sem fotografia, um círculo com as iniciais ----- */
+.app-escola .avatar { border-radius: var(--raio-pequeno); box-shadow: none; background: var(--acento-suave); color: var(--acento); font: 700 .9rem var(--letra); }
+.app-escola span.avatar.pequeno, .app-escola span.avatar:not(.grande):not(.foto) { border-radius: 50%; }
+.app-escola .avatar.pequeno { width: 32px; height: 32px; font-size: .72rem; }
+.app-escola .avatar.grande { border-radius: var(--raio); }
+
+/* ----- Ficha de identificação do aluno ----- */
+.app-escola .identificacao {
+  margin-bottom: 1.6rem; padding: 1.1rem 1.3rem; background: var(--papel);
+  border: 1px solid var(--linha); border-radius: var(--raio); box-shadow: var(--sombra);
+}
+.app-escola .id-campo { border-bottom: 0; }
+.app-escola .id-campo dt { font: 500 .74rem var(--letra); letter-spacing: 0; text-transform: none; }
+.app-escola .id-campo dd { font-weight: 600; }
+
+/* ----- Folha de faltas: quadrículas arredondadas na cor de acento ----- */
+.app-escola .caixa { border-radius: var(--raio-pequeno); }
+.app-escola .caixa input { border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--linha-forte); }
+.app-escola .caixa input:checked {
+  background-color: var(--perigo); box-shadow: none;
+  background-image:
+    linear-gradient(45deg, transparent 44%, #fff 44% 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, #fff 44% 56%, transparent 56%);
+}
+.app-escola .folha-faltas .barra-acoes { border-top-color: var(--linha); background: var(--papel); }
+
+/* ----- Assiduidade: barras arredondadas ----- */
+.app-escola .barra-assiduidade { height: 8px; border-radius: 999px; overflow: hidden; box-shadow: none; background: var(--superficie-2); }
+.app-escola .barra-assiduidade span { border-radius: 999px; background: var(--acento); }
+.app-escola .barra-assiduidade.abaixo-limite span { background: repeating-linear-gradient(-45deg, var(--perigo) 0 3px, color-mix(in srgb, var(--perigo) 55%, transparent) 3px 6px); }
+.app-escola .valor-barra { font: 600 .8rem var(--letra); }
+
+/* ----- Horário: cada disciplina com uma cor (e o nome escrito, para não depender só da cor) ----- */
+.app-escola .cor-0 { --cor: #0f8b7d; }
+.app-escola .cor-1 { --cor: #3a6fd8; }
+.app-escola .cor-2 { --cor: #c27a12; }
+.app-escola .cor-3 { --cor: #8a55c9; }
+.app-escola .cor-4 { --cor: #c8485e; }
+.app-escola .cor-5 { --cor: #4c8a2f; }
+.app-escola .cor-6 { --cor: #56677a; }
+.app-escola .cor-7 { --cor: #d2602e; }
+.app-escola .aula, .app-escola .oferta, .app-escola .sigla-mini, .app-escola .resumo-chip {
+  background-color: color-mix(in srgb, var(--cor, var(--acento)) 10%, var(--papel));
+  background-image: linear-gradient(var(--cor, var(--acento)), var(--cor, var(--acento)));
+  background-size: 4px 100%; background-repeat: no-repeat; border-radius: 6px;
+}
+.app-escola .horario { border-collapse: separate; border-spacing: 4px; }
+.app-escola .horario thead th { border-bottom: 0; font: 600 .76rem var(--letra); }
+.app-escola .horario thead th.hoje { border-radius: 6px; background: var(--acento); color: #fff; }
+.app-escola .horario tbody td { border: 0; border-radius: 6px; background: var(--superficie-2); }
+.app-escola .horario tbody td.livre { background: color-mix(in srgb, var(--superficie-2) 55%, transparent); }
+.app-escola .horario tbody tr:last-child td { border-bottom-color: transparent; }
+.app-escola .horario td.hoje { box-shadow: inset 0 0 0 1.5px var(--acento); }
+.app-escola .horario td.hoje .aula { background-color: color-mix(in srgb, var(--cor, var(--acento)) 16%, var(--papel)); }
+.app-escola .horario .tempo { background: transparent !important; font: 600 .8rem var(--letra); }
+.app-escola .aula strong { color: color-mix(in srgb, var(--cor, var(--acento)) 75%, var(--tinta)); }
+.app-escola .oferta { box-shadow: inset 0 0 0 1px var(--linha); }
+.app-escola .oferta:hover { box-shadow: inset 0 0 0 1px var(--cor, var(--acento)); }
+.app-escola .lixo { border-radius: var(--raio-pequeno); border-color: var(--perigo); color: var(--perigo); }
+.app-escola .lixo.sobre { background: var(--perigo); color: #fff; }
+.app-escola .painel-aula { border-color: var(--linha); border-radius: var(--raio-pequeno); background: var(--superficie-2); }
+
+/* ----- Ecrãs pequenos: o menu lateral passa a gaveta ----- */
+@media (max-width: 960px) {
+  .app-escola .app { grid-template-columns: minmax(0, 1fr); }
+  .app-escola .lateral {
+    position: fixed; inset: 0 auto 0 0; z-index: 30; width: min(280px, 86vw); height: 100%;
+    transform: translateX(-100%); visibility: hidden; box-shadow: 16px 0 40px -18px rgba(0, 0, 0, .5);
+  }
+  .app-escola.menu-aberto .lateral { transform: none; visibility: visible; }
+  .app-escola.menu-aberto::before { content: ""; position: fixed; inset: 0; z-index: 25; background: rgba(8, 16, 20, .45); }
+  .app-escola .botao-icone.so-movel { display: inline-grid; }
+  .app-escola .barra-topo { padding: .6rem 1rem; }
+  .app-escola .conteudo { padding: 1.3rem 1rem 3rem; }
+  /* (estilo.css escondia o menu antigo em ecrãs pequenos: aqui ele vive dentro da gaveta) */
+  .app-escola .menu, .app-escola.menu-aberto .menu {
+    display: flex; max-height: none; overflow: visible; opacity: 1; visibility: visible; border: 0;
+  }
+}
+@media (max-width: 960px) and (prefers-reduced-motion: no-preference) {
+  .app-escola .lateral { transition: transform .22s ease, visibility 0s linear .22s; }
+  .app-escola.menu-aberto .lateral { transition: transform .22s ease; }
+}
+@media (max-width: 640px) {
+  .app-escola h1 { font-size: 1.5rem; }
+  .app-escola .barra-data { font-size: .8rem; }
+  .app-escola .estatistica strong { font-size: 1.6rem; }
+  .app-escola .cartao { padding: 1rem; }
+}
+
+/* ----- Impressão: sem menu nem barra, como uma folha simples ----- */
+@media print {
+  .app-escola { --fundo: #fff; --papel: #fff; --sombra: none; }
+  .app-escola .lateral, .app-escola .barra-topo { display: none !important; }
+  .app-escola .app { display: block; }
+  .app-escola .conteudo { max-width: none; padding: 0; }
+  .app-escola .cartao, .app-escola .estatistica, .app-escola .identificacao { box-shadow: none; }
+}
