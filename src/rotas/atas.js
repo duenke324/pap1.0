@@ -3,7 +3,7 @@
 // Os outros professores da turma e o administrador só leem. O áudio nunca chega ao servidor: só texto.
 const { get, post } = require('../lib/servidor');
 const { um, executar } = require('../db');
-const { pagina, vazio, icone, botaoImprimir } = require('../vistas/layout');
+const { pagina, vazio, icone, botaoImprimir, estatico } = require('../vistas/layout');
 const { h, hoje, formatarData, formatarDataLonga } = require('../lib/util');
 const { gerarAta } = require('../lib/ata');
 
@@ -96,7 +96,7 @@ function formularioAta(r, { transcricao = '', ata = '', marcados = { delegado: t
       <div class="barra-acoes"><button class="botao" name="acao" value="guardar">Guardar ata</button></div>
     </section>
   </form>
-  <script src="/static/ata.js" defer></script>`;
+  <script src="${estatico('ata.js')}" defer></script>`;
 }
 
 // opcoes: { voltar, edicao: {...} } — edicao só existe quando quem vê pode escrever a ata

@@ -4,7 +4,7 @@ const { pastaBase } = require('./lib/recursos');
 const { get, post, criarServidor, renovarSessao, terminarSessao, enviarFicheiro, guardarSessao } = require('./lib/servidor');
 const { um, todos, executar, prepararBaseDeDados, CONFIG, PASTA_FOTOS } = require('./db');
 const { verificarPassword, gerarHash, h } = require('./lib/util');
-const { documento, mensagensFlash, botaoTema, LOGO } = require('./vistas/layout');
+const { paginaEntrada, mensagensFlash } = require('./vistas/layout');
 const { semearSeVazia } = require('./seed');
 
 const PORTA = Number(process.env.PORT) || 3000;
@@ -33,15 +33,11 @@ async function paginaErro(req, res, estado) {
   await guardarSessao(req, res).catch((erro) => console.error(erro));
   res.writeHead(estado, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(
-    documento(
-      `Erro ${estado}`,
-      `<div class="ecra-centro"><div class="cartao cartao-erro">
-        <p class="codigo-erro">${estado}</p>
-        <p>${h(MENSAGENS_ERRO[estado] || 'Erro.')}</p>
-        <a class="botao" href="${voltar}">Voltar ao início</a>
-      </div></div>`,
-      'fundo-login'
-    )
+    paginaEntrada(`Erro ${estado}`, {
+      tituloPainel: `Erro ${estado}`,
+      painel: `<p class="entrada-texto">${h(MENSAGENS_ERRO[estado] || 'Erro.')}</p>
+        <a class="botao botao-bloco" href="${voltar}">Voltar ao início</a>`,
+    })
   );
 }
 
@@ -55,7 +51,8 @@ async function antesDaRota(req, res) {
   }
 
   const ficheiroPwa = ['/manifest.webmanifest', '/sw.js', '/offline.html'].includes(req.caminho);
-  const publico = req.caminho === '/login' || ficheiroPwa;
+  // (a recuperação de palavra-passe tem de funcionar sem sessão: é para quem não consegue entrar)
+  const publico = req.caminho === '/login' || ficheiroPwa || /^\/recuperar-password(\/|$)/.test(req.caminho);
   if (!publico && !req.utilizador) {
     res.redirecionar('/login');
     return false;
@@ -63,7 +60,7 @@ async function antesDaRota(req, res) {
 
   // Palavra-passe atribuída pelo administrador (conta nova ou redefinida): tem de ser substituída antes de mais nada.
   // Os ficheiros do PWA ficam de fora: o browser não aceita um service worker que responda com um redirecionamento.
-  if (req.utilizador?.deve_redefinir_password && !ficheiroPwa && !['/definir-password', '/logout'].includes(req.caminho)) {
+  if (req.utilizador?.deve_redefinir_password && !publico && !['/definir-password', '/logout'].includes(req.caminho)) {
     res.redirecionar('/definir-password');
     return false;
   }
@@ -94,32 +91,52 @@ async function antesDaRota(req, res) {
   return true;
 }
 
+// Três colunas por baixo do painel de entrada: o que é, primeiro acesso e ajuda
+const INFORMACAO_LOGIN = `
+  <div>
+    <h2>Gestão Escolar</h2>
+    <p>A Gestão Escolar é a plataforma de apoio a alunos, professores e encarregados de educação da escola. Permite:</p>
+    <ul>
+      <li>Consultar faltas, horários, sumários e testes;</li>
+      <li>Consultar a avaliação por módulos;</li>
+      <li>Registar aulas, sumários e faltas (professores);</li>
+      <li>Enviar justificativos de faltas (encarregados de educação).</li>
+    </ul>
+  </div>
+  <div>
+    <h2>Primeiro acesso?</h2>
+    <p>Se é a <strong>primeira vez</strong> que entra, use o número de processo e a palavra-passe temporária que a secretaria lhe entregou.
+      Logo a seguir, a aplicação pede-lhe para escolher uma palavra-passe só sua.</p>
+    <p>Os <strong>encarregados de educação</strong> entram com o código de acesso criado pela secretaria (por exemplo, EE2450).</p>
+  </div>
+  <div>
+    <h2>Ajuda</h2>
+    <p>Se se esqueceu da palavra-passe, use <a href="/recuperar-password">Esqueceu-se da palavra-passe?</a>:
+      recebe por email uma ligação para escolher uma nova.</p>
+    <p>Se não tiver email registado, ou precisar de outra ajuda, contacte a <strong>secretaria da escola</strong>.</p>
+  </div>`;
+
 function paginaLogin(req, { username = '', erro = '' } = {}) {
-  return documento(
-    'Entrar',
-    `<div class="canto-tema">${botaoTema()}</div>
-    <div class="ecra-centro">
-      <div class="cartao cartao-login">
-        <div class="marca marca-login">
-          ${LOGO}
-          <div><strong>Gestão Escolar</strong><small>Faltas, sumários e avaliação</small></div>
-        </div>
-        <p class="texto-suave">Indique o seu número de processo e a palavra-passe para entrar. Os encarregados de educação entram com o código que a escola lhes deu (ex.: EE2450).</p>
-        ${mensagensFlash(req.lerFlash())}
-        ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
-        <form method="post" action="/login" class="formulario">
-          <label>Número de processo ou código
-            <input name="username" value="${h(username)}" autocomplete="username" required autofocus>
-          </label>
-          <label>Palavra-passe
-            <input name="password" type="password" autocomplete="current-password" required>
-          </label>
-          <button class="botao botao-bloco">Entrar</button>
-        </form>
-      </div>
-    </div>`,
-    'fundo-login'
-  );
+  return paginaEntrada('Entrar', {
+    tituloPainel: 'Bem-vindo à Gestão Escolar',
+    painel: `
+      ${mensagensFlash(req.lerFlash())}
+      ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
+      <form method="post" action="/login" class="entrada-form">
+        <p class="entrada-rotulo">Alunos, professores, funcionários e encarregados de educação</p>
+        <label>Número de processo ou código
+          <input name="username" value="${h(username)}" autocomplete="username" required autofocus>
+        </label>
+        <label>Palavra-passe
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="botao botao-bloco">Entrar</button>
+      </form>
+      <hr class="entrada-linha">
+      <p class="entrada-rotulo"><a class="entrada-ligacao" href="/recuperar-password">Esqueceu-se da palavra-passe?</a></p>
+      <p class="entrada-texto">Enviamos uma ligação para o seu email (ou do encarregado de educação) para escolher uma nova.</p>`,
+    informacao: INFORMACAO_LOGIN,
+  });
 }
 
 get('/login', (req, res) => {
@@ -147,32 +164,25 @@ post('/logout', async (req, res) => {
 
 // Primeiro acesso (ou palavra-passe redefinida pelo administrador): tem de escolher uma nova antes de continuar
 function paginaDefinirPassword(req, { erro = '' } = {}) {
-  return documento(
-    'Definir palavra-passe',
-    `<div class="canto-tema">${botaoTema()}</div>
-    <div class="ecra-centro">
-      <div class="cartao cartao-login">
-        <div class="marca marca-login">
-          ${LOGO}
-          <div><strong>Gestão Escolar</strong></div>
-        </div>
-        <p class="subtitulo">É a primeira vez que entra, ou a sua palavra-passe foi redefinida por um administrador. Escolha agora uma palavra-passe nova e só sua para continuar.</p>
-        ${mensagensFlash(req.lerFlash())}
-        ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
-        <form method="post" action="/definir-password" class="formulario">
-          <label>Nova palavra-passe
-            <input name="password" type="password" minlength="6" autocomplete="new-password" required autofocus>
-            <small class="texto-suave">Pelo menos 6 caracteres, diferente da atual.</small>
-          </label>
-          <label>Confirmar palavra-passe
-            <input name="confirmar" type="password" minlength="6" autocomplete="new-password" required>
-          </label>
-          <button class="botao botao-bloco">Guardar e continuar</button>
-        </form>
-      </div>
-    </div>`,
-    'fundo-login'
-  );
+  return paginaEntrada('Definir palavra-passe', {
+    tituloPainel: 'Escolha a sua palavra-passe',
+    painel: `
+      <p class="entrada-texto">É a primeira vez que entra, ou a sua palavra-passe foi redefinida pela secretaria. Escolha agora uma palavra-passe nova e só sua para continuar.</p>
+      ${mensagensFlash(req.lerFlash())}
+      ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
+      <form method="post" action="/definir-password" class="entrada-form">
+        <label>Nova palavra-passe
+          <input name="password" type="password" minlength="6" autocomplete="new-password" required autofocus>
+          <small>Pelo menos 6 caracteres, diferente da atual.</small>
+        </label>
+        <label>Confirmar palavra-passe
+          <input name="confirmar" type="password" minlength="6" autocomplete="new-password" required>
+        </label>
+        <button class="botao botao-bloco">Guardar e continuar</button>
+      </form>
+      <hr class="entrada-linha">
+      <form method="post" action="/logout"><button class="entrada-sair">Sair</button></form>`,
+  });
 }
 
 get('/definir-password', (req, res) => {
@@ -249,6 +259,7 @@ require('./rotas/auditoria');
 require('./rotas/encarregado');
 require('./rotas/encarregados');
 require('./rotas/justificativos');
+require('./rotas/recuperacao');
 
 // ---------- Arranque ----------
 async function iniciar() {

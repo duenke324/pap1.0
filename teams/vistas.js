@@ -44,7 +44,7 @@ function mensagensFlash(mensagens) {
   return mensagens.map((m) => `<div class="alerta alerta-${h(m.tipo)}" role="status">${h(m.mensagem)}</div>`).join('');
 }
 
-function documento(titulo, corpo) {
+function documento(titulo, corpo, classeBody = '') {
   return `<!doctype html>
 <html lang="pt-PT">
 <head>
@@ -57,37 +57,73 @@ function documento(titulo, corpo) {
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <script src="/static/app.js" defer></script>
 </head>
-<body>
+<body class="${classeBody}">
 ${corpo}
 </body>
 </html>`;
 }
 
-function paginaLogin({ email = '', erro = '', mensagens = [] } = {}) {
+// Páginas de entrada (login e erros): o mesmo desenho da Gestão Escolar — barra branca com o
+// logótipo, faixa com a imagem da escola e um painel translúcido ao centro, e (só no login)
+// colunas de informação por baixo. Fica com o logótipo e o roxo da Conversas, para se perceber
+// que é a outra aplicação.
+function paginaEntrada(titulo, { tituloPainel = '', painel, informacao = '' }) {
   return documento(
-    'Entrar',
-    `<div class="ecra-centro">
-      <div class="fundo-animado" aria-hidden="true"><span class="mancha mancha-1"></span><span class="mancha mancha-2"></span><span class="mancha mancha-3"></span></div>
-      <div class="cartao-login">
-        <div class="marca">
-          ${LOGO}
-          <div><strong>Conversas</strong><small>Mensagens e canais da sua turma, num só lugar</small></div>
-        </div>
-        ${mensagensFlash(mensagens)}
-        ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
-        <form method="post" action="/login" class="formulario">
-          <label>Email institucional
-            <input type="email" name="email" value="${h(email)}" placeholder="nome.apelido.numero@epmontijo.edu.pt" autocomplete="username" required autofocus>
-          </label>
-          <label>Palavra-passe
-            <input name="password" type="password" autocomplete="current-password" required>
-          </label>
-          <button class="botao botao-bloco">Entrar</button>
-          <p class="texto-suave centro">Use o mesmo email e palavra-passe da Gestão Escolar.</p>
-        </form>
+    titulo,
+    `<header class="entrada-topo">
+      <a class="marca" href="/login">${LOGO}<span><strong>Conversas</strong><small>Mensagens e canais da sua turma</small></span></a>
+    </header>
+    <main class="entrada-capa">
+      <div class="entrada-painel">
+        ${tituloPainel ? `<h1>${tituloPainel}</h1>` : ''}
+        ${painel}
       </div>
-    </div>`
+    </main>
+    ${informacao ? `<section class="entrada-info">${informacao}</section>` : ''}`,
+    'entrada'
   );
+}
+
+const INFORMACAO_LOGIN = `
+  <div>
+    <h2>Conversas</h2>
+    <p>A Conversas é a aplicação de mensagens da escola, para professores e alunos. Permite:</p>
+    <ul>
+      <li>Conversar nos canais de cada disciplina da turma;</li>
+      <li>Trocar mensagens privadas com os professores.</li>
+    </ul>
+  </div>
+  <div>
+    <h2>Como entrar?</h2>
+    <p>Use o <strong>email institucional</strong> e a mesma palavra-passe da Gestão Escolar.</p>
+    <p>Se é a primeira vez, entre primeiro na Gestão Escolar para escolher a sua palavra-passe.</p>
+  </div>
+  <div>
+    <h2>Ajuda</h2>
+    <p>Se se esqueceu da palavra-passe, recupere-a na página de entrada da <strong>Gestão Escolar</strong>.
+      Para outra ajuda, contacte a secretaria da escola.</p>
+  </div>`;
+
+function paginaLogin({ email = '', erro = '', mensagens = [] } = {}) {
+  return paginaEntrada('Entrar', {
+    tituloPainel: 'Bem-vindo à Conversas',
+    painel: `
+      ${mensagensFlash(mensagens)}
+      ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
+      <form method="post" action="/login" class="entrada-form">
+        <p class="entrada-rotulo">Professores e alunos, com o email institucional</p>
+        <label>Email institucional
+          <input type="email" name="email" value="${h(email)}" placeholder="nome.apelido.numero@epmontijo.edu.pt" autocomplete="username" required autofocus>
+        </label>
+        <label>Palavra-passe
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="botao botao-bloco">Entrar</button>
+      </form>
+      <hr class="entrada-linha">
+      <p class="entrada-texto">Use o mesmo email e a mesma palavra-passe da Gestão Escolar.</p>`,
+    informacao: INFORMACAO_LOGIN,
+  });
 }
 
 // estrutura: [{ turma: {id, nome}, canais: [{id, nome}] }]
@@ -253,4 +289,4 @@ function ecraVazioDecorado(mensagem, extra = '') {
   </div></div>`;
 }
 
-module.exports = { documento, paginaLogin, pagina, icone, avatarHtml, mensagemHtml, vazio, ecraVazioDecorado, mensagensFlash };
+module.exports = { documento, paginaLogin, paginaEntrada, pagina, icone, avatarHtml, mensagemHtml, vazio, ecraVazioDecorado, mensagensFlash };

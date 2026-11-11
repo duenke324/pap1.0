@@ -6,6 +6,8 @@ const { um, todos, executar, transacao } = require('../db');
 const { registarLog } = require('../lib/auditoria');
 const { h, gerarHash, gerarPasswordTemporaria } = require('../lib/util');
 
+const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function carregarAluno(id) {
   return um(
     `SELECT a.*, e.nome AS ee_nome, e.email AS ee_email, e.contacto AS ee_contacto, u.username AS ee_codigo
@@ -34,6 +36,13 @@ async function cartaoEncarregado(alunoId) {
         <dt>Contacto</dt><dd>${h(a.ee_contacto || '—')}</dd>
         ${irmaos.length ? `<dt>Outros educandos</dt><dd>${irmaos.map((i) => `<a href="/admin/alunos/${i.id}">${h(i.nome)}</a>`).join(', ')}</dd>` : ''}
       </dl>
+      <form method="post" action="${base}/editar" class="filtros">
+        <label class="crescer">Email <small class="texto-suave">(para recuperar a palavra-passe e receber a resposta aos justificativos)</small>
+          <input name="email" type="email" maxlength="120" value="${h(a.ee_email || '')}" placeholder="nome@exemplo.pt"></label>
+        <label>Contacto
+          <input name="contacto" maxlength="20" value="${h(a.ee_contacto || '')}"></label>
+        <button class="botao botao-secundario">Guardar contactos</button>
+      </form>
       <div class="barra-acoes">
         <form method="post" action="${base}/password" data-confirmar="Gerar uma palavra-passe nova para ${h(a.ee_nome)}? A atual deixa de funcionar.">
           <button class="botao botao-secundario">Repor palavra-passe</button>
@@ -86,7 +95,7 @@ post('/admin/alunos/:id/encarregado/criar', async (req, res) => {
   let erro = '';
   if (aluno.encarregado_id) erro = 'Este aluno já tem um encarregado com conta.';
   else if (!nome) erro = 'Indique o nome do encarregado de educação.';
-  else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erro = 'O email não é válido.';
+  else if (email && !EMAIL_VALIDO.test(email)) erro = 'O email não é válido.';
   if (erro) {
     req.flash('erro', erro);
     return res.redirecionar(voltar);
@@ -116,6 +125,29 @@ post('/admin/alunos/:id/encarregado/criar', async (req, res) => {
     'sucesso',
     `Conta criada para ${nome}. Código de acesso: ${codigo} · Palavra-passe temporária: ${password} (anote-a agora — não vai voltar a ser mostrada).`
   );
+  res.redirecionar(voltar);
+});
+
+// Email e contacto do encarregado (só a administração os altera; o encarregado não tem ecrã para isso)
+post('/admin/alunos/:id/encarregado/editar', async (req, res) => {
+  const aluno = await carregarAluno(req.params.id);
+  if (!aluno) return res.redirecionar('/admin/alunos');
+  const voltar = `/admin/alunos/${aluno.id}`;
+  const email = String(req.corpo.email || '').trim().slice(0, 120);
+  const contacto = String(req.corpo.contacto || '').trim().slice(0, 20);
+
+  if (!aluno.encarregado_id) req.flash('erro', 'Este aluno não tem um encarregado com conta.');
+  else if (email && !EMAIL_VALIDO.test(email)) req.flash('erro', 'O email não é válido.');
+  else {
+    await executar('UPDATE encarregados SET email = ?, contacto = ? WHERE id = ?', email || null, contacto || null, aluno.encarregado_id);
+    const mudou = [];
+    if ((aluno.ee_email || '') !== email) mudou.push(`email: ${aluno.ee_email || '—'} → ${email || '—'}`);
+    if ((aluno.ee_contacto || '') !== contacto) mudou.push(`contacto: ${aluno.ee_contacto || '—'} → ${contacto || '—'}`);
+    if (mudou.length) {
+      await registarLog(req, 'editar', 'encarregado', aluno.id, `Alterou os contactos do encarregado "${aluno.ee_nome}" (${mudou.join('; ')}).`);
+    }
+    req.flash('sucesso', mudou.length ? `Contactos de ${aluno.ee_nome} guardados.` : 'Não houve alterações.');
+  }
   res.redirecionar(voltar);
 });
 

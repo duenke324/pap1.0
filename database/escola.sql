@@ -390,6 +390,21 @@ CREATE TABLE IF NOT EXISTS sessoes (
   INDEX idx_sessoes_acesso (ultimo_acesso)
 ) ENGINE = InnoDB;
 
+-- Pedidos de recuperação de palavra-passe ("Esqueceu-se da palavra-passe?" no login).
+-- A ligação enviada por email tem um código secreto; aqui guarda-se só o SHA-256 desse código,
+-- para que quem leia a base de dados não consiga usar as ligações. Cada pedido vale uma hora
+-- e só pode ser usado uma vez (usado_em).
+CREATE TABLE IF NOT EXISTS recuperacoes_password (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  utilizador_id INT UNSIGNED NOT NULL,
+  token_hash    CHAR(64) NOT NULL UNIQUE,
+  expira_em     DATETIME NOT NULL,
+  usado_em      DATETIME,
+  criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_recuperacao_utilizador (utilizador_id, criado_em),
+  CONSTRAINT fk_recuperacao_utilizador FOREIGN KEY (utilizador_id) REFERENCES utilizadores(id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+
 -- Histórico de auditoria: ações críticas da administração (criar/editar/apagar turmas, professores,
 -- disciplinas e alunos; mudanças de diretor de turma e de curso) — quem fez, o quê e quando.
 CREATE TABLE IF NOT EXISTS logs_auditoria (

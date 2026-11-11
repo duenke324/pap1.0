@@ -26,6 +26,23 @@ Por omissão a aplicação liga-se com as definições do XAMPP (`root`, sem pal
 Para mudar, defina as variáveis de ambiente `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME`
 (ver [src/db.js](src/db.js)).
 
+### Recuperação de palavra-passe (email)
+
+No login, **"Esqueceu-se da palavra-passe?"** leva a `/recuperar-password`: a pessoa indica o número de processo
+(ou o código de encarregado) e recebe por email uma **ligação pessoal** para escolher uma palavra-passe nova.
+
+- A palavra-passe antiga nunca é enviada (a base de dados só guarda o seu hash, não a palavra-passe). A ligação
+  vale **60 minutos**, só pode ser usada **uma vez**, e até lá a palavra-passe atual continua a funcionar.
+- **Para onde vai o email**: no caso de um aluno, para o email do aluno **e** para o do encarregado de educação
+  (se o encarregado tiver conta com email); professores, funcionários e encarregados recebem no email da sua ficha.
+- A resposta no ecrã é sempre a mesma, exista ou não a conta, para a página não servir para descobrir números de
+  processo. Há um limite de 3 pedidos por hora por conta. Ao mudar a palavra-passe, as sessões abertas dessa conta terminam.
+- Para os emails serem mesmo enviados é preciso um servidor SMTP, indicado por variáveis de ambiente (nunca no código):
+  `SMTP_HOST`, `SMTP_PORT` (587 por omissão), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (remetente) e `APP_URL`
+  (endereço público da aplicação, usado na ligação; por omissão `http://localhost:3000`).
+  **Sem `SMTP_HOST`, nada é enviado**: o email é escrito na consola do servidor, com a ligação — chega para
+  desenvolver e para demonstrar. Usa o pacote `nodemailer` (ver [src/lib/email.js](src/lib/email.js)).
+
 ### Aplicação para Mac (`GestaoEscolar.app`)
 
 ```bash
@@ -91,7 +108,7 @@ e `primeironome.ultimonome.numerodeprocesso@epmontijo.edu.pt` para alunos (ex.: 
 
 Uma segunda aplicação, à parte da Gestão Escolar, para conversa por turma (canais) e mensagens
 privadas. Tem o seu próprio visual (faixa de navegação + acento roxo partilhado com o InformaNege,
-para se distinguir da Gestão Escolar) e o seu próprio servidor, mas liga-se à **mesma base de
+para se distinguir da Gestão Escolar; a página de entrada tem o mesmo desenho da da Gestão Escolar, em roxo) e o seu próprio servidor, mas liga-se à **mesma base de
 dados** — usa as contas que a direção já cria (professor ou aluno; o administrador não tem acesso
 a esta app, só professor e aluno).
 
@@ -228,7 +245,8 @@ ano letivo, curso, turma, diretor de turma e encarregado de educação) e por ba
 **Circuito da justificação**: o encarregado envia → a falta fica «Pendente de validação» (o aluno também vê) →
 o **diretor de turma** (menu «Justificativos» do professor) ou a **administração** abre o documento e aceita ou
 recusa. Ao aceitar, as faltas do pedido passam a justificadas com o motivo indicado; para recusar é obrigatório
-escrever o motivo, que o encarregado lê.
+escrever o motivo, que o encarregado lê. Se o encarregado tiver email na ficha, **recebe um email com a decisão**
+(mesmas regras de envio da recuperação de palavra-passe: sem SMTP configurado, o email aparece só na consola).
 
 ### Painel do Funcionário
 Área de consulta para o pessoal não-docente (informático, auxiliar escolar, RH, biblioteca, secretaria,
@@ -266,11 +284,14 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
   (o número de processo garante que nunca há dois iguais) e a palavra-passe é aleatória — aparecem os
   dois numa mensagem só uma vez, para copiar e dar ao aluno. Depois de criado, o email pode ser editado
   à mão na ficha, se for preciso corrigir.
-- Faltas: filtros (estado, turma, datas, aluno), justificar várias de uma vez com um motivo, retirar justificação
+- Faltas: filtros (estado, turma, datas, aluno), justificar várias de uma vez com um motivo, retirar justificação,
+  e **Exportar para Excel**: descarrega um ficheiro CSV com as faltas dos filtros escolhidos (separador `;` e
+  acentos preparados para o Excel em português; até 20 000 linhas)
 - **Justificativos**: os documentos enviados pelos encarregados de educação, de todas as turmas — abrir o ficheiro,
   aceitar ou recusar (com motivo), e consultar os já decididos
 - **Conta do encarregado de educação** (na ficha do aluno): criar a conta (o código e a palavra-passe temporária
-  aparecem uma só vez), associar uma conta que já existe a outro aluno (irmãos), repor a palavra-passe e desassociar
+  aparecem uma só vez), associar uma conta que já existe a outro aluno (irmãos), **alterar o email e o contacto**,
+  repor a palavra-passe e desassociar. Só a administração altera estes dados
 - **Assiduidade (gráficos)**: no painel principal, um gráfico de assiduidade global e um gráfico por curso
   (biblioteca **Chart.js**, incluída localmente em `public/vendor/` — não depende de internet).
   Debaixo do gráfico por curso fica sempre uma lista com os mesmos números, para a informação não depender de JavaScript.
@@ -314,6 +335,8 @@ src/
   rotas/encarregados.js Painel do administrador (contas dos encarregados, na ficha do aluno)
   rotas/justificativos.js Validação dos justificativos (administração e diretor de turma) e acesso ao ficheiro
   lib/justificativos.js Guarda os ficheiros, lê os pedidos e aplica a decisão de aceitar/recusar
+  rotas/recuperacao.js  Recuperação de palavra-passe (pedido e ligação enviada por email)
+  lib/email.js          Envio de email por SMTP (ou para a consola, se o SMTP não estiver configurado)
 database/escola.sql   Esquema da base de dados MySQL (todas as tabelas)
 public/               CSS, JavaScript do browser (incl. editor-horario.js e ata.js, o ditado ao microfone) e ícone
 public/vendor/        Bibliotecas de terceiros incluídas localmente (Chart.js, para os gráficos de assiduidade)
@@ -345,6 +368,7 @@ Tudo o que é criado ou alterado na plataforma fica guardado nestas tabelas:
 `reunioes_turma` (data, hora, local, assunto e a **ata**, com quem a escreveu e quando; o delegado e o subdelegado estão
 em `turmas.delegado_id`/`subdelegado_id`) ·
 `canais`, `canal_membros`, `canal_mensagens` (usadas pela app **Conversas**, não pela Gestão Escolar) ·
+`recuperacoes_password` (pedidos de recuperação: só o hash do código da ligação, validade e se já foi usado) ·
 `sessoes` (logins ativos — por isso reiniciar o servidor não obriga a entrar de novo) ·
 `logs_auditoria` (quem criou, editou ou apagou turmas, professores, funcionários, disciplinas e alunos, e quando).
 
@@ -374,11 +398,13 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 ## Limitações conhecidas (beta)
 
 - Os tempos letivos (08:30, 09:30, …) estão na tabela `tempos` e ainda não têm ecrã de edição
-- Não há recuperação de palavra-passe (esqueci-me da palavra-passe); só o administrador a pode redefinir
+- A recuperação de palavra-passe só envia emails a sério com um servidor SMTP configurado (ver "Recuperação de
+  palavra-passe"); sem ele, a ligação aparece só na consola do servidor. O administrador não tem email na ficha,
+  por isso não pode usar a recuperação
 - Fora do primeiro acesso forçado, não há alteração voluntária da palavra-passe pelo próprio utilizador
 - Sem HTTPS — para uso real deve ficar atrás de um servidor com HTTPS (ex.: nginx, Caddy)
-- O encarregado de educação não recebe notificações (email ou SMS): tem de entrar na aplicação para ver as faltas
-  e a resposta aos justificativos
+- O encarregado de educação só é avisado por email da resposta aos justificativos (e só se tiver email na ficha);
+  não há aviso quando é marcada uma falta nova
 - Apagar um aluno não apaga a conta do encarregado; essa conta fica sem educandos até ser associada a outro aluno
 - Uma base de dados criada antes do papel Encarregado não tem as contas de demonstração `EE2450`/`EE2310`: crie a
   conta na ficha do aluno, ou use `npm run seed`

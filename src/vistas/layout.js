@@ -1,4 +1,7 @@
 // Estrutura base das páginas: a mesma caderneta para todos os papéis (cabeçalho, índice, folha com margem)
+const fs = require('node:fs');
+const path = require('node:path');
+const { pastaBase } = require('../lib/recursos');
 const { h, iniciais, DIAS_CURTOS, anoLetivoAtual, CARGOS_FUNCIONARIO } = require('../lib/util');
 
 const MENUS = {
@@ -73,13 +76,10 @@ function icone(nome) {
   return `<svg class="icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES[nome] || ''}</svg>`;
 }
 
-// Logótipo: uma caderneta com marcador (as cores vêm do CSS, para funcionar no tema claro e no escuro)
-const LOGO = `<svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
-  <rect x="6" y="3" width="21" height="26" rx="2.5" class="logo-capa"/>
-  <rect x="6" y="3" width="4.5" height="26" rx="1.5" class="logo-lombada"/>
-  <path d="M14.5 12h8M14.5 16h8M14.5 20h5" class="logo-linhas"/>
-  <path d="M21 3v8.5l-2-1.6-2 1.6V3z" class="logo-fita"/>
-</svg>`;
+// Logótipo: o capelo do site InformaNege (o mesmo desenho de informanege/vistas.js), para a marca
+// ser a mesma no site de apresentação e na aplicação. A cor vem do CSS (tema claro e escuro).
+const LOGO =
+  '<svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/><path d="M22 10v6.5"/></svg>';
 
 // Botão para alternar entre o tema claro e o escuro (a escolha fica guardada no browser)
 function botaoTema() {
@@ -98,6 +98,21 @@ function mensagensFlash(mensagens) {
   return mensagens.map((m) => `<div class="alerta alerta-${h(m.tipo)}" role="status">${h(m.mensagem)}</div>`).join('');
 }
 
+// Endereço de um ficheiro de public/ com a data da última alteração (ex.: /static/estilo.css?v=mh3k2a).
+// Quando o ficheiro muda, o endereço muda, e nem o browser nem o service worker podem responder
+// com a cópia antiga que tinham guardada — sem isto, depois de uma atualização via-se a página
+// nova com o CSS antigo.
+const PASTA_PUBLICA = path.join(pastaBase(), 'public');
+function estatico(ficheiro) {
+  let versao = '0';
+  try {
+    versao = Math.round(fs.statSync(path.join(PASTA_PUBLICA, ficheiro)).mtimeMs).toString(36);
+  } catch {
+    // ficheiro em falta: o endereço fica sem versão útil e o pedido dá 404, como antes
+  }
+  return `/static/${ficheiro}?v=${versao}`;
+}
+
 function documento(titulo, corpo, classeBody = '') {
   return `<!doctype html>
 <html lang="pt-PT">
@@ -114,16 +129,40 @@ function documento(titulo, corpo, classeBody = '') {
   <script>try { var t = localStorage.getItem('tema'); if (t === 'claro' || t === 'escuro') document.documentElement.dataset.tema = t; } catch (e) {}</script>
   <link rel="preload" href="/static/vendor/fontes/plex-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/vendor/fontes/newsreader.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/static/estilo.css">
+  <link rel="stylesheet" href="${estatico('estilo.css')}">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="${estatico('favicon.svg')}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-  <script src="/static/app.js" defer></script>
+  <script src="${estatico('app.js')}" defer></script>
 </head>
 <body class="${classeBody}">
 ${corpo}
 </body>
 </html>`;
+}
+
+// ---------- Páginas de entrada (login, primeira palavra-passe, erros) ----------
+// Barra branca com o logótipo, uma faixa com fotografia e um painel translúcido ao centro e, só no
+// login, três colunas de informação por baixo. A fotografia da escola é opcional: basta pôr um
+// ficheiro em public/imagens/escola.jpg (sem ele, a faixa usa um degradê).
+const FOTO_ESCOLA = path.join(pastaBase(), 'public', 'imagens', 'escola.jpg');
+
+function paginaEntrada(titulo, { tituloPainel = '', painel, informacao = '' }) {
+  const comFoto = fs.existsSync(FOTO_ESCOLA);
+  return documento(
+    titulo,
+    `<header class="entrada-topo">
+      <a class="marca" href="/login">${LOGO}<span><strong>Gestão Escolar</strong><small>Faltas, sumários e avaliação</small></span></a>
+    </header>
+    <main class="entrada-capa${comFoto ? ' com-foto' : ''}">
+      <div class="entrada-painel">
+        ${tituloPainel ? `<h1>${tituloPainel}</h1>` : ''}
+        ${painel}
+      </div>
+    </main>
+    ${informacao ? `<section class="entrada-info">${informacao}</section>` : ''}`,
+    'entrada'
+  );
 }
 
 // Ficha de identificação do aluno, por baixo do índice (o guião pede estes dados sempre visíveis)
@@ -249,4 +288,4 @@ function grelhaHorario(aulas, { mostrarTurma = false, destacarHoje = true } = {}
   return `<div class="tabela-scroll"><table class="horario"><thead><tr><th></th>${cabecalho}</tr></thead><tbody>${linhas}</tbody></table></div>`;
 }
 
-module.exports = { documento, pagina, avatar, vazio, grelhaHorario, icone, mensagensFlash, botaoTema, botaoImprimir, LOGO };
+module.exports = { documento, pagina, paginaEntrada, estatico, avatar, vazio, grelhaHorario, icone, mensagensFlash, botaoTema, botaoImprimir, LOGO };

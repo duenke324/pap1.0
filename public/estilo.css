@@ -4,7 +4,7 @@
    cabeçalho, índice numerado, folha com margem, linhas de régua, campos para
    preencher sobre uma linha e carimbos.
 
-   Acento bordô (institucional, "brasão") para ações e estados ativos; ok/aviso/
+   Acento verde-azulado para ações e estados ativos; ok/aviso/
    perigo têm cor própria. O que está fora do limite ou bloqueado aparece às riscas.
    O tema escuro é a mesma caderneta em ardósia: giz sobre fundo negro.
 
@@ -33,9 +33,13 @@
   --linha-forte: #949494;
   --aviso-fundo: #f5e8ce;
 
-  /* Cor de acento: bordô institucional, como um brasão de escola. Usada em ações
-     primárias, ligações e estados "ativo/selecionado" — nunca nos estados abaixo. */
-  --acento: #6d2347;
+  /* Cor de acento: verde-azulado. Usada em ações primárias, ligações e estados
+     "ativo/selecionado" — nunca nos estados abaixo. Escura o suficiente para texto
+     branco por cima e para ligações sobre o papel (contraste ≥ 4,5:1). */
+  --acento: #007a6e;
+  --acento-botao: #008577;  /* botões da página de entrada */
+  --acento-claro: #00a191;  /* botão da entrada ao passar o rato, contorno de foco */
+  --acento-titulo: #1592ad; /* títulos das colunas da página de entrada */
 
   /* Usados pelos gráficos do painel de administração */
   --ok: #3f7a5e;
@@ -60,7 +64,8 @@
   --linha: #303030;
   --linha-forte: #6e6e6e;
   --aviso-fundo: #362b16;
-  --acento: #c97fa3;
+  --acento: #4cc2b3;
+  --acento-titulo: #5cc4dc;
   --ok: #7fc2a0;
   --aviso: #d9b468;
   --perigo: #e08a80;
@@ -75,7 +80,8 @@
     --linha: #303030;
     --linha-forte: #6e6e6e;
     --aviso-fundo: #362b16;
-    --acento: #c97fa3;
+    --acento: #4cc2b3;
+    --acento-titulo: #5cc4dc;
     --ok: #7fc2a0;
     --aviso: #d9b468;
     --perigo: #e08a80;
@@ -130,11 +136,8 @@ a.marca:hover { text-decoration: none; }
 .cabecalho-ano { margin: 0; color: var(--tinta-suave); font: .76rem var(--letra-dados); }
 
 /* Logótipo: as cores seguem o tema */
-.logo { width: 32px; height: 32px; flex: none; }
-.logo-capa { fill: var(--tinta); }
-.logo-lombada { fill: var(--tinta-suave); }
-.logo-linhas { stroke: var(--papel); stroke-width: 1.6; stroke-linecap: round; fill: none; }
-.logo-fita { fill: var(--acento); }
+/* Logótipo (capelo, igual ao do site InformaNege): só traço, na cor de acento */
+.logo { width: 32px; height: 32px; flex: none; fill: none; stroke: var(--acento); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .utilizador { display: flex; align-items: center; gap: .3rem; margin-left: auto; min-width: 0; }
 .utilizador-info { margin-right: .6rem; min-width: 0; text-align: right; line-height: 1.25; }
@@ -536,27 +539,96 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
   font: 500 .72rem var(--letra-dados); box-shadow: inset 0 0 0 1px var(--linha);
 }
 
-/* ----- Capa (entrada e erros): o caderno marmoreado, com lombada e etiqueta branca ----- */
-.fundo-login { background: #000 url("capa.svg") center / 720px; }
-.fundo-login::before { content: ""; position: fixed; inset: 0 auto 0 0; width: 3.4rem; background: #000; border-right: 3px double #fff; }
-.ecra-centro { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem 1.5rem 1.5rem 5rem; }
-.ecra-centro .cartao {
-  width: 100%; margin: 0; padding: 2rem; background: var(--papel); border: 1px solid var(--tinta);
-  box-shadow: 0 0 0 5px var(--papel), 0 0 0 6px var(--tinta), 0 0 0 16px var(--papel);
+/* ----- Entrada (login, primeira palavra-passe, erros) -----
+   Barra branca com o logótipo, faixa com fotografia e um painel translúcido ao centro,
+   com três colunas de informação por baixo (só no login). A fotografia é opcional:
+   public/imagens/escola.jpg — sem ela, a faixa fica com um degradê de céu e arvoredo. */
+/* Estas páginas são sempre claras, como uma página institucional (o tema escuro só se aplica
+   dentro dos painéis): os tons são fixados aqui, por cima dos de :root. */
+.entrada {
+  color-scheme: light;
+  --papel: #ffffff; --superficie-2: #eef0f1; --tinta: #222222; --tinta-suave: #5a5a5a;
+  --linha: #dcdcdc; --linha-forte: #949494; --aviso-fundo: #f5e8ce;
+  --acento: #007a6e; --acento-titulo: #1592ad; --perigo: #a3342b;
+  --letra-entrada: "Segoe UI", "Helvetica Neue", "Open Sans", var(--letra);
+  display: flex; flex-direction: column; min-height: 100vh;
+  color: var(--tinta); background: var(--superficie-2); font-family: var(--letra-entrada); font-size: 15.5px;
 }
-.cartao-login { max-width: 400px; }
-/* Entrada suave do cartão de login/erro (respeita "reduzir movimento") */
-@media (prefers-reduced-motion: no-preference) {
-  .ecra-centro .cartao { animation: entrarCartao .4s ease both; }
+.entrada-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1.3rem 1.75rem; background: var(--papel); border-bottom: 1px solid var(--linha);
 }
-@keyframes entrarCartao { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.marca-login { flex-direction: column; text-align: center; gap: .5rem; margin-bottom: 1.5rem; padding-bottom: 1.1rem; border-bottom: 4px double var(--tinta); }
-.marca-login .logo { width: 40px; height: 40px; }
-.marca-login strong { font-size: 2.4rem; }
-.marca-login small { display: block; margin-top: .3rem; color: var(--tinta-suave); font: italic 1.08rem var(--letra-titulos); }
-.cartao-login .botao-bloco { margin-top: .3rem; padding-block: .7rem; }
-.cartao-erro { max-width: 420px; text-align: center; }
-.codigo-erro { margin: 0; font-family: var(--letra-titulos); font-size: 5rem; font-weight: 300; line-height: 1.1; }
+.entrada-topo .marca { display: flex; align-items: center; gap: .7rem; color: var(--tinta); }
+.entrada-topo .marca:hover { text-decoration: none; }
+.entrada-topo .logo { width: 44px; height: 44px; }
+.entrada-topo .marca strong { font-family: var(--letra-entrada); font-size: 1.6rem; font-weight: 700; letter-spacing: -.01em; color: var(--tinta); }
+.entrada-topo .marca small { display: block; margin-top: .15rem; color: var(--tinta-suave); font: .68rem var(--letra-entrada); letter-spacing: .06em; text-transform: uppercase; }
+
+.entrada-capa {
+  display: grid; place-items: center; min-height: 36rem; padding: 4rem 1.5rem;
+  background: #6f9bd0 url("imagens/capa-escola.svg") center / cover no-repeat;
+}
+.entrada-capa.com-foto { background: #5d7f8f url("imagens/escola.jpg") center / cover no-repeat; }
+
+.entrada-painel {
+  width: 100%; max-width: 500px; padding: 2.2rem 1.6rem 1.8rem;
+  color: #fff; background: rgba(66, 82, 104, .58); border-radius: 6px;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.entrada-painel h1 {
+  margin: 0 0 1.4rem; color: #fff; text-align: center;
+  font: 300 4.3rem/1.12 var(--letra-entrada); letter-spacing: -.02em; text-shadow: 0 1px 12px rgba(0, 0, 0, .25);
+}
+.entrada-painel, .entrada-painel input, .entrada-painel .botao, .entrada-sair { font-family: var(--letra-entrada); }
+.entrada-rotulo { margin: 0 0 .55rem; font-size: .92rem; font-weight: 700; line-height: 1.35; }
+.entrada-texto { margin: 0 0 .9rem; font-size: .92rem; line-height: 1.5; }
+.entrada-texto:last-child { margin-bottom: 0; }
+.entrada-form { display: flex; flex-direction: column; gap: .8rem; }
+.entrada-form label { color: #fff; font-size: .84rem; font-weight: 600; }
+.entrada-form label small { color: rgba(255, 255, 255, .85); }
+.entrada-painel input:not([type="checkbox"], [type="radio"], [type="file"]) {
+  min-height: 40px; padding: .45rem .7rem; color: #111; background: #fff; border: 0; border-radius: 3px;
+}
+.entrada-painel input:not([type="checkbox"], [type="radio"], [type="file"]):focus {
+  background: #fff; box-shadow: 0 0 0 3px var(--acento-claro);
+}
+.entrada-painel .botao {
+  min-height: 40px; margin-top: .3rem; border-radius: 3px; font-size: 1rem; font-weight: 500;
+  background: var(--acento-botao); border-color: var(--acento-botao); color: #fff;
+}
+.entrada-painel .botao:hover { background: var(--acento-claro); border-color: var(--acento-claro); color: #fff; }
+.entrada-painel :focus-visible { outline-color: #fff; }
+.entrada-linha { margin: 1.1rem 0 .9rem; border: 0; border-top: 2px solid #fff; }
+.entrada-ligacao { color: #fff; font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+.entrada-ligacao:hover { text-decoration-thickness: 2px; }
+.entrada-painel .alerta { margin-bottom: 1rem; }
+.entrada-sair {
+  padding: 0; border: 0; background: none; color: #fff; font: 700 .92rem var(--letra);
+  text-decoration: underline; text-underline-offset: .2em; cursor: pointer;
+}
+
+.entrada-info {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5rem;
+  width: 100%; max-width: 1840px; margin: 0 auto; padding: 1.6rem 3.2rem 3rem;
+}
+.entrada-info h2 { margin: 0 0 .7rem; color: var(--acento-titulo); font: 300 2.7rem/1.15 var(--letra-entrada); letter-spacing: -.01em; }
+.entrada-info p { margin: 0 0 .9rem; }
+.entrada-info ul { margin: 0; padding-left: 1.3rem; }
+.entrada-info li { margin-bottom: .2rem; }
+
+@media (max-width: 860px) {
+  .entrada-info { grid-template-columns: 1fr; gap: 1.6rem; }
+}
+@media (max-width: 560px) {
+  .entrada-topo { padding: .9rem 1rem; }
+  .entrada-topo .logo { width: 34px; height: 34px; }
+  .entrada-topo .marca strong { font-size: 1.25rem; }
+  .entrada-capa { min-height: 0; padding: 1.6rem 1rem; }
+  .entrada-painel { padding: 1.6rem 1.1rem 1.3rem; }
+  .entrada-painel h1 { font-size: 2.5rem; }
+  .entrada-info { padding: 1.6rem 1rem 2.2rem; }
+  .entrada-info h2 { font-size: 1.9rem; }
+}
 
 /* ----- Professores / disciplinas ----- */
 .grupo-checks {
@@ -736,10 +808,6 @@ a.etiqueta:focus-visible {
   .estatistica strong { font-size: 2.5rem; }
   .estatistica { padding: .7rem .8rem; }
   .coluna-dupla { grid-column: 1 / -1; }
-  .marca-login strong { font-size: 1.9rem; }
-  .fundo-login::before { width: 1rem; }
-  .ecra-centro { padding: 1.5rem 1.2rem 1.5rem 2.2rem; }
-  .ecra-centro .cartao { padding: 1.4rem; box-shadow: 0 0 0 4px var(--papel), 0 0 0 5px var(--tinta), 0 0 0 10px var(--papel); }
 }
 @media (max-width: 800px) and (prefers-reduced-motion: no-preference) {
   .menu { transition: max-height .22s ease, opacity .18s ease, visibility 0s linear .22s; }

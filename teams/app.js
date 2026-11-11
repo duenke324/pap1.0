@@ -5,7 +5,7 @@ const path = require('node:path');
 const { get, post, criarServidor, renovarSessao, terminarSessao, guardarSessao } = require('../src/lib/servidor');
 const { um, CONFIG } = require('../src/db');
 const { verificarPassword, h } = require('../src/lib/util');
-const { documento, paginaLogin } = require('./vistas');
+const { paginaEntrada, paginaLogin } = require('./vistas');
 
 const PORTA = Number(process.env.TEAMS_PORT || process.env.PORT) || 3100;
 const NOME_COOKIE = 'sid_conversas';
@@ -23,13 +23,11 @@ async function paginaErro(req, res, estado) {
   await guardarSessao(req, res, NOME_COOKIE).catch((erro) => console.error(erro));
   res.writeHead(estado, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(
-    documento(
-      `Erro ${estado}`,
-      `<div class="ecra-centro"><div class="cartao-login centro">
-        <h1>${estado}</h1><p class="texto-suave">${h(MENSAGENS_ERRO[estado] || 'Erro.')}</p>
-        <p><a class="botao" href="/">Voltar</a></p>
-      </div></div>`
-    )
+    paginaEntrada(`Erro ${estado}`, {
+      tituloPainel: `Erro ${estado}`,
+      painel: `<p class="entrada-texto">${h(MENSAGENS_ERRO[estado] || 'Erro.')}</p>
+        <a class="botao botao-bloco" href="/">Voltar</a>`,
+    })
   );
 }
 

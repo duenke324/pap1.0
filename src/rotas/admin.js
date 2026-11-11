@@ -690,19 +690,20 @@ post('/admin/alunos/:id/apagar', async (req, res) => {
 });
 
 // ---------- Faltas ----------
-get('/admin/faltas', async (req, res) => {
-  const turmas = await todos('SELECT * FROM turmas ORDER BY nome');
-  const f = {
-    turma: req.query.turma || '',
-    estado: req.query.estado || 'injustificadas',
-    aluno: req.query.aluno || '',
-    q: String(req.query.q || '').trim(),
-    de: dataValida(req.query.de) ? req.query.de : '',
-    ate: dataValida(req.query.ate) ? req.query.ate : '',
+// Filtros da lista de faltas (os mesmos no ecrã e na exportação para Excel)
+function lerFiltrosFaltas(query) {
+  return {
+    turma: query.turma || '',
+    estado: query.estado || 'injustificadas',
+    aluno: query.aluno || '',
+    q: String(query.q || '').trim(),
+    de: dataValida(query.de) ? query.de : '',
+    ate: dataValida(query.ate) ? query.ate : '',
   };
-  const alunoFiltro = f.aluno ? await um('SELECT id, nome FROM alunos WHERE id = ?', f.aluno) : null;
+}
 
-  const faltas = await todos(
+function consultarFaltas(f, limite) {
+  return todos(
     `SELECT fa.*, a.nome AS aluno, a.numero_processo, a.fotografia, a.id AS aluno_id, t.nome AS turma,
             d.nome AS disciplina, hr.hora_inicio, u.nome AS justificada_por_nome,
             EXISTS (SELECT 1 FROM justificativo_faltas jf JOIN justificativos j ON j.id = jf.justificativo_id
@@ -720,14 +721,61 @@ get('/admin/faltas', async (req, res) => {
         AND (? = '' OR fa.data >= ?)
         AND (? = '' OR fa.data <= ?)
       ORDER BY fa.data DESC, a.nome, hr.hora_inicio
-      LIMIT 500`,
+      LIMIT ?`,
     f.turma, f.turma,
     f.estado, f.estado, f.estado,
     f.aluno, f.aluno,
     f.q, `%${f.q}%`, `%${f.q}%`,
     f.de, f.de,
-    f.ate, f.ate
+    f.ate, f.ate,
+    limite
   );
+}
+
+// Exportação para Excel: um ficheiro CSV com as faltas dos filtros atuais.
+// Separador ";" e marca BOM no início, que é o que o Excel em português espera para abrir o
+// ficheiro com as colunas certas e os acentos corretos.
+const LIMITE_EXPORTACAO = 20000;
+function celulaCsv(valor) {
+  let texto = valor === null || valor === undefined ? '' : String(valor);
+  // Uma célula começada por = + - @ seria lida pelo Excel como fórmula: o apóstrofo força texto
+  if (/^[=+\-@\t\r]/.test(texto)) texto = `'${texto}`;
+  return /[";\r\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
+}
+
+get('/admin/faltas/exportar', async (req, res) => {
+  const f = lerFiltrosFaltas(req.query);
+  const faltas = await consultarFaltas(f, LIMITE_EXPORTACAO);
+  const linhas = [
+    ['Data', 'Hora', 'N.º de processo', 'Aluno', 'Turma', 'Disciplina', 'Tipo', 'Estado', 'Motivo da justificação', 'Justificada por', 'Justificada em'],
+    ...faltas.map((x) => [
+      formatarData(x.data),
+      x.hora_inicio,
+      x.numero_processo,
+      x.aluno,
+      x.turma || '',
+      x.disciplina,
+      TIPOS_FALTA[x.tipo],
+      x.justificada ? 'Justificada' : x.pendente ? 'Pendente de validação' : 'Injustificada',
+      x.justificacao || '',
+      x.justificada_por_nome || '',
+      x.justificada_em ? formatarData(x.justificada_em) : '',
+    ]),
+  ];
+  const csv = '﻿' + linhas.map((l) => l.map(celulaCsv).join(';')).join('\r\n') + '\r\n';
+  res.writeHead(200, {
+    'Content-Type': 'text/csv; charset=utf-8',
+    'Content-Disposition': `attachment; filename="faltas-${hoje()}.csv"`,
+    'Cache-Control': 'no-store',
+  });
+  res.end(csv);
+});
+
+get('/admin/faltas', async (req, res) => {
+  const turmas = await todos('SELECT * FROM turmas ORDER BY nome');
+  const f = lerFiltrosFaltas(req.query);
+  const alunoFiltro = f.aluno ? await um('SELECT id, nome FROM alunos WHERE id = ?', f.aluno) : null;
+  const faltas = await consultarFaltas(f, 500);
 
   const pesquisaAtual = new URLSearchParams(Object.entries(f).filter(([, v]) => v)).toString();
   const temInjustificadas = faltas.some((x) => !x.justificada);
@@ -802,7 +850,8 @@ get('/admin/faltas', async (req, res) => {
       }
     </form>`;
 
-  res.html(pagina(req, { titulo: 'Faltas', ativo: 'faltas', subtitulo: 'Consultar e justificar faltas dos alunos' }, conteudo));
+  const acoes = `<a class="botao botao-secundario no-imprimir" href="/admin/faltas/exportar?${h(pesquisaAtual)}" download>Exportar para Excel</a>`;
+  res.html(pagina(req, { titulo: 'Faltas', ativo: 'faltas', subtitulo: 'Consultar e justificar faltas dos alunos', acoes }, conteudo));
 });
 
 function destinoSeguro(voltar) {

@@ -4,7 +4,7 @@
 // como único recurso offline. Só os ficheiros estáticos (CSS, JS, ícones) ficam em cache.
 // Mudar a versão sempre que o CSS/JS/ícones mudarem: o service worker novo apaga a cache antiga
 // (sem isto, quem tem a app instalada continuava a ver o CSS antigo na primeira visita)
-const CACHE_ESTATICOS = 'gestao-escolar-estaticos-v5';
+const CACHE_ESTATICOS = 'gestao-escolar-estaticos-v6';
 const FICHEIRO_OFFLINE = '/offline.html';
 
 const PRE_CACHE = [

@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const { todos, transacao, PASTA_JUSTIFICATIVOS } = require('../db');
 const { avatar, vazio } = require('../vistas/layout');
 const { h, formatarData, formatarDataLonga, TIPOS_FALTA } = require('./util');
+const { enviarEmail, APP_URL } = require('./email');
 
 const TAMANHO_MAXIMO = 3 * 1024 * 1024; // 3 MB (em base64 ocupa 4 MB, abaixo do limite de 6 MB do formulário)
 
@@ -44,10 +45,12 @@ async function listarJustificativos(onde, ...params) {
   const justificativos = await todos(
     `SELECT j.*, a.nome AS aluno, a.numero_processo, a.fotografia, a.encarregado_id,
             t.nome AS turma, t.diretor_id,
+            e.email AS encarregado_email, e.nome AS encarregado_nome,
             ue.nome AS enviado_por_nome, ud.nome AS decidido_por_nome
        FROM justificativos j
        JOIN alunos a ON a.id = j.aluno_id
        LEFT JOIN turmas t ON t.id = a.turma_id
+       LEFT JOIN encarregados e ON e.id = a.encarregado_id
        LEFT JOIN utilizadores ue ON ue.id = j.enviado_por
        LEFT JOIN utilizadores ud ON ud.id = j.decidido_por
       WHERE ${onde}
@@ -101,7 +104,7 @@ async function decidirJustificativo(req, id, decisao, resposta) {
   const j = await obterJustificativo(id);
   if (!j || !podeDecidirJustificativo(req, j)) return { ok: false, mensagem: 'Justificativo não encontrado.' };
 
-  return transacao(async (tx) => {
+  const resultado = await transacao(async (tx) => {
     // A condição "estado = 'pendente'" impede duas decisões sobre o mesmo pedido (ex.: dois separadores abertos)
     const r = await tx.executar(
       `UPDATE justificativos SET estado = ?, resposta = ?, decidido_por = ?, decidido_em = NOW() WHERE id = ? AND estado = 'pendente'`,
@@ -123,6 +126,34 @@ async function decidirJustificativo(req, id, decisao, resposta) {
     );
     return { ok: true, mensagem: `Justificativo de ${j.aluno} aceite: ${f.changes} falta(s) justificada(s).` };
   });
+
+  // Só depois de a decisão estar guardada: avisa o encarregado por email (se tiver email na ficha).
+  // enviarEmail nunca lança erro, por isso uma falha no envio não desfaz nem esconde a decisão.
+  if (resultado.ok && j.encarregado_email) {
+    const aceite = decisao === 'aceitar';
+    const faltas = j.faltas.map((f) => `  - ${formatarData(f.data)}, ${f.hora_inicio}, ${f.disciplina}`).join('\n');
+    const enviado = await enviarEmail({
+      para: j.encarregado_email,
+      assunto: `Gestão Escolar — justificativo ${aceite ? 'aceite' : 'recusado'} (${j.aluno})`,
+      texto: [
+        `Olá${j.encarregado_nome ? `, ${j.encarregado_nome}` : ''},`,
+        ``,
+        `O justificativo que enviou em ${formatarData(j.criado_em)} para as faltas de ${j.aluno} foi ${aceite ? 'ACEITE' : 'RECUSADO'} por ${req.utilizador.nome}.`,
+        ``,
+        `Motivo indicado: ${j.motivo}`,
+        `Faltas:`,
+        faltas || '  (sem faltas associadas)',
+        ``,
+        aceite ? `Estas faltas ficaram justificadas.` : `Motivo da recusa: ${resposta}`,
+        ...(aceite && resposta ? [`Observação da escola: ${resposta}`] : []),
+        ...(aceite ? [] : [`As faltas continuam por justificar. Pode enviar outro documento na aplicação.`]),
+        ``,
+        `Ver os seus pedidos: ${APP_URL}/encarregado/justificativos`,
+      ].join('\n'),
+    });
+    if (enviado) resultado.mensagem += ' O encarregado foi avisado por email.';
+  }
+  return resultado;
 }
 
 // ---------- Componentes ----------

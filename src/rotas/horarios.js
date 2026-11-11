@@ -1,7 +1,7 @@
 // Painel do Administrador: editor de horários por turma (arrastar e largar aulas)
 const { get, post } = require('../lib/servidor');
 const { todos, um, transacao } = require('../db');
-const { pagina, vazio } = require('../vistas/layout');
+const { pagina, vazio, estatico } = require('../vistas/layout');
 const { h, DIAS_SEMANA } = require('../lib/util');
 
 // JSON seguro para colocar dentro de <script>
@@ -99,7 +99,7 @@ get('/admin/turmas/:id/horario', async (req, res) => {
       </section>
     </div>
     <script type="application/json" id="dados-horario">${jsonParaHtml(dados)}</script>
-    <script src="/static/editor-horario.js" defer></script>`;
+    <script src="${estatico('editor-horario.js')}" defer></script>`;
 
   res.html(
     pagina(

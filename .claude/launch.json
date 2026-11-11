@@ -37,6 +37,37 @@
         "DB_NAME": "gestao_escolar_teste",
         "PORT": "3002"
       }
+    },
+    {
+      "name": "gestao-escolar-xampp",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "src/app.js"
+      ],
+      "port": 3000,
+      "env": {
+        "DB_PORT": "3306"
+      }
+    },
+    {
+      "name": "conversas-xampp",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "teams/app.js"
+      ],
+      "port": 3100,
+      "env": {
+        "DB_PORT": "3306",
+        "TEAMS_PORT": "3100"
+      }
+    },
+    {
+      "name": "informanege",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "informanege/app.js"
+      ],
+      "port": 3200
     }
   ]
 }
