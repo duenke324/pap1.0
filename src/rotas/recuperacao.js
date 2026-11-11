@@ -13,7 +13,8 @@ const crypto = require('node:crypto');
 const { get, post } = require('../lib/servidor');
 const { um, executar, transacao } = require('../db');
 const { paginaEntrada, mensagensFlash } = require('../vistas/layout');
-const { enviarEmail, APP_URL } = require('../lib/email');
+const { enviarEmail, ligacaoDaEscola } = require('../lib/email');
+const { escolaAtual } = require('../lib/contexto');
 const { h, gerarHash } = require('../lib/util');
 
 const VALIDADE_MINUTOS = 60;
@@ -81,14 +82,14 @@ post('/recuperar-password', async (req, res) => {
       );
       await enviarEmail({
         para: destinatarios,
-        assunto: 'Gestão Escolar — recuperar a palavra-passe',
+        assunto: `${escolaAtual().nome} — recuperar a palavra-passe`,
         texto: [
           `Olá,`,
           ``,
-          `Foi pedida a recuperação da palavra-passe da conta de ${conta.nome} (${conta.username}) na Gestão Escolar.`,
+          `Foi pedida a recuperação da palavra-passe da conta de ${conta.nome} (${conta.username}) na plataforma de ${escolaAtual().nome}.`,
           ``,
           `Para escolher uma palavra-passe nova, abra esta ligação:`,
-          `${APP_URL}/recuperar-password/${token}`,
+          ligacaoDaEscola(`/recuperar-password/${token}`),
           ``,
           `A ligação é válida durante ${VALIDADE_MINUTOS} minutos e só pode ser usada uma vez.`,
           `Se não fez este pedido, ignore este email: a palavra-passe atual continua a funcionar.`,

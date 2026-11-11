@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { get, post } = require('../lib/servidor');
-const { todos, um, executar, transacao, PASTA_FOTOS } = require('../db');
+const { todos, um, executar, transacao, pastaFotos } = require('../db');
 const { pagina, vazio, avatar, botaoImprimir } = require('../vistas/layout');
 const { etiquetaFalta } = require('./aluno');
 const { pautaDoAluno } = require('./avaliacao');
@@ -22,7 +22,7 @@ const {
   TIPOS_FALTA,
   LIMITE_FALTAS,
   emailInstitucionalValido,
-  DOMINIO_EMAIL,
+  dominioEmail,
   gerarEmailAluno,
   gerarPasswordTemporaria,
 } = require('../lib/util');
@@ -44,13 +44,13 @@ function guardarFotografia(alunoId, dataUrl) {
   if (bytes.length > 2 * 1024 * 1024) throw new Error('A fotografia é demasiado grande (máx. 2 MB).');
   if (!ASSINATURAS[m[1]](bytes)) throw new Error('O ficheiro não é uma imagem válida.');
   const nome = `aluno-${alunoId}-${crypto.randomBytes(6).toString('hex')}.${m[1] === 'jpeg' ? 'jpg' : m[1]}`;
-  fs.writeFileSync(path.join(PASTA_FOTOS, nome), bytes);
+  fs.writeFileSync(path.join(pastaFotos(), nome), bytes);
   return nome;
 }
 
 function apagarFotografia(nome) {
   if (!nome) return;
-  fs.rm(path.join(PASTA_FOTOS, path.basename(nome)), { force: true }, () => {});
+  fs.rm(path.join(pastaFotos(), path.basename(nome)), { force: true }, () => {});
 }
 
 // ---------- Validação do formulário de aluno ----------
@@ -93,7 +93,7 @@ async function lerFormularioAluno(corpo, alunoId = null) {
   }
   if (dados.contacto && !/^\+?[\d\s]{9,20}$/.test(dados.contacto)) erros.contacto = 'Contacto inválido (ex.: 912 345 678).';
   if (dados.encarregado_nome.length > 120) erros.encarregado_nome = 'Nome demasiado longo.';
-  if (alunoId && dados.email && !emailInstitucionalValido(dados.email)) erros.email = `O email tem de acabar em @${DOMINIO_EMAIL}.`;
+  if (alunoId && dados.email && !emailInstitucionalValido(dados.email)) erros.email = `O email tem de acabar em @${dominioEmail()}.`;
   if (dados.turma_id !== null && (!Number.isInteger(dados.turma_id) || !(await um('SELECT 1 FROM turmas WHERE id = ?', dados.turma_id)))) {
     erros.turma_id = 'Turma inválida.';
   }
@@ -146,12 +146,12 @@ async function formularioAluno(req, { aluno = {}, erros = {}, acao, titulo }) {
         ${
           editar
             ? `<label>Email institucional
-                <input type="email" name="email" value="${h(aluno.email)}" maxlength="120" placeholder="nome@${DOMINIO_EMAIL}"${cls('email')}>
-                ${erro('email') || `<small class="texto-suave">Tem de acabar em @${DOMINIO_EMAIL}.</small>`}</label>
+                <input type="email" name="email" value="${h(aluno.email)}" maxlength="120" placeholder="nome@${dominioEmail()}"${cls('email')}>
+                ${erro('email') || `<small class="texto-suave">Tem de acabar em @${dominioEmail()}.</small>`}</label>
               <label class="coluna-toda">Nova palavra-passe
                 <input type="password" name="password" autocomplete="new-password" minlength="6" placeholder="Deixe em branco para manter a atual"${cls('password')}>
                 ${erro('password') || '<small class="texto-suave">Assim que entrar, o aluno tem de a substituir por uma escolhida por ele.</small>'}</label>`
-            : `<div class="coluna-toda"><small class="texto-suave">O email institucional (@${DOMINIO_EMAIL}) e a palavra-passe de acesso
+            : `<div class="coluna-toda"><small class="texto-suave">O email institucional (@${dominioEmail()}) e a palavra-passe de acesso
                 são gerados automaticamente ao criar — vai vê-los no ecrã seguinte, para dar ao aluno.</small></div>`
         }
         <div class="coluna-toda barra-acoes"><button class="botao">${h(titulo)}</button></div>

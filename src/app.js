@@ -2,10 +2,12 @@
 const path = require('node:path');
 const { pastaBase } = require('./lib/recursos');
 const { get, post, criarServidor, renovarSessao, terminarSessao, enviarFicheiro, guardarSessao } = require('./lib/servidor');
-const { um, todos, executar, prepararBaseDeDados, CONFIG, PASTA_FOTOS } = require('./db');
+const { um, todos, executar, plataforma, escolasAtivas, CONFIG, pastaFotos } = require('./db');
 const { verificarPassword, gerarHash, h } = require('./lib/util');
 const { paginaEntrada, mensagensFlash } = require('./vistas/layout');
 const { semearSeVazia } = require('./seed');
+const { correrNoContexto, escolaAtual } = require('./lib/contexto');
+const { resolverContextoGestao, contextoDaEscola, prepararTudo } = require('./lib/escolas');
 
 const PORTA = Number(process.env.PORT) || 3000;
 const PASTA_PUBLICA = path.join(pastaBase(), 'public');
@@ -44,6 +46,19 @@ async function paginaErro(req, res, estado) {
 // ---------- Autenticação e autorização ----------
 // Corre antes de todas as rotas: carrega o utilizador e verifica se pode aceder à área pedida
 async function antesDaRota(req, res) {
+  // Painel da plataforma: conta própria (o gestor), fora de qualquer escola
+  if (/^\/plataforma(\/|$)/.test(req.caminho)) {
+    const gestorId = req.sessao.dados.gestorId;
+    if (gestorId) req.gestor = await plataforma.um('SELECT id, username, nome, deve_redefinir_password FROM gestores WHERE id = ?', gestorId);
+    if (!req.gestor && req.caminho !== '/plataforma/login') {
+      res.redirecionar('/plataforma/login');
+      return false;
+    }
+    return true;
+  }
+  // Escolha da escola: páginas públicas, sem conta
+  if (/^\/(escolas|escola)(\/|$)/.test(req.caminho)) return true;
+
   const id = req.sessao.dados.utilizadorId;
   if (id) {
     req.utilizador = await um('SELECT id, username, nome, papel, deve_redefinir_password FROM utilizadores WHERE id = ?', id);
@@ -92,10 +107,10 @@ async function antesDaRota(req, res) {
 }
 
 // Três colunas por baixo do painel de entrada: o que é, primeiro acesso e ajuda
-const INFORMACAO_LOGIN = `
+const informacaoLogin = () => `
   <div>
-    <h2>Gestão Escolar</h2>
-    <p>A Gestão Escolar é a plataforma de apoio a alunos, professores e encarregados de educação da escola. Permite:</p>
+    <h2>${h(escolaAtual().nome)}</h2>
+    <p>Esta é a plataforma de apoio a alunos, professores e encarregados de educação da escola. Permite:</p>
     <ul>
       <li>Consultar faltas, horários, sumários e testes;</li>
       <li>Consultar a avaliação por módulos;</li>
@@ -116,10 +131,12 @@ const INFORMACAO_LOGIN = `
     <p>Se não tiver email registado, ou precisar de outra ajuda, contacte a <strong>secretaria da escola</strong>.</p>
   </div>`;
 
-function paginaLogin(req, { username = '', erro = '' } = {}) {
+async function paginaLogin(req, { username = '', erro = '' } = {}) {
+  const variasEscolas = (await escolasAtivas()).length > 1;
   return paginaEntrada('Entrar', {
-    tituloPainel: 'Bem-vindo à Gestão Escolar',
+    tituloPainel: 'Bem-vindo',
     painel: `
+      <p class="entrada-escola">${h(escolaAtual().nome)}</p>
       ${mensagensFlash(req.lerFlash())}
       ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
       <form method="post" action="/login" class="entrada-form">
@@ -134,14 +151,15 @@ function paginaLogin(req, { username = '', erro = '' } = {}) {
       </form>
       <hr class="entrada-linha">
       <p class="entrada-rotulo"><a class="entrada-ligacao" href="/recuperar-password">Esqueceu-se da palavra-passe?</a></p>
-      <p class="entrada-texto">Enviamos uma ligação para o seu email (ou do encarregado de educação) para escolher uma nova.</p>`,
-    informacao: INFORMACAO_LOGIN,
+      <p class="entrada-texto">Enviamos uma ligação para o seu email (ou do encarregado de educação) para escolher uma nova.</p>
+      ${variasEscolas ? '<p class="entrada-texto">Não é a sua escola? <a class="entrada-ligacao" href="/escolas">Mudar de escola</a></p>' : ''}`,
+    informacao: informacaoLogin(),
   });
 }
 
-get('/login', (req, res) => {
+get('/login', async (req, res) => {
   if (req.utilizador) return res.redirecionar(PAGINA_INICIAL[req.utilizador.papel]);
-  res.html(paginaLogin(req));
+  res.html(await paginaLogin(req));
 });
 
 post('/login', async (req, res) => {
@@ -150,7 +168,7 @@ post('/login', async (req, res) => {
   const utilizador = await um('SELECT * FROM utilizadores WHERE username = ?', username);
 
   if (!utilizador || !verificarPassword(password, utilizador.password_hash)) {
-    return res.html(paginaLogin(req, { username, erro: 'Utilizador ou palavra-passe incorretos.' }), 401);
+    return res.html(await paginaLogin(req, { username, erro: 'Utilizador ou palavra-passe incorretos.' }), 401);
   }
   (await renovarSessao(req)).dados.utilizadorId = utilizador.id;
   res.redirecionar(PAGINA_INICIAL[utilizador.papel]);
@@ -240,7 +258,7 @@ get('/fotos/:ficheiro', async (req, res) => {
     const educando = await um('SELECT 1 FROM alunos WHERE encarregado_id = ? AND fotografia = ?', req.encarregado?.id ?? 0, ficheiro);
     if (!educando) return paginaErro(req, res, 403);
   }
-  if (!enviarFicheiro(res, PASTA_FOTOS, ficheiro, 300)) paginaErro(req, res, 404);
+  if (!enviarFicheiro(res, pastaFotos(), ficheiro, 300)) paginaErro(req, res, 404);
 });
 
 // ---------- Painéis ----------
@@ -260,12 +278,16 @@ require('./rotas/encarregado');
 require('./rotas/encarregados');
 require('./rotas/justificativos');
 require('./rotas/recuperacao');
+require('./rotas/plataforma');
 
 // ---------- Arranque ----------
 async function iniciar() {
+  let escolas = [];
   try {
-    await prepararBaseDeDados();
-    await semearSeVazia();
+    escolas = await prepararTudo();
+    // Dados de demonstração: só na primeira escola (a base de dados original), e só se estiver vazia
+    const primeira = escolas.find((e) => e.base_dados === CONFIG.database);
+    if (primeira) await correrNoContexto(contextoDaEscola(primeira), semearSeVazia);
   } catch (erro) {
     console.error(`\nNão foi possível ligar ao MySQL em ${CONFIG.host}:${CONFIG.port} (utilizador "${CONFIG.user}").`);
     console.error('Confirme que o MySQL está ligado no painel do XAMPP.\n');
@@ -273,7 +295,12 @@ async function iniciar() {
     process.exit(1);
   }
 
-  const servidor = criarServidor({ pastaPublica: path.join(pastaBase(), 'public'), antesDaRota, paginaErro });
+  const servidor = criarServidor({
+    pastaPublica: path.join(pastaBase(), 'public'),
+    antesDaRota,
+    paginaErro,
+    resolverContexto: resolverContextoGestao,
+  });
   servidor.on('error', (erro) => {
     if (erro.code === 'EADDRINUSE') {
       console.error(`\nA porta ${PORTA} já está a ser usada (provavelmente o servidor já está a correr noutro terminal).`);
@@ -283,11 +310,10 @@ async function iniciar() {
     }
     process.exit(1);
   });
-  servidor.listen(PORTA, async () => {
-    const totais = (await todos('SELECT papel, COUNT(*) AS n FROM utilizadores GROUP BY papel'))
-      .map((l) => `${l.n} ${l.papel}`)
-      .join(', ');
-    console.log(`Gestão Escolar a correr em http://localhost:${PORTA}  (MySQL: ${CONFIG.database} · ${totais})`);
+  servidor.listen(PORTA, () => {
+    console.log(`Gestão Escolar a correr em http://localhost:${PORTA}  (${escolas.length} escola(s))`);
+    for (const e of escolas) console.log(`  ${e.ativa ? '' : '[inativa] '}${e.nome} → http://localhost:${PORTA}/escola/${e.codigo}  (MySQL: ${e.base_dados})`);
+    console.log(`  Painel da plataforma → http://localhost:${PORTA}/plataforma`);
   });
 }
 

@@ -580,6 +580,9 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
   font: 300 4.3rem/1.12 var(--letra-entrada); letter-spacing: -.02em; text-shadow: 0 1px 12px rgba(0, 0, 0, .25);
 }
 .entrada-painel, .entrada-painel input, .entrada-painel .botao, .entrada-sair { font-family: var(--letra-entrada); }
+/* Nome da escola por baixo de "Bem-vindo" */
+.entrada-painel h1:has(+ .entrada-escola) { margin-bottom: .3rem; }
+.entrada-escola { margin: 0 0 1.5rem; text-align: center; font-size: 1.6rem; font-weight: 300; line-height: 1.25; text-shadow: 0 1px 10px rgba(0, 0, 0, .25); }
 .entrada-rotulo { margin: 0 0 .55rem; font-size: .92rem; font-weight: 700; line-height: 1.35; }
 .entrada-texto { margin: 0 0 .9rem; font-size: .92rem; line-height: 1.5; }
 .entrada-texto:last-child { margin-bottom: 0; }
@@ -618,6 +621,24 @@ a.aluno-linha:hover span { text-decoration: underline; text-underline-offset: .2
 
 @media (max-width: 860px) {
   .entrada-info { grid-template-columns: 1fr; gap: 1.6rem; }
+}
+
+/* ----- Painel da plataforma (gestor das escolas) ----- */
+.plataforma { background: var(--superficie-2); }
+.plataforma .entrada-topo .marca strong { font-family: var(--letra); font-size: 1.5rem; }
+.plataforma .entrada-topo .marca small { display: block; color: var(--tinta-suave); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; }
+.plataforma .entrada-topo .logo { width: 38px; height: 38px; }
+.plataforma-conteudo { width: 100%; max-width: 1280px; margin: 0 auto; padding: 2rem 1.75rem 3rem; }
+.plataforma-conteudo > h1 { margin-bottom: 1.4rem; font-size: 2.4rem; }
+.plataforma-conteudo .cartao { margin-bottom: 1.6rem; padding: 1.5rem 1.6rem; background: var(--papel); border: 1px solid var(--linha); }
+.plataforma-conteudo .grelha-form { margin-top: 1rem; }
+.plataforma-editar { margin-top: .4rem; }
+.plataforma-editar summary { cursor: pointer; font-size: .85rem; font-weight: 600; color: var(--acento); }
+.plataforma-editar .filtros { margin: .8rem 0 .3rem; }
+.plataforma tr.inativa td { color: var(--tinta-suave); }
+.plataforma .acoes-linha form { margin: 0; }
+@media (max-width: 560px) {
+  .plataforma-conteudo { padding: 1.3rem 1rem 2rem; }
 }
 @media (max-width: 560px) {
   .entrada-topo { padding: .9rem 1rem; }

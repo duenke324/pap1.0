@@ -5,10 +5,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { todos, transacao, PASTA_JUSTIFICATIVOS } = require('../db');
+const { todos, transacao, pastaJustificativos } = require('../db');
 const { avatar, vazio } = require('../vistas/layout');
 const { h, formatarData, formatarDataLonga, TIPOS_FALTA } = require('./util');
-const { enviarEmail, APP_URL } = require('./email');
+const { enviarEmail, ligacaoDaEscola } = require('./email');
+const { escolaAtual } = require('./contexto');
 
 const TAMANHO_MAXIMO = 3 * 1024 * 1024; // 3 MB (em base64 ocupa 4 MB, abaixo do limite de 6 MB do formulário)
 
@@ -30,13 +31,13 @@ function guardarFicheiroJustificativo(dataUrl) {
   const tipo = TIPOS_FICHEIRO[m[1]];
   if (!tipo.assinatura(bytes)) throw new Error('O ficheiro não é um PDF nem uma imagem válida.');
   const nome = `justificativo-${crypto.randomBytes(12).toString('hex')}.${tipo.extensao}`;
-  fs.writeFileSync(path.join(PASTA_JUSTIFICATIVOS, nome), bytes);
+  fs.writeFileSync(path.join(pastaJustificativos(), nome), bytes);
   return nome;
 }
 
 function apagarFicheiroJustificativo(nome) {
   if (!nome) return;
-  fs.rm(path.join(PASTA_JUSTIFICATIVOS, path.basename(nome)), { force: true }, () => {});
+  fs.rm(path.join(pastaJustificativos(), path.basename(nome)), { force: true }, () => {});
 }
 
 // ---------- Consultas ----------
@@ -134,7 +135,7 @@ async function decidirJustificativo(req, id, decisao, resposta) {
     const faltas = j.faltas.map((f) => `  - ${formatarData(f.data)}, ${f.hora_inicio}, ${f.disciplina}`).join('\n');
     const enviado = await enviarEmail({
       para: j.encarregado_email,
-      assunto: `Gestão Escolar — justificativo ${aceite ? 'aceite' : 'recusado'} (${j.aluno})`,
+      assunto: `${escolaAtual().nome} — justificativo ${aceite ? 'aceite' : 'recusado'} (${j.aluno})`,
       texto: [
         `Olá${j.encarregado_nome ? `, ${j.encarregado_nome}` : ''},`,
         ``,
@@ -148,7 +149,7 @@ async function decidirJustificativo(req, id, decisao, resposta) {
         ...(aceite && resposta ? [`Observação da escola: ${resposta}`] : []),
         ...(aceite ? [] : [`As faltas continuam por justificar. Pode enviar outro documento na aplicação.`]),
         ``,
-        `Ver os seus pedidos: ${APP_URL}/encarregado/justificativos`,
+        `Ver os seus pedidos: ${ligacaoDaEscola('/encarregado/justificativos')}`,
       ].join('\n'),
     });
     if (enviado) resultado.mensagem += ' O encarregado foi avisado por email.';

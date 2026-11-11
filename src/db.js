@@ -3,6 +3,7 @@ const mysql = require('mysql2/promise');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pastaBase } = require('./lib/recursos');
+const { contextoAtual } = require('./lib/contexto');
 
 // Configuração (pode ser alterada com variáveis de ambiente)
 const CONFIG = {
@@ -12,6 +13,11 @@ const CONFIG = {
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'gestao_escolar',
 };
+
+// Base de dados central da plataforma: a lista de escolas e a conta de quem as gere.
+// Cada escola tem depois a sua própria base de dados (a da primeira escola é CONFIG.database).
+// (com DB_NAME definido — ex.: uma base de dados de testes — a central também fica à parte)
+const BD_PLATAFORMA = process.env.DB_PLATAFORMA || (process.env.DB_NAME ? `${process.env.DB_NAME}_plataforma` : 'gestao_plataforma');
 
 const PASTA_DADOS = path.join(pastaBase(), 'data');
 const PASTA_FOTOS = path.join(PASTA_DADOS, 'fotos');
@@ -23,40 +29,127 @@ const PASTA_JUSTIFICATIVOS = path.join(PASTA_DADOS, 'justificativos');
 fs.mkdirSync(PASTA_FOTOS, { recursive: true });
 fs.mkdirSync(PASTA_JUSTIFICATIVOS, { recursive: true });
 
-const pool = mysql.createPool({
-  ...CONFIG,
-  charset: 'utf8mb4',
-  dateStrings: true, // datas chegam como texto 'AAAA-MM-DD' (sem problemas de fuso horário)
-  connectionLimit: 10,
-});
+// Os ficheiros de cada escola ficam numa subpasta com o nome da sua base de dados, para nunca se
+// misturarem. A primeira escola (CONFIG.database) usa a pasta principal, onde os ficheiros já estavam.
+function pastaDaEscola(base) {
+  const bd = contextoAtual()?.bd;
+  if (!bd || bd === CONFIG.database || bd === BD_PLATAFORMA) return base;
+  const pasta = path.join(base, bd);
+  fs.mkdirSync(pasta, { recursive: true });
+  return pasta;
+}
+const pastaFotos = () => pastaDaEscola(PASTA_FOTOS);
+const pastaJustificativos = () => pastaDaEscola(PASTA_JUSTIFICATIVOS);
 
-// Cria a base de dados e as tabelas (se ainda não existirem) a partir de database/escola.sql
-async function prepararBaseDeDados() {
-  const ligacao = await mysql.createConnection({
+// ---------- Ligações ----------
+// Um conjunto de ligações ("pool") por base de dados, criado na primeira vez que é preciso
+const pools = new Map();
+function poolDe(bd) {
+  if (!pools.has(bd)) {
+    pools.set(
+      bd,
+      mysql.createPool({
+        ...CONFIG,
+        database: bd,
+        charset: 'utf8mb4',
+        dateStrings: true, // datas chegam como texto 'AAAA-MM-DD' (sem problemas de fuso horário)
+        connectionLimit: 10,
+      })
+    );
+  }
+  return pools.get(bd);
+}
+
+// A base de dados do pedido atual (ver lib/contexto.js); fora de um pedido, a da primeira escola
+function poolAtual() {
+  return poolDe(contextoAtual()?.bd || CONFIG.database);
+}
+
+async function fecharLigacoes() {
+  await Promise.all([...pools.values()].map((p) => p.end()));
+  pools.clear();
+}
+
+function ligacaoDeAdministracao() {
+  return mysql.createConnection({
     host: CONFIG.host,
     port: CONFIG.port,
     user: CONFIG.user,
     password: CONFIG.password,
     multipleStatements: true,
   });
+}
+
+// O nome de uma base de dados vai escrito diretamente no SQL (não pode ser um parâmetro "?"),
+// por isso só se aceitam letras minúsculas, algarismos e "_".
+function nomeBdValido(bd) {
+  return /^[a-z][a-z0-9_]{2,50}$/.test(bd);
+}
+
+// Cria a base de dados de uma escola e as suas tabelas (se ainda não existirem) a partir de
+// database/escola.sql, e aplica as migrações. Por omissão, a da primeira escola.
+async function prepararBaseDeDados(bd = CONFIG.database) {
+  if (!nomeBdValido(bd)) throw new Error(`Nome de base de dados inválido: ${bd}`);
+  const ligacao = await ligacaoDeAdministracao();
   try {
-    const sql = fs
-      .readFileSync(FICHEIRO_ESQUEMA, 'utf8')
-      .replaceAll('gestao_escolar', CONFIG.database);
+    const sql = fs.readFileSync(FICHEIRO_ESQUEMA, 'utf8').replaceAll('gestao_escolar', bd);
     await ligacao.query(sql);
-    await migrar(ligacao);
+    await migrar(ligacao, bd);
+  } finally {
+    await ligacao.end();
+  }
+}
+
+// Cria a base de dados central (lista de escolas, conta do gestor da plataforma e as sessões dele)
+async function prepararPlataforma() {
+  if (!nomeBdValido(BD_PLATAFORMA)) throw new Error(`Nome de base de dados inválido: ${BD_PLATAFORMA}`);
+  const ligacao = await ligacaoDeAdministracao();
+  try {
+    await ligacao.query(`
+      CREATE DATABASE IF NOT EXISTS \`${BD_PLATAFORMA}\` DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
+      USE \`${BD_PLATAFORMA}\`;
+
+      -- codigo: aparece no endereço de entrada da escola (/escola/<codigo>)
+      -- dominio_email: o que vem depois do @ nos emails institucionais da escola
+      -- base_dados: a base de dados onde vivem os alunos, faltas, etc. desta escola
+      CREATE TABLE IF NOT EXISTS escolas (
+        id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        codigo        VARCHAR(40)  NOT NULL UNIQUE,
+        nome          VARCHAR(120) NOT NULL,
+        dominio_email VARCHAR(120) NOT NULL UNIQUE,
+        base_dados    VARCHAR(64)  NOT NULL UNIQUE,
+        direcao_nome  VARCHAR(120),
+        ativa         TINYINT(1)   NOT NULL DEFAULT 1,
+        criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE = InnoDB;
+
+      CREATE TABLE IF NOT EXISTS gestores (
+        id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        username                VARCHAR(50)  NOT NULL UNIQUE,
+        password_hash           VARCHAR(200) NOT NULL,
+        nome                    VARCHAR(120) NOT NULL,
+        deve_redefinir_password TINYINT(1)   NOT NULL DEFAULT 0
+      ) ENGINE = InnoDB;
+
+      CREATE TABLE IF NOT EXISTS sessoes (
+        token         CHAR(64) PRIMARY KEY,
+        dados         TEXT NOT NULL,
+        ultimo_acesso DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sessoes_acesso (ultimo_acesso)
+      ) ENGINE = InnoDB;
+    `);
   } finally {
     await ligacao.end();
   }
 }
 
 // Atualiza bases de dados criadas por versões anteriores da aplicação
-async function migrar(ligacao) {
+async function migrar(ligacao, bd) {
   const existeColuna = async (tabela, coluna) =>
     (
       await ligacao.query(
         'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
-        [CONFIG.database, tabela, coluna]
+        [bd, tabela, coluna]
       )
     )[0].length > 0;
 
@@ -71,7 +164,7 @@ async function migrar(ligacao) {
   // têm o ENUM mais curto, por isso o CREATE TABLE IF NOT EXISTS do escola.sql não chega a alterá-lo.
   const [[{ COLUMN_TYPE: tipoPapel }]] = await ligacao.query(
     `SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'utilizadores' AND COLUMN_NAME = 'papel'`,
-    [CONFIG.database]
+    [bd]
   );
   // (o mesmo para o papel "encarregado", que veio depois)
   if (!tipoPapel.includes('funcionario') || !tipoPapel.includes('encarregado')) {
@@ -89,7 +182,7 @@ async function migrar(ligacao) {
     (
       await ligacao.query(
         'SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?',
-        [CONFIG.database, tabela, nome]
+        [bd, tabela, nome]
       )
     )[0].length > 0;
   for (const tabela of ['alunos', 'professores']) {
@@ -115,7 +208,7 @@ async function migrar(ligacao) {
   }
   const [fkDiretor] = await ligacao.query(
     `SELECT 1 FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'turmas' AND CONSTRAINT_NAME = 'fk_turma_diretor'`,
-    [CONFIG.database]
+    [bd]
   );
   if (!fkDiretor.length) {
     await ligacao.query(
@@ -155,7 +248,7 @@ async function migrar(ligacao) {
     (
       await ligacao.query(
         'SELECT 1 FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?',
-        [CONFIG.database, tabela, nome]
+        [bd, tabela, nome]
       )
     )[0].length > 0;
   if (!(await existeConstraint('turmas', 'fk_turma_delegado'))) {
@@ -195,32 +288,47 @@ async function migrar(ligacao) {
   }
 }
 
-// Atalhos de consulta. Recebem uma "ligação" opcional para funcionar dentro de transações.
-function criarAtalhos(ligacao) {
+// Atalhos de consulta. "obterLigacao" devolve onde executar: uma ligação fixa (dentro de uma
+// transação) ou o pool da base de dados do pedido atual, escolhido de novo em cada consulta.
+function criarAtalhos(obterLigacao) {
   return {
     async todos(sql, ...params) {
-      const [linhas] = await ligacao.query(sql, params);
+      const [linhas] = await obterLigacao().query(sql, params);
       return linhas;
     },
     async um(sql, ...params) {
-      const [linhas] = await ligacao.query(sql, params);
+      const [linhas] = await obterLigacao().query(sql, params);
       return linhas[0];
     },
     async executar(sql, ...params) {
-      const [r] = await ligacao.query(sql, params);
+      const [r] = await obterLigacao().query(sql, params);
       return { lastInsertRowid: r.insertId, changes: r.affectedRows };
     },
   };
 }
 
-const { todos, um, executar } = criarAtalhos(pool);
+// Consultas à base de dados da escola do pedido atual
+const { todos, um, executar } = criarAtalhos(poolAtual);
+// Consultas à base de dados central (escolas e gestor), seja qual for o pedido
+const plataforma = criarAtalhos(() => poolDe(BD_PLATAFORMA));
+
+// ---------- Escolas ----------
+function escolasAtivas() {
+  return plataforma.todos('SELECT * FROM escolas WHERE ativa = 1 ORDER BY nome');
+}
+function escolaPorCodigo(codigo) {
+  return plataforma.um('SELECT * FROM escolas WHERE codigo = ? AND ativa = 1', String(codigo || ''));
+}
+function escolaPorDominio(dominio) {
+  return plataforma.um('SELECT * FROM escolas WHERE dominio_email = ? AND ativa = 1', String(dominio || '').toLowerCase());
+}
 
 // Executa várias operações de forma atómica: ou todas ficam guardadas, ou nenhuma
 async function transacao(fn) {
-  const ligacao = await pool.getConnection();
+  const ligacao = await poolAtual().getConnection();
   try {
     await ligacao.beginTransaction();
-    const resultado = await fn(criarAtalhos(ligacao));
+    const resultado = await fn(criarAtalhos(() => ligacao));
     await ligacao.commit();
     return resultado;
   } catch (erro) {
@@ -231,4 +339,24 @@ async function transacao(fn) {
   }
 }
 
-module.exports = { pool, todos, um, executar, transacao, prepararBaseDeDados, CONFIG, PASTA_DADOS, PASTA_FOTOS, PASTA_JUSTIFICATIVOS };
+module.exports = {
+  todos,
+  um,
+  executar,
+  transacao,
+  plataforma,
+  escolasAtivas,
+  escolaPorCodigo,
+  escolaPorDominio,
+  prepararBaseDeDados,
+  prepararPlataforma,
+  nomeBdValido,
+  fecharLigacoes,
+  CONFIG,
+  BD_PLATAFORMA,
+  PASTA_DADOS,
+  PASTA_FOTOS,
+  PASTA_JUSTIFICATIVOS,
+  pastaFotos,
+  pastaJustificativos,
+};

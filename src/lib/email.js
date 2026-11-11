@@ -5,6 +5,8 @@
 //   SMTP_FROM  remetente, ex.: "Gestão Escolar <secretaria@epmontijo.edu.pt>" (por omissão, SMTP_USER)
 // Sem SMTP_HOST nada é enviado: o email é escrito na consola do servidor, para se poder
 // desenvolver e demonstrar a aplicação sem conta de email.
+const { escolaAtual } = require('./contexto');
+
 let transporte = null;
 
 // Endereço público da aplicação, para as ligações dentro dos emails. Vem de uma variável de
@@ -55,4 +57,12 @@ async function enviarEmail({ para, assunto, texto }) {
   }
 }
 
-module.exports = { enviarEmail, emailConfigurado, APP_URL };
+// Ligação para uma página da escola do pedido atual. Passa pelo endereço de entrada da escola
+// (/escola/<codigo>?ir=...), para quem abre o email ir parar à escola certa mesmo num browser
+// que nunca a tenha escolhido.
+function ligacaoDaEscola(caminho) {
+  const { codigo } = escolaAtual();
+  return codigo ? `${APP_URL}/escola/${encodeURIComponent(codigo)}?ir=${encodeURIComponent(caminho)}` : `${APP_URL}${caminho}`;
+}
+
+module.exports = { enviarEmail, emailConfigurado, ligacaoDaEscola, APP_URL };

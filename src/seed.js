@@ -368,7 +368,7 @@ module.exports = { semearSeVazia };
 // Execução direta (npm run seed): apaga a base de dados e cria tudo de novo
 if (require.main === module) {
   (async () => {
-    const { pool, CONFIG, PASTA_FOTOS, PASTA_JUSTIFICATIVOS, prepararBaseDeDados } = require('./db');
+    const { fecharLigacoes, CONFIG, PASTA_FOTOS, PASTA_JUSTIFICATIVOS, prepararBaseDeDados } = require('./db');
     const mysql = require('mysql2/promise');
     try {
       const ligacao = await mysql.createConnection({ host: CONFIG.host, port: CONFIG.port, user: CONFIG.user, password: CONFIG.password });
@@ -394,7 +394,7 @@ if (require.main === module) {
       console.error('Confirme que o MySQL está ligado no painel do XAMPP.');
       process.exitCode = 1;
     } finally {
-      await pool.end();
+      await fecharLigacoes();
     }
   })();
 }

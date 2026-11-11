@@ -4,7 +4,7 @@
 //  - o ficheiro só é servido a quem pode ver o pedido (ver podeVerJustificativo).
 const path = require('node:path');
 const { get, post, enviarFicheiro } = require('../lib/servidor');
-const { um, PASTA_JUSTIFICATIVOS } = require('../db');
+const { um, pastaJustificativos } = require('../db');
 const { pagina } = require('../vistas/layout');
 const {
   listarJustificativos,
@@ -95,7 +95,7 @@ get('/justificativos/:id/ficheiro', async (req, res) => {
   const ficheiro = path.basename(j.ficheiro);
   // "inline": o browser mostra o PDF ou a imagem em vez de descarregar
   res.setHeader('Content-Disposition', `inline; filename="justificativo-${j.id}${path.extname(ficheiro)}"`);
-  if (!enviarFicheiro(res, PASTA_JUSTIFICATIVOS, ficheiro)) {
+  if (!enviarFicheiro(res, pastaJustificativos(), ficheiro)) {
     res.removeHeader('Content-Disposition');
     res.erro(404);
   }

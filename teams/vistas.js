@@ -2,6 +2,7 @@
 // navegação + lista clara + canais com #), com duas secções: Equipas (canais por disciplina,
 // dentro de cada turma) e Mensagens (conversas privadas 1 para 1).
 const { h, iniciais } = require('../src/lib/util');
+const { escolaAtual } = require('../src/lib/contexto');
 
 const ICONES = {
   sair: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H4"/>',
@@ -113,7 +114,7 @@ function paginaLogin({ email = '', erro = '', mensagens = [] } = {}) {
       <form method="post" action="/login" class="entrada-form">
         <p class="entrada-rotulo">Professores e alunos, com o email institucional</p>
         <label>Email institucional
-          <input type="email" name="email" value="${h(email)}" placeholder="nome.apelido.numero@epmontijo.edu.pt" autocomplete="username" required autofocus>
+          <input type="email" name="email" value="${h(email)}" placeholder="nome.apelido.numero@${h(escolaAtual().id ? escolaAtual().dominio_email : 'escola.pt')}" autocomplete="username" required autofocus>
         </label>
         <label>Palavra-passe
           <input name="password" type="password" autocomplete="current-password" required>

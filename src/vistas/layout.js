@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { pastaBase } = require('../lib/recursos');
+const { escolaAtual } = require('../lib/contexto');
 const { h, iniciais, DIAS_CURTOS, anoLetivoAtual, CARGOS_FUNCIONARIO } = require('../lib/util');
 
 const MENUS = {
@@ -119,7 +120,7 @@ function documento(titulo, corpo, classeBody = '') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${h(titulo)} · Gestão Escolar</title>
+  <title>${h(titulo)} · ${h(escolaAtual().nome)}</title>
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
@@ -152,7 +153,7 @@ function paginaEntrada(titulo, { tituloPainel = '', painel, informacao = '' }) {
   return documento(
     titulo,
     `<header class="entrada-topo">
-      <a class="marca" href="/login">${LOGO}<span><strong>Gestão Escolar</strong><small>Faltas, sumários e avaliação</small></span></a>
+      <a class="marca" href="/login">${LOGO}<span><strong>${h(escolaAtual().nome)}</strong><small>${escolaAtual().id ? "Gestão Escolar · faltas, sumários e avaliação" : "Faltas, sumários e avaliação"}</small></span></a>
     </header>
     <main class="entrada-capa${comFoto ? ' com-foto' : ''}">
       <div class="entrada-painel">
@@ -212,7 +213,7 @@ function pagina(req, opcoes, conteudo) {
 <a href="#conteudo-principal" class="ligacao-saltar">Saltar para o conteúdo</a>
 <div class="caderneta">
   <header class="cabecalho">
-    <a class="marca" href="/">${LOGO}<strong>Gestão Escolar</strong></a>
+    <a class="marca" href="/">${LOGO}<strong>${h(escolaAtual().nome)}</strong></a>
     <p class="cabecalho-ano">Ano letivo ${h(aluno?.ano_letivo || anoLetivoAtual())}</p>
     <div class="utilizador">
       <div class="utilizador-info"><strong>${h(u.nome)}</strong><small>${h(rotuloPapel(req))}</small></div>

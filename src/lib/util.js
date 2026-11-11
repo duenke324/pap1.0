@@ -1,5 +1,6 @@
 // Funções auxiliares partilhadas (segurança, datas, formatação)
 const crypto = require('node:crypto');
+const { escolaAtual } = require('./contexto');
 
 // ---------- Palavras-passe (scrypt com sal aleatório) ----------
 function gerarHash(password) {
@@ -113,10 +114,14 @@ function aulasDadas(aulas, faltas) {
 }
 
 // ---------- Email institucional ----------
-const DOMINIO_EMAIL = 'epmontijo.edu.pt';
-const REGEX_EMAIL_INSTITUCIONAL = /^[a-z0-9._-]+@epmontijo\.edu\.pt$/i;
+// O domínio (o que vem depois do @) é o da escola do pedido atual, definido pelo gestor da
+// plataforma ao criar a escola — ver lib/contexto.js.
+function dominioEmail() {
+  return escolaAtual().dominio_email;
+}
 function emailInstitucionalValido(email) {
-  return REGEX_EMAIL_INSTITUCIONAL.test(String(email || '').trim());
+  const [nome, dominio, ...resto] = String(email || '').trim().toLowerCase().split('@');
+  return !resto.length && /^[a-z0-9._-]+$/.test(nome || '') && dominio === dominioEmail().toLowerCase();
 }
 
 function removerAcentos(texto) {
@@ -130,7 +135,7 @@ function gerarEmailAluno(nome, numeroProcesso) {
   const partes = String(nome).trim().split(/\s+/).filter(Boolean).map(limpar).filter(Boolean);
   const primeiro = partes[0] || 'aluno';
   const ultimo = partes.length > 1 ? partes[partes.length - 1] : primeiro;
-  return `${primeiro}.${ultimo}.${String(numeroProcesso).toLowerCase()}@${DOMINIO_EMAIL}`;
+  return `${primeiro}.${ultimo}.${String(numeroProcesso).toLowerCase()}@${dominioEmail()}`;
 }
 
 // Palavra-passe temporária legível (sem 0/O/1/l/I, para não se trocarem ao escrever à mão)
@@ -236,7 +241,7 @@ module.exports = {
   anoLetivoAtual,
   LIMITE_FALTAS,
   aulasDadas,
-  DOMINIO_EMAIL,
+  dominioEmail,
   emailInstitucionalValido,
   gerarEmailAluno,
   gerarPasswordTemporaria,

@@ -26,6 +26,36 @@ Por omissão a aplicação liga-se com as definições do XAMPP (`root`, sem pal
 Para mudar, defina as variáveis de ambiente `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME`
 (ver [src/db.js](src/db.js)).
 
+### Várias escolas (painel da plataforma)
+
+A mesma instalação serve **várias escolas**. Quem gere a instalação entra no **painel da plataforma**
+(http://localhost:3000/plataforma) e cria cada escola com três dados:
+
+- o **nome da escola** — passa a aparecer no lugar de "Gestão Escolar" no cabeçalho, na página de entrada,
+  no título das páginas e nos emails;
+- o **domínio de email** (o que vem depois do `@`, ex.: `esalcochete.edu.pt`) — usado nos emails gerados para os
+  alunos e exigido nos emails de professores e funcionários; é também por ele que a Conversas sabe de que escola é cada pessoa;
+- o **nome da direção** — fica criada a conta de administrador da escola (utilizador `direcao`, com uma palavra-passe
+  temporária mostrada uma só vez), que entra e cria as turmas, alunos, professores, disciplinas e módulos.
+
+Como funciona por dentro:
+
+- **Uma base de dados por escola** (`gestao_<código>`), criada a partir do mesmo `database/escola.sql`; os dados de uma
+  escola nunca se misturam com os de outra, e o mesmo número de processo pode existir em duas escolas. Uma base de
+  dados central, `gestao_plataforma`, guarda só a lista de escolas e a conta do gestor.
+  A base de dados que já existia (`gestao_escolar`) ficou registada como a primeira escola, "Escola Profissional do Montijo".
+- **Endereço de entrada de cada escola**: `/escola/<código>` (ex.: `/escola/epmontijo`). Ao abri-lo, o browser fica a
+  lembrar-se da escola (cookie `escola`) e segue para o login. Com uma única escola ativa não é preciso: `/login` vai
+  direto para ela. Com várias, quem ainda não escolheu vê a lista em `/escolas`.
+- O cookie só escolhe **em que base de dados se procura a sessão**: mudá-lo à mão para o código de outra escola não dá
+  acesso a nada, porque a sessão não existe lá. As fotografias e os justificativos de cada escola ficam numa subpasta própria.
+- No painel dá para **editar** o nome, o domínio e a direção, **repor a palavra-passe da direção** e **desativar** uma
+  escola (ninguém dela entra; os dados ficam guardados). Não há botão para apagar uma escola.
+- A conta do gestor é criada no primeiro arranque: utilizador `plataforma`, palavra-passe inicial `plataforma123`
+  (ou a da variável de ambiente `PLATAFORMA_PASSWORD`), que **tem de ser trocada no primeiro acesso**.
+- Código: [src/lib/contexto.js](src/lib/contexto.js) (a escola de cada pedido), [src/lib/escolas.js](src/lib/escolas.js)
+  (escolha da escola, arranque, criar escola) e [src/rotas/plataforma.js](src/rotas/plataforma.js) (o painel).
+
 ### Recuperação de palavra-passe (email)
 
 No login, **"Esqueceu-se da palavra-passe?"** leva a `/recuperar-password`: a pessoa indica o número de processo
@@ -96,6 +126,7 @@ partir do browser — fica com ícone próprio e abre em janela própria, sem ba
 | Funcionário   | `3001`…`3008` (informático, auxiliar escolar, RH, biblioteca, secretaria, centro de recursos, cozinha, portaria) | `func123`     |
 | Aluno         | `2450`…`2456` (10.º), `2310`…`2315` (11.º)                                                                       | `aluno123`    |
 | Encarregado   | `EE2450` (mãe da Beatriz, 10.º) e `EE2310` (mãe do Gonçalo, 11.º)                                                | `ee123`       |
+| Gestor da plataforma | `plataforma`, em `/plataforma` (não é uma conta de escola)                                                | `plataforma123` (trocada no 1.º acesso) |
 
 Todos entram com o **número de processo** na Gestão Escolar — não há nomes de utilizador à parte.
 A exceção é o encarregado de educação, que não tem número de processo: entra com um **código** (`EE` + número de
@@ -335,6 +366,9 @@ src/
   rotas/encarregados.js Painel do administrador (contas dos encarregados, na ficha do aluno)
   rotas/justificativos.js Validação dos justificativos (administração e diretor de turma) e acesso ao ficheiro
   lib/justificativos.js Guarda os ficheiros, lê os pedidos e aplica a decisão de aceitar/recusar
+  rotas/plataforma.js   Painel da plataforma (criar e gerir escolas) e escolha da escola (/escolas, /escola/<código>)
+  lib/contexto.js       A escola (e a base de dados) do pedido atual
+  lib/escolas.js        Escolhe a escola de cada pedido, prepara as bases de dados no arranque e cria escolas
   rotas/recuperacao.js  Recuperação de palavra-passe (pedido e ligação enviada por email)
   lib/email.js          Envio de email por SMTP (ou para a consola, se o SMTP não estiver configurado)
 database/escola.sql   Esquema da base de dados MySQL (todas as tabelas)
@@ -353,7 +387,11 @@ teams/                App separada "Conversas" (npm run conversas) — visual e 
 
 ## Base de dados (MySQL — `gestao_escolar`)
 
-Tudo o que é criado ou alterado na plataforma fica guardado nestas tabelas:
+Cada escola tem uma base de dados com estas tabelas (a da primeira escola chama-se `gestao_escolar`; as seguintes,
+`gestao_<código>`). À parte, a base de dados central `gestao_plataforma` tem só três tabelas: `escolas` (código, nome,
+domínio de email, base de dados, direção, ativa), `gestores` (a conta do gestor da plataforma) e `sessoes` (os logins dele).
+
+Tudo o que é criado ou alterado numa escola fica guardado nestas tabelas:
 
 `utilizadores` (login e papel) · `turmas` · `disciplinas` · `professores` · `alunos` ·
 `professor_disciplinas` · `tempos` (tempos letivos do dia) ·
@@ -398,6 +436,9 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 ## Limitações conhecidas (beta)
 
 - Os tempos letivos (08:30, 09:30, …) estão na tabela `tempos` e ainda não têm ecrã de edição
+- Várias escolas: a lista de escolas em `/escolas` é pública (mostra os nomes); `npm run seed` só recria a primeira
+  escola; o site InformaNege e a aplicação para Mac não foram revistos para várias escolas; não se pode apagar uma
+  escola pelo painel (só desativar)
 - A recuperação de palavra-passe só envia emails a sério com um servidor SMTP configurado (ver "Recuperação de
   palavra-passe"); sem ele, a ligação aparece só na consola do servidor. O administrador não tem email na ficha,
   por isso não pode usar a recuperação

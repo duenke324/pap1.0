@@ -39,7 +39,8 @@ const get = (caminho, handler) => rota('GET', caminho, handler);
 const post = (caminho, handler) => rota('POST', caminho, handler);
 
 // ---------- Sessões (guardadas na tabela "sessoes" da base de dados) ----------
-const { executar, um } = require('../db');
+const { executar, um, plataforma, BD_PLATAFORMA } = require('../db');
+const { correrNoContexto, contextoAtual } = require('./contexto');
 
 function lerCookies(req) {
   const resultado = {};
@@ -72,7 +73,8 @@ async function obterSessao(req, nomeCookie = 'sid') {
 }
 
 // Guarda a sessão antes de enviar a resposta. Só cria uma sessão nova se houver algo para guardar.
-async function guardarSessao(req, res, nomeCookie = 'sid') {
+// (o nome do cookie, se não for indicado, é o do contexto do pedido — ver lib/contexto.js)
+async function guardarSessao(req, res, nomeCookie = contextoAtual()?.nomeCookie || 'sid') {
   const sessao = req.sessao;
   if (!sessao) return;
   const dados = JSON.stringify(sessao.dados);
@@ -81,8 +83,14 @@ async function guardarSessao(req, res, nomeCookie = 'sid') {
   } else if (dados !== '{}') {
     sessao.token = crypto.randomBytes(32).toString('hex');
     await executar('INSERT INTO sessoes (token, dados) VALUES (?, ?)', sessao.token, dados);
-    res.setHeader('Set-Cookie', `${nomeCookie}=${sessao.token}; HttpOnly; SameSite=Lax; Path=/`);
+    acrescentarCookie(res, `${nomeCookie}=${sessao.token}; HttpOnly; SameSite=Lax; Path=/`);
   }
+}
+
+// Junta um cookie aos que a resposta já leva (res.setHeader sozinho substituía os anteriores)
+function acrescentarCookie(res, cookie) {
+  const atuais = res.getHeader('Set-Cookie');
+  res.setHeader('Set-Cookie', atuais ? [].concat(atuais, cookie) : cookie);
 }
 
 // Depois do login usa-se um identificador novo, para evitar "session fixation"
@@ -96,11 +104,18 @@ async function terminarSessao(req) {
   req.sessao = { token: null, dados: {} };
 }
 
-// Apaga sessões expiradas de hora a hora
-setInterval(() => {
-  executar('DELETE FROM sessoes WHERE ultimo_acesso < NOW() - INTERVAL ? SECOND', DURACAO_SESSAO / 1000).catch((e) =>
-    console.error('Erro ao limpar sessões:', e.message)
-  );
+// Apaga sessões expiradas de hora a hora, na base de dados central e na de cada escola
+setInterval(async () => {
+  try {
+    const bases = [BD_PLATAFORMA, ...(await plataforma.todos('SELECT base_dados FROM escolas')).map((e) => e.base_dados)];
+    for (const bd of bases) {
+      await correrNoContexto({ bd, escola: null, nomeCookie: 'sid' }, () =>
+        executar('DELETE FROM sessoes WHERE ultimo_acesso < NOW() - INTERVAL ? SECOND', DURACAO_SESSAO / 1000)
+      );
+    }
+  } catch (e) {
+    console.error('Erro ao limpar sessões:', e.message);
+  }
 }, 60 * 60 * 1000).unref();
 
 // ---------- Corpo do pedido (formulários application/x-www-form-urlencoded) ----------
@@ -153,7 +168,7 @@ function enviarFicheiro(res, pasta, relativo, cacheSegundos = 0) {
 }
 
 // ---------- Servidor ----------
-function criarServidor({ pastaPublica, antesDaRota, paginaErro, nomeCookie = 'sid' }) {
+function criarServidor({ pastaPublica, antesDaRota, paginaErro, nomeCookie = 'sid', resolverContexto }) {
   return http.createServer(async (req, res) => {
     try {
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -174,12 +189,30 @@ function criarServidor({ pastaPublica, antesDaRota, paginaErro, nomeCookie = 'si
         return paginaErro(req, res, 404);
       }
 
-      req.sessao = await obterSessao(req, nomeCookie);
+      // A que escola (base de dados) pertence este pedido. Tudo o que vem a seguir corre "dentro"
+      // desse contexto, por isso as consultas vão sozinhas para a base de dados certa.
+      // resolverContexto devolve false quando já respondeu (ex.: mandou escolher a escola).
+      const ctx = resolverContexto ? await resolverContexto(req, res) : null;
+      if (ctx === false) return;
+      const cookie = ctx?.nomeCookie || nomeCookie;
+      const tratar = () => tratarPedido(req, res, { antesDaRota, paginaErro, cookie });
+      return ctx ? await correrNoContexto(ctx, tratar) : await tratar();
+    } catch (erro) {
+      console.error(erro);
+      if (!res.headersSent) paginaErro(req, res, erro.estado || 500);
+      else res.end();
+    }
+  });
+}
+
+async function tratarPedido(req, res, { antesDaRota, paginaErro, cookie }) {
+    try {
+      req.sessao = await obterSessao(req, cookie);
       req.corpo = req.method === 'POST' ? await lerCorpo(req) : {};
 
       // A sessão é guardada na BD antes de a resposta sair (assim o pedido seguinte já a encontra)
       const responder = (estado, cabecalhos, conteudo) =>
-        guardarSessao(req, res, nomeCookie)
+        guardarSessao(req, res, cookie)
           .then(() => {
             res.writeHead(estado, cabecalhos);
             res.end(conteudo);
@@ -227,7 +260,16 @@ function criarServidor({ pastaPublica, antesDaRota, paginaErro, nomeCookie = 'si
       if (!res.headersSent) paginaErro(req, res, erro.estado || 500);
       else res.end();
     }
-  });
 }
 
-module.exports = { get, post, criarServidor, renovarSessao, terminarSessao, enviarFicheiro, guardarSessao };
+module.exports = {
+  get,
+  post,
+  criarServidor,
+  renovarSessao,
+  terminarSessao,
+  enviarFicheiro,
+  guardarSessao,
+  lerCookies,
+  acrescentarCookie,
+};

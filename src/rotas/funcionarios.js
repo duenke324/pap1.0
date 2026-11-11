@@ -2,7 +2,7 @@
 const { get, post } = require('../lib/servidor');
 const { todos, um, executar, transacao } = require('../db');
 const { pagina, vazio } = require('../vistas/layout');
-const { h, gerarHash, iniciais, emailInstitucionalValido, DOMINIO_EMAIL, CARGOS_FUNCIONARIO } = require('../lib/util');
+const { h, gerarHash, iniciais, emailInstitucionalValido, dominioEmail, CARGOS_FUNCIONARIO } = require('../lib/util');
 const { registarLog } = require('../lib/auditoria');
 
 const temErros = (erros) => Object.keys(erros).length > 0;
@@ -36,7 +36,7 @@ async function lerFormularioFuncionario(corpo, funcionario = null) {
     erros.numero_processo = 'Já existe um utilizador com este número.';
   }
   if (!(dados.cargo in CARGOS_FUNCIONARIO)) erros.cargo = 'Escolha um cargo.';
-  if (dados.email && !emailInstitucionalValido(dados.email)) erros.email = `O email tem de acabar em @${DOMINIO_EMAIL}.`;
+  if (dados.email && !emailInstitucionalValido(dados.email)) erros.email = `O email tem de acabar em @${dominioEmail()}.`;
   if (dados.contacto && !/^\+?[\d\s]{9,20}$/.test(dados.contacto)) erros.contacto = 'Contacto inválido (ex.: 912 345 678).';
   if (!funcionario && dados.password.length < 6) erros.password = 'A palavra-passe deve ter pelo menos 6 caracteres.';
   if (funcionario && dados.password && dados.password.length < 6) erros.password = 'A palavra-passe deve ter pelo menos 6 caracteres.';
@@ -63,8 +63,8 @@ function formularioFuncionario({ funcionario = {}, erros = {}, acao, titulo, edi
               .join('')}
           </select>${erro('cargo')}</label>
         <label>Email institucional
-          <input type="email" name="email" value="${h(funcionario.email)}" maxlength="120" placeholder="nome@${DOMINIO_EMAIL}"${cls('email')}>
-          ${erro('email') || `<small class="texto-suave">Opcional. Se indicado, tem de acabar em @${DOMINIO_EMAIL}.</small>`}</label>
+          <input type="email" name="email" value="${h(funcionario.email)}" maxlength="120" placeholder="nome@${dominioEmail()}"${cls('email')}>
+          ${erro('email') || `<small class="texto-suave">Opcional. Se indicado, tem de acabar em @${dominioEmail()}.</small>`}</label>
         <label>Contacto
           <input name="contacto" value="${h(funcionario.contacto)}" maxlength="20" placeholder="Ex.: 912 345 678"${cls('contacto')}>${erro('contacto')}</label>
         <label class="coluna-toda">${editar ? 'Nova palavra-passe' : 'Palavra-passe de acesso *'}

@@ -2,7 +2,7 @@
 const { get, post } = require('../lib/servidor');
 const { todos, um, executar, transacao } = require('../db');
 const { pagina, vazio, grelhaHorario, botaoImprimir } = require('../vistas/layout');
-const { h, gerarHash, comoLista, iniciais, emailInstitucionalValido, DOMINIO_EMAIL } = require('../lib/util');
+const { h, gerarHash, comoLista, iniciais, emailInstitucionalValido, dominioEmail } = require('../lib/util');
 const { registarLog } = require('../lib/auditoria');
 
 const temErros = (erros) => Object.keys(erros).length > 0;
@@ -36,7 +36,7 @@ async function lerFormularioProfessor(corpo, professor = null) {
   } else if (await um('SELECT 1 FROM utilizadores WHERE username = ? AND NOT (id <=> ?)', dados.numero_processo, professor?.utilizador_id ?? null)) {
     erros.numero_processo = 'Já existe um utilizador com este número.';
   }
-  if (dados.email && !emailInstitucionalValido(dados.email)) erros.email = `O email tem de acabar em @${DOMINIO_EMAIL}.`;
+  if (dados.email && !emailInstitucionalValido(dados.email)) erros.email = `O email tem de acabar em @${dominioEmail()}.`;
   if (!professor && dados.password.length < 6) erros.password = 'A palavra-passe deve ter pelo menos 6 caracteres.';
   if (professor && dados.password && dados.password.length < 6) erros.password = 'A palavra-passe deve ter pelo menos 6 caracteres.';
 
@@ -58,8 +58,8 @@ async function formularioProfessor({ professor = {}, erros = {}, acao, titulo, e
           <input name="numero_processo" value="${h(professor.numero_processo)}" required maxlength="20" autocomplete="off"${cls('numero_processo')}>
           ${erro('numero_processo') || '<small class="texto-suave">Também é o nome de utilizador do professor.</small>'}</label>
         <label>Email institucional
-          <input type="email" name="email" value="${h(professor.email)}" maxlength="120" placeholder="nome@${DOMINIO_EMAIL}"${cls('email')}>
-          ${erro('email') || `<small class="texto-suave">Tem de acabar em @${DOMINIO_EMAIL}.</small>`}</label>
+          <input type="email" name="email" value="${h(professor.email)}" maxlength="120" placeholder="nome@${dominioEmail()}"${cls('email')}>
+          ${erro('email') || `<small class="texto-suave">Tem de acabar em @${dominioEmail()}.</small>`}</label>
         <label class="coluna-toda">${editar ? 'Nova palavra-passe' : 'Palavra-passe de acesso *'}
           <input type="password" name="password" autocomplete="new-password" minlength="6" ${editar ? 'placeholder="Deixe em branco para manter a atual"' : 'required'}${cls('password')}>
           ${erro('password') || '<small class="texto-suave">Assim que entrar, o professor tem de a substituir por uma escolhida por ele.</small>'}</label>

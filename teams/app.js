@@ -2,13 +2,25 @@
 // As contas (professor/aluno) são as mesmas que a direção já cria no painel principal;
 // esta app não gere contas nem palavras-passe.
 const path = require('node:path');
-const { get, post, criarServidor, renovarSessao, terminarSessao, guardarSessao } = require('../src/lib/servidor');
-const { um, CONFIG } = require('../src/db');
+const { get, post, criarServidor, renovarSessao, terminarSessao, guardarSessao, acrescentarCookie } = require('../src/lib/servidor');
+const { um, plataforma, escolaPorDominio, CONFIG } = require('../src/db');
 const { verificarPassword, h } = require('../src/lib/util');
+const { correrNoContexto } = require('../src/lib/contexto');
+const { escolaDoPedido, contextoDaEscola, contextoPlataforma } = require('../src/lib/escolas');
 const { paginaEntrada, paginaLogin } = require('./vistas');
 
 const PORTA = Number(process.env.TEAMS_PORT || process.env.PORT) || 3100;
 const NOME_COOKIE = 'sid_conversas';
+// A escola de cada pessoa fica memorizada num cookie próprio desta app, posto ao entrar
+// (descobre-se pelo domínio do email). Tal como na Gestão Escolar, o cookie só escolhe a base de
+// dados onde se procura a sessão — ver src/lib/escolas.js.
+const COOKIE_ESCOLA = 'escola_conversas';
+
+async function resolverContexto(req) {
+  const escola = await escolaDoPedido(req, COOKIE_ESCOLA);
+  // Sem escola (várias escolas e este browser ainda não entrou): só o ecrã de login funciona
+  return escola ? contextoDaEscola(escola, NOME_COOKIE) : { ...contextoPlataforma(), nomeCookie: NOME_COOKIE };
+}
 
 const MENSAGENS_ERRO = {
   400: 'O pedido não é válido.',
@@ -62,6 +74,15 @@ get('/login', (req, res) => {
 
 post('/login', async (req, res) => {
   const email = String(req.corpo.email || '').trim();
+  // A escola é a do domínio do email (o que vem depois do @); se o domínio não for de nenhuma
+  // escola, tenta-se a deste browser (ou a única que existir)
+  const escola = (await escolaPorDominio(email.split('@')[1])) || (await escolaDoPedido(req, COOKIE_ESCOLA));
+  if (!escola) return res.html(paginaLogin({ email, erro: 'Email ou palavra-passe incorretos.' }), 401);
+  // O resto do login corre na base de dados dessa escola, incluindo a sessão criada no fim
+  return correrNoContexto(contextoDaEscola(escola, NOME_COOKIE), () => entrarNaEscola(req, res, escola, email));
+});
+
+async function entrarNaEscola(req, res, escola, email) {
   const password = String(req.corpo.password || '');
   // O email vive em professores/alunos/funcionarios, não em utilizadores — por isso o JOIN em vez de um WHERE
   // direto. O JOIN a funcionarios é necessário mesmo esta app não lhes dando acesso: sem ele, uma conta de
@@ -92,8 +113,9 @@ post('/login', async (req, res) => {
     );
   }
   (await renovarSessao(req)).dados.utilizadorId = utilizador.id;
+  acrescentarCookie(res, `${COOKIE_ESCOLA}=${encodeURIComponent(escola.codigo)}; SameSite=Lax; Path=/; Max-Age=31536000`);
   res.redirecionar('/');
-});
+}
 
 post('/logout', async (req, res) => {
   await terminarSessao(req);
@@ -107,14 +129,19 @@ require('./privadas');
 async function iniciar() {
   // Não cria nem migra o esquema (isso é feito pela Gestão Escolar, para as duas apps não
   // tentarem alterar a base de dados ao mesmo tempo se arrancarem juntas); só confirma que já existe.
-  if (!(await um("SHOW TABLES LIKE 'canais'"))) {
-    throw new Error('As tabelas de canais ainda não existem. Arranque a Gestão Escolar (npm start) pelo menos uma vez primeiro.');
+  let escolas;
+  try {
+    escolas = await plataforma.todos('SELECT nome FROM escolas WHERE ativa = 1');
+  } catch {
+    throw new Error('A lista de escolas ainda não existe. Arranque a Gestão Escolar (npm start) pelo menos uma vez primeiro.');
   }
+  if (!escolas.length) throw new Error('Ainda não há nenhuma escola ativa. Crie uma no painel da plataforma da Gestão Escolar.');
   const servidor = criarServidor({
     pastaPublica: path.join(__dirname, 'publico'),
     antesDaRota,
     paginaErro,
     nomeCookie: NOME_COOKIE,
+    resolverContexto,
   });
   servidor.on('error', (erro) => {
     if (erro.code === 'EADDRINUSE') {
@@ -125,7 +152,7 @@ async function iniciar() {
     process.exit(1);
   });
   servidor.listen(PORTA, () => {
-    console.log(`Conversas a correr em http://localhost:${PORTA}  (MySQL: ${CONFIG.database})`);
+    console.log(`Conversas a correr em http://localhost:${PORTA}  (${escolas.length} escola(s): ${escolas.map((e) => e.nome).join(', ')})`);
   });
 }
 
