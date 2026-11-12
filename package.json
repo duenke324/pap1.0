@@ -1,7 +1,7 @@
 {
   "name": "gestao-escolar",
-  "version": "0.1.0-beta",
-  "description": "Sistema de Gestão Escolar - PAP (versão beta)",
+  "version": "1.0.0",
+  "description": "Sistema de Gestão Escolar - PAP (versão 1.0)",
   "main": "src/app.js",
   "private": true,
   "scripts": {

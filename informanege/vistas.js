@@ -154,7 +154,7 @@ function pagina() {
   </main>
 
   <footer class="rodape">
-    <span>InformaNege · Sistema de Gestão Escolar · versão beta · projeto académico (PAP)</span>
+    <span>InformaNege · Sistema de Gestão Escolar · versão 1.0 · projeto académico (PAP)</span>
   </footer>
 </body>
 </html>`;

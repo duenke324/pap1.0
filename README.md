@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão beta (0.1)
+# Sistema de Gestão Escolar — versão 1.0
 
 Plataforma web para consulta e gestão de informação escolar, com painéis para o
 **Aluno**, o **Professor**, o **Encarregado de educação**, o **Funcionário** e o **Administrador** (direção) de cada
@@ -475,7 +475,7 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
   (quem, o quê e quando) em `/admin/auditoria` — mudanças de diretor de turma, de delegado/subdelegado, de curso e de
   turma de um aluno aparecem destacadas no detalhe
 
-## Limitações conhecidas (beta)
+## Limitações conhecidas
 
 - Os tempos letivos (08:30, 09:30, …) estão na tabela `tempos` e ainda não têm ecrã de edição
 - Várias escolas: a lista de escolas em `/escolas` é pública (mostra os nomes); `npm run seed` só recria a primeira
