@@ -8,7 +8,7 @@
 //
 // Inclui também as duas páginas públicas de escolha da escola:
 //   /escolas          lista das escolas (aparece quando há mais do que uma e o browser ainda não escolheu)
-//   /escola/<codigo>  endereço de entrada de uma escola: memoriza-a neste browser e segue para o login
+//   /<codigo>/…       endereços de cada escola (/epmontijo/login); /escola/<codigo> continua a levar para lá
 const { get, post, renovarSessao, terminarSessao, acrescentarCookie } = require('../lib/servidor');
 const { plataforma, escolasAtivas, escolaPorCodigo } = require('../db');
 const { documento, paginaEntrada, mensagensFlash, icone, LOGO } = require('../vistas/layout');
@@ -25,8 +25,8 @@ const { h, gerarHash, verificarPassword, formatarData, hoje, iniciais } = requir
 const { pdfPalavrasPasse } = require('../lib/pdf');
 const { APP_URL } = require('../lib/email');
 
-// Endereço de entrada da escola, completo (ex.: http://localhost:3000/escola/epmontijo)
-const ligacaoDaEscolaPara = (escola) => `${APP_URL}/escola/${escola.codigo}`;
+// Endereço de entrada da escola, completo (ex.: http://localhost:3000/epmontijo)
+const ligacaoDaEscolaPara = (escola) => `${APP_URL}/${escola.codigo}`;
 
 // ---------- Escolha da escola (público) ----------
 get('/escolas', async (req, res) => {
@@ -37,7 +37,7 @@ get('/escolas', async (req, res) => {
       painel: escolas.length
         ? `<p class="entrada-texto">Escolha a sua escola para entrar. Este browser fica a lembrar-se da escolha.</p>
            <div class="entrada-form">${escolas
-             .map((e) => `<a class="botao botao-bloco" href="/escola/${h(e.codigo)}">${h(e.nome)}</a>`)
+             .map((e) => `<a class="botao botao-bloco" href="/${h(e.codigo)}/login">${h(e.nome)}</a>`)
              .join('')}</div>`
         : '<p class="entrada-texto">Ainda não há nenhuma escola a usar a plataforma.</p>',
     })
@@ -50,11 +50,12 @@ function destinoInterno(ir) {
   return /^\/(?!\/)[\w\-./]*$/.test(destino) ? destino : '/login';
 }
 
+// Endereço de entrada antigo (/escola/epmontijo?ir=…): leva para os endereços novos da escola (/epmontijo/…)
 get('/escola/:codigo', async (req, res) => {
   const escola = await escolaPorCodigo(req.params.codigo);
   if (!escola) return res.redirecionar('/escolas');
-  acrescentarCookie(res, `${COOKIE_ESCOLA}=${encodeURIComponent(escola.codigo)}; SameSite=Lax; Path=/; Max-Age=31536000`);
-  res.redirecionar(destinoInterno(req.query.ir));
+  acrescentarCookie(res, `${COOKIE_ESCOLA}_sid=${encodeURIComponent(escola.codigo)}; SameSite=Lax; Path=/; Max-Age=31536000`);
+  res.redirecionar(`/${escola.codigo}${destinoInterno(req.query.ir)}`);
 });
 
 // ---------- Estrutura das páginas do painel ----------
@@ -75,7 +76,13 @@ function paginaPlataforma(req, titulo, conteudo, { ativo = 'escolas' } = {}) {
     `<header class="pf-topo">
       <a class="pf-marca" href="/plataforma">${LOGO}<span><strong>Plataforma</strong><small>Consola das escolas</small></span></a>
       <nav class="pf-nav" aria-label="Painel da plataforma">
-        <a href="/plataforma" class="${ativo === 'escolas' ? 'ativo' : ''}">${iconePf('escolas')}<span>Escolas</span></a>
+        ${[
+          ['escolas', '/plataforma', 'escolas', 'Escolas'],
+          ['nova', '/plataforma/nova', 'mais', 'Nova escola'],
+          ['conta', '/plataforma/conta', 'chave', 'Conta'],
+        ]
+          .map(([chave, href, ic, texto]) => `<a href="${href}" class="${ativo === chave ? 'ativo' : ''}"${ativo === chave ? ' aria-current="page"' : ''}>${iconePf(ic)}<span>${texto}</span></a>`)
+          .join('')}
       </nav>
       <div class="pf-conta">
         ${req.gestor ? `<span class="pf-iniciais" aria-hidden="true">${h(iniciais(req.gestor.nome))}</span><span class="pf-conta-nome"><strong>${h(req.gestor.nome)}</strong><small>Gestor da plataforma</small></span>` : ''}
@@ -174,7 +181,7 @@ function cartaoEscola(e) {
       <span class="pf-escola-sigla" aria-hidden="true">${h(iniciais(e.nome))}</span>
       <div class="pf-escola-nome">
         <h3>${h(e.nome)}</h3>
-        <p><code>@${h(e.dominio_email)}</code> · <a href="/escola/${h(e.codigo)}">/escola/${h(e.codigo)}</a></p>
+        <p><code>@${h(e.dominio_email)}</code> · <a href="/${h(e.codigo)}/login">/${h(e.codigo)}</a></p>
       </div>
       ${e.ativa ? '<span class="pf-estado ok">Ativa</span>' : '<span class="pf-estado aviso">Inativa</span>'}
     </header>
@@ -187,23 +194,31 @@ function cartaoEscola(e) {
           </dl>`
         : '<p class="pf-estado perigo">Base de dados em falta</p>'
     }
-    <p class="pf-suave pf-pequeno">Direção: ${h(e.direcao_nome || '—')} · criada em ${h(formatarData(e.criado_em))}</p>
+    <dl class="pf-detalhes">
+      <div><dt>Direção</dt><dd>${h(e.direcao_nome || '—')}</dd></div>
+      <div><dt>Criada em</dt><dd>${h(formatarData(e.criado_em))}</dd></div>
+    </dl>
     <div class="pf-escola-acoes">
       <a class="pf-botao" href="${base}">${iconePf('alunos')}<span>Ver alunos</span></a>
-      <form method="post" action="${base}/password" data-confirmar="Gerar uma palavra-passe nova para a direção de ${h(e.nome)}? A atual deixa de funcionar.">
-        <button class="pf-botao pf-botao-sec">${iconePf('chave')}<span>Repor direção</span></button></form>
-      <form method="post" action="${base}/${e.ativa ? 'desativar' : 'ativar'}"${e.ativa ? ` data-confirmar="Desativar ${h(e.nome)}? Ninguém dessa escola consegue entrar até a voltar a ativar. Os dados ficam guardados."` : ''}>
-        <button class="pf-botao-texto${e.ativa ? ' perigo' : ''}">${e.ativa ? 'Desativar' : 'Ativar'}</button></form>
+      ${e.ativa ? `<a class="pf-botao pf-botao-sec" href="/${h(e.codigo)}/login" target="_blank" rel="noopener">Abrir escola</a>` : ''}
     </div>
     <details class="pf-editar">
-      <summary>Editar dados da escola</summary>
-      <form method="post" action="${base}/editar" class="pf-form">
-        <label>Nome da escola <input name="nome" maxlength="120" value="${h(e.nome)}" required></label>
-        <label>Domínio de email <input name="dominio" maxlength="120" value="${h(e.dominio_email)}" required></label>
-        <label>Nome da direção <input name="direcao" maxlength="120" value="${h(e.direcao_nome || '')}"></label>
-        <button class="pf-botao pf-botao-sec">Guardar</button>
-      </form>
-      <p class="pf-suave pf-pequeno">Mudar o domínio não altera os emails que já foram criados; vale para os próximos.</p>
+      <summary>Mais ações</summary>
+      <div class="pf-mais">
+        <form method="post" action="${base}/editar" class="pf-form">
+          <label>Nome da escola <input name="nome" maxlength="120" value="${h(e.nome)}" required></label>
+          <label>Domínio de email <input name="dominio" maxlength="120" value="${h(e.dominio_email)}" required></label>
+          <label>Nome da direção <input name="direcao" maxlength="120" value="${h(e.direcao_nome || '')}"></label>
+          <button class="pf-botao pf-botao-sec">Guardar alterações</button>
+          <p class="pf-suave pf-pequeno">Mudar o domínio não altera os emails que já foram criados; vale para os próximos.</p>
+        </form>
+        <div class="pf-mais-linha">
+          <form method="post" action="${base}/password" data-confirmar="Gerar uma palavra-passe nova para a direção de ${h(e.nome)}? A atual deixa de funcionar.">
+            <button class="pf-botao-texto">${iconePf('chave')}<span>Repor palavra-passe da direção</span></button></form>
+          <form method="post" action="${base}/${e.ativa ? 'desativar' : 'ativar'}"${e.ativa ? ` data-confirmar="Desativar ${h(e.nome)}? Ninguém dessa escola consegue entrar até a voltar a ativar. Os dados ficam guardados."` : ''}>
+            <button class="pf-botao-texto${e.ativa ? ' perigo' : ''}">${e.ativa ? 'Desativar escola' : 'Ativar escola'}</button></form>
+        </div>
+      </div>
     </details>
   </article>`;
 }
@@ -216,14 +231,21 @@ get('/plataforma', async (req, res) => {
   const escolas = await plataforma.todos('SELECT * FROM escolas ORDER BY ativa DESC, nome');
   for (const e of escolas) e.resumo = await resumoDaEscola(e);
   const soma = (campo) => escolas.reduce((s, e) => s + Number(e.resumo?.[campo] || 0), 0);
+  // Pesquisa por nome, domínio ou código (os totais de cima são sempre de todas as escolas)
+  const pesquisa = String(req.query.q || '').trim().slice(0, 60);
+  const alvo = pesquisa.toLowerCase();
+  const visiveis = escolas.filter((e) => !alvo || [e.nome, e.dominio_email, e.codigo].some((v) => String(v).toLowerCase().includes(alvo)));
+  const ativas = visiveis.filter((e) => e.ativa);
+  const inativas = visiveis.filter((e) => !e.ativa);
 
   const conteudo = `
     <section class="pf-cabeca">
       <div>
         <p class="pf-sobre">Visão geral</p>
         <h1>Escolas</h1>
-        <p class="pf-suave">Cada escola tem a sua base de dados, o seu nome nas páginas e o seu domínio de email.</p>
+        <p class="pf-suave">Cada escola tem a sua base de dados, o seu endereço (/código) e o seu domínio de email.</p>
       </div>
+      <a class="pf-botao" href="/plataforma/nova">${iconePf('mais')}<span>Nova escola</span></a>
     </section>
     <section class="pf-kpis" aria-label="Totais">
       <div class="pf-kpi"><span>Escolas</span><strong>${escolas.length}</strong><small>${escolas.filter((e) => e.ativa).length} ativas</small></div>
@@ -231,28 +253,73 @@ get('/plataforma', async (req, res) => {
       <div class="pf-kpi"><span>Professores</span><strong>${soma('professores')}</strong><small>em todas as escolas</small></div>
       <div class="pf-kpi"><span>Turmas</span><strong>${soma('turmas')}</strong><small>em todas as escolas</small></div>
     </section>
-    <div class="pf-grelha">
-      <section class="pf-escolas" aria-label="Escolas">
-        ${escolas.length ? escolas.map(cartaoEscola).join('') : '<p class="pf-vazio">Ainda não há escolas. Crie a primeira ao lado.</p>'}
-      </section>
-      <aside class="pf-lado">
-        <section class="pf-cartao pf-cartao-destaque">
-          <h2>${iconePf('mais')} Nova escola</h2>
-          <p class="pf-suave">Fica criada a base de dados da escola e a conta da direção, que depois cria os alunos, professores, disciplinas e módulos.</p>
-          <form method="post" action="/plataforma/escolas" class="pf-form">
-            <label>Nome da escola
-              <input name="nome" maxlength="120" placeholder="Ex.: Escola Secundária de Alcochete" required></label>
-            <label>Domínio de email <small>(o que vem depois do @)</small>
-              <input name="dominio" maxlength="120" placeholder="Ex.: esalcochete.edu.pt" required></label>
-            <label>Nome da direção <small>(quem vai administrar a escola)</small>
-              <input name="direcao" maxlength="120" placeholder="Ex.: Direção ou Maria Silva" required></label>
-            <button class="pf-botao pf-botao-bloco">Criar escola</button>
-          </form>
-        </section>
-        ${cartaoPassword(false)}
-      </aside>
-    </div>`;
+    <form method="get" class="pf-pesquisa" role="search">
+      ${iconePf('lupa')}
+      <input type="search" name="q" value="${h(pesquisa)}" placeholder="Procurar escola por nome, domínio ou código" aria-label="Procurar escola">
+      ${pesquisa ? '<a class="pf-botao-texto" href="/plataforma">Limpar</a>' : ''}
+    </form>
+    ${
+      !escolas.length
+        ? '<p class="pf-vazio">Ainda não há escolas. <a href="/plataforma/nova">Crie a primeira</a>.</p>'
+        : !visiveis.length
+          ? '<p class="pf-vazio">Nenhuma escola encontrada.</p>'
+          : `${ativas.length ? `<h2 class="pf-titulo-seccao">Ativas <span class="pf-contagem">${ativas.length}</span></h2>
+               <section class="pf-escolas" aria-label="Escolas ativas">${ativas.map(cartaoEscola).join('')}</section>` : ''}
+             ${inativas.length ? `<h2 class="pf-titulo-seccao">Inativas <span class="pf-contagem">${inativas.length}</span></h2>
+               <section class="pf-escolas" aria-label="Escolas inativas">${inativas.map(cartaoEscola).join('')}</section>` : ''}`
+    }`;
   res.html(paginaPlataforma(req, 'Escolas', conteudo));
+});
+
+// ---------- Nova escola (página própria) ----------
+get('/plataforma/nova', (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  const conteudo = `
+    <section class="pf-cabeca">
+      <div>
+        <p class="pf-sobre">Escolas</p>
+        <h1>Nova escola</h1>
+        <p class="pf-suave">Três dados e a escola fica pronta a usar.</p>
+      </div>
+    </section>
+    <div class="pf-duas-colunas">
+      <section class="pf-cartao">
+        <form method="post" action="/plataforma/escolas" class="pf-form">
+          <label>Nome da escola
+            <input name="nome" maxlength="120" placeholder="Ex.: Escola Secundária de Alcochete" required autofocus></label>
+          <label>Domínio de email <small>(o que vem depois do @)</small>
+            <input name="dominio" maxlength="120" placeholder="Ex.: esalcochete.edu.pt" required></label>
+          <label>Nome da direção <small>(quem vai administrar a escola)</small>
+            <input name="direcao" maxlength="120" placeholder="Ex.: Direção ou Maria Silva" required></label>
+          <button class="pf-botao pf-botao-bloco">Criar escola</button>
+        </form>
+      </section>
+      <section class="pf-cartao pf-cartao-suave">
+        <h2>O que acontece ao criar</h2>
+        <ol class="pf-passos">
+          <li>É criada uma <strong>base de dados só desta escola</strong>.</li>
+          <li>A escola fica com o seu <strong>endereço</strong>, feito a partir do domínio (ex.: <code>/esalcochete</code>).</li>
+          <li>É criada a <strong>conta da direção</strong> (utilizador <code>direcao</code>), com uma palavra-passe temporária mostrada uma só vez.</li>
+          <li>A direção entra e cria as turmas, alunos, professores, disciplinas e módulos.</li>
+        </ol>
+      </section>
+    </div>`;
+  res.html(paginaPlataforma(req, 'Nova escola', conteudo, { ativo: 'nova' }));
+});
+
+// ---------- A minha conta ----------
+get('/plataforma/conta', (req, res) => {
+  if (req.gestor.deve_redefinir_password) return res.redirecionar('/plataforma');
+  const conteudo = `
+    <section class="pf-cabeca">
+      <div>
+        <p class="pf-sobre">Conta</p>
+        <h1>${h(req.gestor.nome)}</h1>
+        <p class="pf-suave">Utilizador <code>${h(req.gestor.username)}</code> · gestor da plataforma</p>
+      </div>
+    </section>
+    <div class="pf-estreito-esq">${cartaoPassword(false)}</div>`;
+  res.html(paginaPlataforma(req, 'Conta', conteudo, { ativo: 'conta' }));
 });
 
 // Enquanto a palavra-passe inicial não for trocada, só se pode trocá-la
@@ -265,11 +332,13 @@ function exigirPasswordPropria(req, res) {
 post('/plataforma/escolas', async (req, res) => {
   if (exigirPasswordPropria(req, res)) return;
   const r = await criarEscola({ nome: req.corpo.nome, dominio: req.corpo.dominio, direcao: req.corpo.direcao });
-  if (r.erro) req.flash('erro', r.erro);
-  else {
+  if (r.erro) {
+    req.flash('erro', r.erro);
+    return res.redirecionar('/plataforma/nova');
+  } else {
     req.flash(
       'sucesso',
-      `Escola "${r.escola.nome}" criada. Endereço de entrada: /escola/${r.escola.codigo} · Conta da direção: ${r.username} · Palavra-passe temporária: ${r.password} (anote-a agora — não vai voltar a ser mostrada).`
+      `Escola "${r.escola.nome}" criada. Endereço de entrada: /${r.escola.codigo} · Conta da direção: ${r.username} · Palavra-passe temporária: ${r.password} (anote-a agora — não vai voltar a ser mostrada).`
     );
   }
   res.redirecionar('/plataforma');
@@ -334,7 +403,8 @@ post('/plataforma/password', async (req, res) => {
     await plataforma.executar('UPDATE gestores SET password_hash = ?, deve_redefinir_password = 0 WHERE id = ?', gerarHash(nova), gestor.id);
     req.flash('sucesso', 'Palavra-passe alterada.');
   }
-  res.redirecionar('/plataforma');
+  // (na troca obrigatória do primeiro acesso volta-se às escolas; senão, fica-se na página da conta)
+  res.redirecionar(gestor.deve_redefinir_password ? '/plataforma' : '/plataforma/conta');
 });
 
 // ---------- Alunos de uma escola, por turma ----------
@@ -413,7 +483,7 @@ get('/plataforma/escolas/:id', async (req, res) => {
     <a class="pf-voltar" href="/plataforma">${iconePf('seta')}<span>Escolas</span></a>
     <section class="pf-cabeca">
       <div>
-        <p class="pf-sobre"><code>@${h(escola.dominio_email)}</code> · /escola/${h(escola.codigo)}</p>
+        <p class="pf-sobre"><code>@${h(escola.dominio_email)}</code> · /${h(escola.codigo)}</p>
         <h1>${h(escola.nome)}</h1>
         <p class="pf-suave">Alunos por turma. Gerar uma palavra-passe nova obriga o aluno a escolher uma sua no próximo acesso.</p>
       </div>
@@ -499,7 +569,7 @@ post('/plataforma/escolas/:id/exportar-passwords', async (req, res) => {
 
   const linhas = [
     ['Escola', 'Turma', 'N.º de processo (utilizador)', 'Nome', 'Email', 'Palavra-passe temporária', 'Endereço de entrada'],
-    ...alunos.map((a) => [escola.nome, a.turma || 'Sem turma', a.username, a.nome, a.email || '', a.password, `/escola/${escola.codigo}`]),
+    ...alunos.map((a) => [escola.nome, a.turma || 'Sem turma', a.username, a.nome, a.email || '', a.password, ligacaoDaEscolaPara(escola)]),
   ];
   const csv = '﻿' + linhas.map((l) => l.map(celulaCsv).join(';')).join('\r\n') + '\r\n';
   res.writeHead(200, {

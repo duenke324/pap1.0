@@ -6,7 +6,7 @@ const { um, todos, executar, plataforma, escolasAtivas, CONFIG, pastaFotos } = r
 const { verificarPassword, gerarHash, h } = require('./lib/util');
 const { paginaEntrada, mensagensFlash } = require('./vistas/layout');
 const { semearSeVazia } = require('./seed');
-const { correrNoContexto, escolaAtual } = require('./lib/contexto');
+const { correrNoContexto, escolaAtual, contextoAtual } = require('./lib/contexto');
 const { resolverContextoGestao, contextoDaEscola, prepararTudo } = require('./lib/escolas');
 
 const PORTA = Number(process.env.PORT) || 3000;
@@ -176,7 +176,8 @@ post('/login', async (req, res) => {
 
 post('/logout', async (req, res) => {
   await terminarSessao(req);
-  res.setHeader('Set-Cookie', 'sid=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+  // (o cookie de sessão é o desta escola: sid_epmontijo, sid_…)
+  res.setHeader('Set-Cookie', `${contextoAtual()?.nomeCookie || 'sid'}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
   res.redirecionar('/login');
 });
 
@@ -312,7 +313,7 @@ async function iniciar() {
   });
   servidor.listen(PORTA, () => {
     console.log(`Gestão Escolar a correr em http://localhost:${PORTA}  (${escolas.length} escola(s))`);
-    for (const e of escolas) console.log(`  ${e.ativa ? '' : '[inativa] '}${e.nome} → http://localhost:${PORTA}/escola/${e.codigo}  (MySQL: ${e.base_dados})`);
+    for (const e of escolas) console.log(`  ${e.ativa ? '' : '[inativa] '}${e.nome} → http://localhost:${PORTA}/${e.codigo}  (MySQL: ${e.base_dados})`);
     console.log(`  Painel da plataforma → http://localhost:${PORTA}/plataforma`);
   });
 }

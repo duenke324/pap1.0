@@ -5,21 +5,34 @@ const path = require('node:path');
 const { get, post, criarServidor, renovarSessao, terminarSessao, guardarSessao, acrescentarCookie } = require('../src/lib/servidor');
 const { um, plataforma, escolaPorDominio, CONFIG } = require('../src/db');
 const { verificarPassword, h } = require('../src/lib/util');
-const { correrNoContexto } = require('../src/lib/contexto');
-const { escolaDoPedido, contextoDaEscola, contextoPlataforma } = require('../src/lib/escolas');
+const { correrNoContexto, contextoAtual, escolaAtual } = require('../src/lib/contexto');
+const {
+  escolaDoPedido,
+  contextoDaEscola,
+  contextoPlataforma,
+  resolverContextoComPrefixo,
+  redirecionarPara,
+} = require('../src/lib/escolas');
 const { paginaEntrada, paginaLogin } = require('./vistas');
 
 const PORTA = Number(process.env.TEAMS_PORT || process.env.PORT) || 3100;
 const NOME_COOKIE = 'sid_conversas';
-// A escola de cada pessoa fica memorizada num cookie próprio desta app, posto ao entrar
-// (descobre-se pelo domínio do email). Tal como na Gestão Escolar, o cookie só escolhe a base de
-// dados onde se procura a sessão — ver src/lib/escolas.js.
-const COOKIE_ESCOLA = 'escola_conversas';
 
-async function resolverContexto(req) {
-  const escola = await escolaDoPedido(req, COOKIE_ESCOLA);
-  // Sem escola (várias escolas e este browser ainda não entrou): só o ecrã de login funciona
-  return escola ? contextoDaEscola(escola, NOME_COOKIE) : { ...contextoPlataforma(), nomeCookie: NOME_COOKIE };
+// Tal como na Gestão Escolar, cada escola tem os seus endereços: /epmontijo/, /epmontijo/mensagens…
+// (e o seu cookie de sessão, sid_conversas_epmontijo). O /login sem escola serve para todas: a escola
+// é descoberta pelo domínio do email. Ver src/lib/escolas.js.
+async function resolverContexto(req, res) {
+  const ctx = await resolverContextoComPrefixo(req, res, { base: NOME_COOKIE });
+  if (ctx) return ctx;
+  if (req.caminho === '/login' || req.caminho === '/logout') return { ...contextoPlataforma(), nomeCookie: NOME_COOKIE };
+  // Endereço sem escola: leva para o mesmo endereço dentro da escola deste browser (ou da única que existe)
+  const escola =
+    (await escolaDoPedido(req, `escola_${NOME_COOKIE}`)) || (await escolaDoPedido(req, 'escola_conversas'));
+  if (escola) {
+    const consulta = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return redirecionarPara(res, `/${escola.codigo}${req.caminho}${consulta}`);
+  }
+  return redirecionarPara(res, '/login');
 }
 
 const MENSAGENS_ERRO = {
@@ -32,7 +45,7 @@ const MENSAGENS_ERRO = {
 // Tal como em src/app.js: guarda a sessão antes de responder, para não perder uma mensagem
 // flash (ou a sessão recém-criada) escrita mesmo antes do erro. Se falhar, envia o erro à mesma.
 async function paginaErro(req, res, estado) {
-  await guardarSessao(req, res, NOME_COOKIE).catch((erro) => console.error(erro));
+  await guardarSessao(req, res, contextoAtual()?.nomeCookie || NOME_COOKIE).catch((erro) => console.error(erro));
   res.writeHead(estado, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(
     paginaEntrada(`Erro ${estado}`, {
@@ -74,9 +87,11 @@ get('/login', (req, res) => {
 
 post('/login', async (req, res) => {
   const email = String(req.corpo.email || '').trim();
-  // A escola é a do domínio do email (o que vem depois do @); se o domínio não for de nenhuma
-  // escola, tenta-se a deste browser (ou a única que existir)
-  const escola = (await escolaPorDominio(email.split('@')[1])) || (await escolaDoPedido(req, COOKIE_ESCOLA));
+  // No endereço de uma escola (/epmontijo/login) entra-se nessa escola. No /login geral, a escola é a
+  // do domínio do email (o que vem depois do @); se não for de nenhuma, tenta-se a deste browser.
+  if (escolaAtual().id) return entrarNaEscola(req, res, escolaAtual(), email);
+  const escola =
+    (await escolaPorDominio(email.split('@')[1])) || (await escolaDoPedido(req, `escola_${NOME_COOKIE}`));
   if (!escola) return res.html(paginaLogin({ email, erro: 'Email ou palavra-passe incorretos.' }), 401);
   // O resto do login corre na base de dados dessa escola, incluindo a sessão criada no fim
   return correrNoContexto(contextoDaEscola(escola, NOME_COOKIE), () => entrarNaEscola(req, res, escola, email));
@@ -108,18 +123,19 @@ async function entrarNaEscola(req, res, escola, email) {
   }
   if (utilizador.deve_redefinir_password) {
     return res.html(
-      paginaLogin({ email, erro: 'Primeiro tem de definir a sua palavra-passe na Gestão Escolar (ecrã que aparece ao entrar lá).' }),
+      paginaLogin({ email, erro: `Primeiro tem de definir a sua palavra-passe na plataforma da ${escola.nome} (ecrã que aparece ao entrar lá).` }),
       403
     );
   }
   (await renovarSessao(req)).dados.utilizadorId = utilizador.id;
-  acrescentarCookie(res, `${COOKIE_ESCOLA}=${encodeURIComponent(escola.codigo)}; SameSite=Lax; Path=/; Max-Age=31536000`);
-  res.redirecionar('/');
+  acrescentarCookie(res, `escola_${NOME_COOKIE}=${encodeURIComponent(escola.codigo)}; SameSite=Lax; Path=/; Max-Age=31536000`);
+  // (o endereço leva sempre o código da escola: /epmontijo/)
+  res.redirecionar(`/${escola.codigo}/`);
 }
 
 post('/logout', async (req, res) => {
   await terminarSessao(req);
-  res.setHeader('Set-Cookie', `${NOME_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+  res.setHeader('Set-Cookie', `${contextoAtual()?.nomeCookie || NOME_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
   res.redirecionar('/login');
 });
 

@@ -539,3 +539,7 @@ button, input, textarea, select { font: inherit; }
   .pesquisa-canal { display: none; }
   .nova-conversa { padding: 0 .9rem; }
 }
+
+/* Nome da escola por baixo de "Bem-vindo à Conversas" (no endereço de uma escola) */
+.entrada-painel h1:has(+ .entrada-escola) { margin-bottom: .3rem; }
+.entrada-escola { margin: 0 0 1.5rem; text-align: center; font-size: 1.6rem; font-weight: 300; line-height: 1.25; text-shadow: 0 1px 10px rgba(0, 0, 0, .25); }

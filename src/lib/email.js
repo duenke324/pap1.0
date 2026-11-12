@@ -57,12 +57,12 @@ async function enviarEmail({ para, assunto, texto }) {
   }
 }
 
-// Ligação para uma página da escola do pedido atual. Passa pelo endereço de entrada da escola
-// (/escola/<codigo>?ir=...), para quem abre o email ir parar à escola certa mesmo num browser
-// que nunca a tenha escolhido.
+// Ligação para uma página da escola do pedido atual, com o código da escola no endereço
+// (ex.: http://localhost:3000/epmontijo/recuperar-password/…), para quem abre o email ir parar à
+// escola certa mesmo num browser que nunca a tenha usado.
 function ligacaoDaEscola(caminho) {
   const { codigo } = escolaAtual();
-  return codigo ? `${APP_URL}/escola/${encodeURIComponent(codigo)}?ir=${encodeURIComponent(caminho)}` : `${APP_URL}${caminho}`;
+  return codigo ? `${APP_URL}/${encodeURIComponent(codigo)}${caminho}` : `${APP_URL}${caminho}`;
 }
 
 module.exports = { enviarEmail, emailConfigurado, ligacaoDaEscola, APP_URL };

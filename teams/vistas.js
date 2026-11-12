@@ -100,7 +100,10 @@ function paginaEntrada(titulo, { tituloPainel = '', painel, informacao = '' }) {
   );
 }
 
-const INFORMACAO_LOGIN = `
+// Nome a mostrar nos textos: o da escola (no endereço de uma escola), ou "Gestão Escolar" no /login geral
+const nomeDaEscola = () => (escolaAtual().id ? escolaAtual().nome : 'Gestão Escolar');
+
+const informacaoLogin = () => `
   <div>
     <h2>Conversas</h2>
     <p>A Conversas é a aplicação de mensagens da escola, para professores e alunos. Permite:</p>
@@ -111,12 +114,12 @@ const INFORMACAO_LOGIN = `
   </div>
   <div>
     <h2>Como entrar?</h2>
-    <p>Use o <strong>email institucional</strong> e a mesma palavra-passe da Gestão Escolar.</p>
-    <p>Se é a primeira vez, entre primeiro na Gestão Escolar para escolher a sua palavra-passe.</p>
+    <p>Use o <strong>email institucional</strong> e a mesma palavra-passe da ${h(nomeDaEscola())}.</p>
+    <p>Se é a primeira vez, entre primeiro na plataforma da ${h(nomeDaEscola())} para escolher a sua palavra-passe.</p>
   </div>
   <div>
     <h2>Ajuda</h2>
-    <p>Se se esqueceu da palavra-passe, recupere-a na página de entrada da <strong>Gestão Escolar</strong>.
+    <p>Se se esqueceu da palavra-passe, recupere-a na página de entrada da <strong>${h(nomeDaEscola())}</strong>.
       Para outra ajuda, contacte a secretaria da escola.</p>
   </div>`;
 
@@ -124,6 +127,7 @@ function paginaLogin({ email = '', erro = '', mensagens = [] } = {}) {
   return paginaEntrada('Entrar', {
     tituloPainel: 'Bem-vindo à Conversas',
     painel: `
+      ${escolaAtual().id ? `<p class="entrada-escola">${h(escolaAtual().nome)}</p>` : ''}
       ${mensagensFlash(mensagens)}
       ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
       <form method="post" action="/login" class="entrada-form">
@@ -137,8 +141,8 @@ function paginaLogin({ email = '', erro = '', mensagens = [] } = {}) {
         <button class="botao botao-bloco">Entrar</button>
       </form>
       <hr class="entrada-linha">
-      <p class="entrada-texto">Use o mesmo email e a mesma palavra-passe da Gestão Escolar.</p>`,
-    informacao: INFORMACAO_LOGIN,
+      <p class="entrada-texto">Use o mesmo email e a mesma palavra-passe da ${h(nomeDaEscola())}.</p>`,
+    informacao: informacaoLogin(),
   });
 }
 

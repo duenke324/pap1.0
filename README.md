@@ -1,4 +1,6 @@
-# Sistema de Gestão Escolar — versão 1.0
+# Sistema de Gestão Escolar — versão 1.1
+
+> O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
 Plataforma web para consulta e gestão de informação escolar, com painéis para o
 **Aluno**, o **Professor**, o **Encarregado de educação**, o **Funcionário** e o **Administrador** (direção) de cada
@@ -8,8 +10,8 @@ O projeto tem três aplicações:
 
 | Aplicação | Para quê | Comando | Endereço |
 | --- | --- | --- | --- |
-| **Gestão Escolar** | Faltas, sumários, avaliação, horários, justificativos… (e o painel da plataforma) | `npm start` | http://localhost:3000 (plataforma em `/plataforma`) |
-| **Conversas** | Canais por turma e mensagens privadas, com o aspeto do Microsoft Teams | `npm run conversas` | http://localhost:3100 |
+| **Gestão Escolar** | Faltas, sumários, avaliação, horários, justificativos… (e o painel da plataforma) | `npm start` | http://localhost:3000/epmontijo (cada escola em `/<código>`; plataforma em `/plataforma`) |
+| **Conversas** | Canais por turma e mensagens privadas, com o aspeto do Microsoft Teams | `npm run conversas` | http://localhost:3100/epmontijo (cada escola em `/<código>`) |
 | **InformaNege** | Site de apresentação e venda do software | `npm run informanege` | http://localhost:3200 |
 
 ## Como executar
@@ -54,13 +56,22 @@ Como funciona por dentro:
   escola nunca se misturam com os de outra, e o mesmo número de processo pode existir em duas escolas. Uma base de
   dados central, `gestao_plataforma`, guarda só a lista de escolas e a conta do gestor.
   A base de dados que já existia (`gestao_escolar`) ficou registada como a primeira escola, "Escola Profissional do Montijo".
-- **Endereço de entrada de cada escola**: `/escola/<código>` (ex.: `/escola/epmontijo`). Ao abri-lo, o browser fica a
-  lembrar-se da escola (cookie `escola`) e segue para o login. Com uma única escola ativa não é preciso: `/login` vai
-  direto para ela. Com várias, quem ainda não escolheu vê a lista em `/escolas`.
-- O cookie só escolhe **em que base de dados se procura a sessão**: mudá-lo à mão para o código de outra escola não dá
-  acesso a nada, porque a sessão não existe lá. As fotografias e os justificativos de cada escola ficam numa subpasta própria.
-- No painel dá para **editar** o nome, o domínio e a direção, **repor a palavra-passe da direção** e **desativar** uma
-  escola (ninguém dela entra; os dados ficam guardados). Não há botão para apagar uma escola.
+- **Endereços de cada escola**: o código da escola vai no início de todos os endereços — `/epmontijo/login`,
+  `/epmontijo/aluno`, `/epmontijo/admin/faltas`… — em todos os painéis, e na Conversas (`localhost:3100/epmontijo/`).
+  O código é feito a partir do domínio (`esalcochete.edu.pt` → `/esalcochete`) e não pode ser uma palavra que a
+  aplicação já usa (`admin`, `login`…). As rotas continuam a ser `/aluno`, `/admin`…: o servidor tira o código do
+  início do endereço e volta a pô-lo sozinho em todos os links, formulários e redirecionamentos das páginas
+  (ver `acrescentarPrefixo` em [src/lib/servidor.js](src/lib/servidor.js)).
+- **Endereços sem escola** (`/login`, `/aluno`, e o antigo `/escola/epmontijo`) levam para os da escola deste browser
+  ou da única que existe; com várias e nenhuma escolhida, para a lista em `/escolas`.
+- **Uma sessão por escola**: cada escola tem o seu cookie (`sid_epmontijo`, `sid_esalcochete`…), por isso dá para estar
+  com sessão aberta em duas escolas ao mesmo tempo, e uma sessão de uma escola não serve noutra.
+  As fotografias e os justificativos de cada escola ficam numa subpasta própria.
+- O painel está organizado em três separadores: **Escolas** (totais, pesquisa, escolas ativas e inativas em secções
+  separadas), **Nova escola** (o formulário, numa página própria) e **Conta** (a palavra-passe do gestor).
+  Em cada escola, **Ver alunos** e **Abrir escola**; em **Mais ações**, **editar** o nome, o domínio e a direção,
+  **repor a palavra-passe da direção** e **desativar** a escola (ninguém dela entra; os dados ficam guardados).
+  Não há botão para apagar uma escola.
 - **Ver alunos** (em cada escola) mostra os alunos por turma, com pesquisa, e o estado da conta de cada um.
   Daí dá para **gerar uma palavra-passe nova** para um aluno (aparece uma só vez no ecrã), ou para uma turma ou a
   escola toda de uma vez, que **descarrega um PDF** para imprimir (uma tabela por turma, cada turma numa página nova,
@@ -68,7 +79,7 @@ Como funciona por dentro:
   para o Excel. O PDF é gerado pela própria aplicação, sem bibliotecas ([src/lib/pdf.js](src/lib/pdf.js)). As palavras-passe atuais nunca podem ser vistas nem
   exportadas (só se guarda uma versão cifrada): por isso exportar gera sempre palavras-passe novas, as antigas deixam
   de funcionar, cada aluno é obrigado a escolher uma sua no próximo acesso, e fica registado na auditoria da escola.
-- O painel da plataforma tem um aspeto próprio, escuro (consola azul-noite com acento âmbar, em `public/plataforma.css`),
+- O painel da plataforma tem um aspeto próprio, a preto e branco (consola escura só com cinzentos, em `public/plataforma.css`),
   para nunca se confundir com o painel de uma escola (`public/painel.css`: menu lateral verde-escuro e cartões claros).
 - A conta do gestor é criada no primeiro arranque: utilizador `plataforma`, palavra-passe inicial `plataforma123`
   (ou a da variável de ambiente `PLATAFORMA_PASSWORD`), que **tem de ser trocada no primeiro acesso**.
@@ -360,8 +371,8 @@ Cada parte tem a sua cara, para nunca se confundirem:
 - **Painéis das escolas** ([public/painel.css](public/painel.css)): menu lateral verde-escuro com ícones e o nome da
   escola, barra no topo com a data e a conta, conteúdo em cartões claros com cantos redondos, etiquetas em pílula e
   uma cor por disciplina no horário. Tem tema escuro e, no telemóvel, o menu passa a uma gaveta.
-- **Painel da plataforma** ([public/plataforma.css](public/plataforma.css)): consola escura, azul-noite com acento
-  âmbar, sempre escura.
+- **Painel da plataforma** ([public/plataforma.css](public/plataforma.css)): consola a preto e branco (fundo preto,
+  cartões cinzento-escuro, botões brancos), sempre escura; os estados distinguem-se pela forma.
 - **Conversas**: o aspeto do Microsoft Teams (ver acima).
 
 Para a informação não depender só da cor: as mensagens têm um símbolo à esquerda (✓, ! ou ×), os estados têm
@@ -398,7 +409,7 @@ src/
   rotas/encarregados.js Painel do administrador (contas dos encarregados, na ficha do aluno)
   rotas/justificativos.js Validação dos justificativos (administração e diretor de turma) e acesso ao ficheiro
   lib/justificativos.js Guarda os ficheiros, lê os pedidos e aplica a decisão de aceitar/recusar
-  rotas/plataforma.js   Painel da plataforma (criar e gerir escolas) e escolha da escola (/escolas, /escola/<código>)
+  rotas/plataforma.js   Painel da plataforma (escolas, nova escola, conta, alunos por turma) e escolha da escola (/escolas)
   lib/contexto.js       A escola (e a base de dados) do pedido atual
   lib/escolas.js        Escolhe a escola de cada pedido, prepara as bases de dados no arranque e cria escolas
   rotas/recuperacao.js  Recuperação de palavra-passe (pedido e ligação enviada por email)

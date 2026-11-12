@@ -16,14 +16,34 @@ const {
   BD_PLATAFORMA,
 } = require('../db');
 const { correrNoContexto } = require('./contexto');
-const { lerCookies } = require('./servidor');
+const { lerCookies, acrescentarCookie } = require('./servidor');
 const { gerarHash, gerarPasswordTemporaria } = require('./util');
 
 const COOKIE_ESCOLA = 'escola';
 const USERNAME_DIRECAO = 'direcao';
 
 const contextoPlataforma = () => ({ bd: BD_PLATAFORMA, escola: null, nomeCookie: 'sid_plataforma' });
-const contextoDaEscola = (escola, nomeCookie = 'sid') => ({ bd: escola.base_dados, escola, nomeCookie });
+// prefixo: o código da escola no início dos endereços (/epmontijo/aluno). Cada escola tem o seu cookie
+// de sessão (sid_epmontijo, sid_outra…), por isso dá para ter sessão aberta em duas escolas ao mesmo tempo.
+const contextoDaEscola = (escola, base = 'sid') => ({
+  bd: escola.base_dados,
+  escola,
+  prefixo: escola.codigo,
+  nomeCookie: `${base}_${escola.codigo}`,
+});
+
+// Códigos que não podem ser de uma escola, porque o início do endereço já tem outro significado
+const CODIGOS_RESERVADOS = new Set([
+  'plataforma', 'escolas', 'escola', 'static', 'fotos', 'login', 'logout', 'admin', 'aluno', 'professor',
+  'encarregado', 'funcionario', 'justificativos', 'recuperar', 'recuperar_password', 'definir_password',
+  'mensagens', 'turma', 'sw', 'manifest', 'offline',
+]);
+
+// Primeiro bocado do endereço e o resto: "/epmontijo/admin/faltas" → ["epmontijo", "/admin/faltas"]
+function partirCaminho(caminho) {
+  const m = /^\/([^/]+)(\/.*)?$/.exec(caminho);
+  return m ? [m[1], m[2] || '/'] : ['', caminho];
+}
 
 // ---------- A que escola pertence o pedido ----------
 // A escola fica memorizada num cookie, posto quando a pessoa abre o endereço de entrada da sua
@@ -40,16 +60,44 @@ async function escolaDoPedido(req, nomeCookie = COOKIE_ESCOLA) {
 
 const FICHEIROS_PWA = ['/manifest.webmanifest', '/sw.js', '/offline.html'];
 
-async function resolverContextoGestao(req, res) {
-  // Painel da plataforma e escolha da escola: não pertencem a nenhuma escola
-  if (/^\/(plataforma|escolas|escola)(\/|$)/.test(req.caminho)) return contextoPlataforma();
-  const escola = await escolaDoPedido(req);
-  if (escola) return contextoDaEscola(escola);
-  if (FICHEIROS_PWA.includes(req.caminho)) return contextoPlataforma();
-  // Há várias escolas e este browser ainda não escolheu nenhuma
-  res.writeHead(303, { Location: '/escolas' });
+// Cada escola tem os seus endereços: /epmontijo/login, /epmontijo/aluno, /epmontijo/admin/faltas…
+// Se o endereço começar pelo código de uma escola ativa, o pedido é dessa escola e o código sai do
+// caminho (as rotas continuam a ser "/aluno", "/admin"…; o servidor volta a pô-lo nos links das páginas).
+// Endereços sem escola ("/login", "/aluno", de antes desta mudança) levam para os da escola certa.
+async function resolverContextoComPrefixo(req, res, { base, paginaSemEscola }) {
+  const [primeiro, resto] = partirCaminho(req.caminho);
+  const escola = primeiro && !CODIGOS_RESERVADOS.has(primeiro) ? await escolaPorCodigo(primeiro) : null;
+  if (escola) {
+    req.caminho = resto;
+    // a escola fica memorizada neste browser, para os endereços antigos levarem para ela
+    if (lerCookies(req)[`${COOKIE_ESCOLA}_${base}`] !== escola.codigo) {
+      acrescentarCookie(res, `${COOKIE_ESCOLA}_${base}=${encodeURIComponent(escola.codigo)}; SameSite=Lax; Path=/; Max-Age=31536000`);
+    }
+    return contextoDaEscola(escola, base);
+  }
+  return null;
+}
+
+function redirecionarPara(res, destino) {
+  res.writeHead(303, { Location: destino });
   res.end();
   return false;
+}
+
+async function resolverContextoGestao(req, res) {
+  const ctx = await resolverContextoComPrefixo(req, res, { base: 'sid' });
+  if (ctx) return ctx;
+  // Painel da plataforma e escolha da escola: não pertencem a nenhuma escola
+  if (/^\/(plataforma|escolas|escola)(\/|$)/.test(req.caminho)) return contextoPlataforma();
+  if (FICHEIROS_PWA.includes(req.caminho)) return contextoPlataforma();
+  // Endereço sem escola: leva para o mesmo endereço dentro da escola deste browser (ou da única que existe)
+  const escola = (await escolaDoPedido(req, `${COOKIE_ESCOLA}_sid`)) || (await escolaDoPedido(req));
+  if (escola) {
+    const consulta = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return redirecionarPara(res, `/${escola.codigo}${req.caminho === '/' ? '/' : req.caminho}${consulta}`);
+  }
+  // Há várias escolas e este browser ainda não escolheu nenhuma
+  return redirecionarPara(res, '/escolas');
 }
 
 // ---------- Arranque ----------
@@ -117,6 +165,8 @@ async function criarEscola({ nome, dominio, direcao, codigo }) {
   codigo = gerarCodigo(codigo || dominio.split('.')[0]);
   if (codigo.length < 3 || !/^[a-z]/.test(codigo)) codigo = gerarCodigo(nome);
   if (codigo.length < 3 || !/^[a-z]/.test(codigo)) return { erro: 'Não foi possível criar um código para a escola a partir do domínio nem do nome.' };
+  // o código vai no início dos endereços da escola: não pode ser uma palavra que a aplicação já usa
+  if (CODIGOS_RESERVADOS.has(codigo)) codigo = `${codigo}_escola`;
 
   // Numa instalação de testes (DB_NAME definido, ex.: gestao_escolar_teste) as escolas novas ficam com
   // esse prefixo, para nunca reutilizarem a base de dados de uma escola verdadeira no mesmo servidor
@@ -243,6 +293,8 @@ module.exports = {
   alunosPorTurma,
   gerarPasswordsAlunos,
   COOKIE_ESCOLA,
+  resolverContextoComPrefixo,
+  redirecionarPara,
   contextoPlataforma,
   contextoDaEscola,
   escolaDoPedido,

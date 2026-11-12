@@ -167,6 +167,49 @@ function enviarFicheiro(res, pasta, relativo, cacheSegundos = 0) {
   return true;
 }
 
+// ---------- Endereços com o código da escola (/epmontijo/aluno, /epmontijo/admin, …) ----------
+// As rotas e as páginas continuam escritas sem escola ("/aluno", href="/admin/faltas"): o resolverContexto
+// tira o código da escola do início do endereço antes de procurar a rota, e aqui volta-se a pô-lo em
+// tudo o que sai para o browser — nos links, formulários, imagens e atributos data-* das páginas HTML e
+// nos redirecionamentos. Assim cada escola tem os seus endereços sem ser preciso mudar centenas de links.
+// Ficam de fora os endereços que não são de nenhuma escola.
+const SEM_PREFIXO = ['static/', 'escolas', 'plataforma', 'sw.js', 'manifest.webmanifest', 'offline.html'];
+
+function prefixarCaminho(caminho, prefixo) {
+  if (typeof caminho !== 'string' || !caminho.startsWith('/') || caminho.startsWith('//')) return caminho;
+  const resto = caminho.slice(1);
+  if (resto === prefixo || resto.startsWith(`${prefixo}/`) || resto.startsWith(`${prefixo}?`)) return caminho;
+  if (SEM_PREFIXO.some((s) => resto === s || resto.startsWith(s.endsWith('/') ? s : `${s}/`) || resto.startsWith(`${s}?`))) return caminho;
+  return `/${prefixo}${caminho}`;
+}
+
+function prefixarHtml(html, prefixo) {
+  return html.replace(/(\s(?:href|action|src|formaction|data-[\w-]+)=")(\/[^"]*)"/g, (_, antes, caminho) => `${antes}${prefixarCaminho(caminho, prefixo)}"`);
+}
+
+function acrescentarPrefixo(res, prefixo) {
+  let html = false;
+  const writeHead = res.writeHead.bind(res);
+  res.writeHead = (estado, ...resto) => {
+    const cabecalhos = resto.find((r) => r && typeof r === 'object');
+    if (cabecalhos) {
+      for (const nome of Object.keys(cabecalhos)) {
+        if (nome.toLowerCase() === 'location') cabecalhos[nome] = prefixarCaminho(cabecalhos[nome], prefixo);
+        if (nome.toLowerCase() === 'content-type') html = String(cabecalhos[nome]).includes('text/html');
+      }
+    }
+    if (!html) html = String(res.getHeader('Content-Type') || '').includes('text/html');
+    return writeHead(estado, ...resto);
+  };
+  const end = res.end.bind(res);
+  res.end = (conteudo, ...resto) => {
+    if (conteudo && typeof conteudo !== 'function' && (html || String(res.getHeader('Content-Type') || '').includes('text/html'))) {
+      conteudo = prefixarHtml(Buffer.isBuffer(conteudo) ? conteudo.toString('utf8') : String(conteudo), prefixo);
+    }
+    return end(conteudo, ...resto);
+  };
+}
+
 // ---------- Servidor ----------
 function criarServidor({ pastaPublica, antesDaRota, paginaErro, nomeCookie = 'sid', resolverContexto }) {
   return http.createServer(async (req, res) => {
@@ -194,6 +237,7 @@ function criarServidor({ pastaPublica, antesDaRota, paginaErro, nomeCookie = 'si
       // resolverContexto devolve false quando já respondeu (ex.: mandou escolher a escola).
       const ctx = resolverContexto ? await resolverContexto(req, res) : null;
       if (ctx === false) return;
+      if (ctx?.prefixo) acrescentarPrefixo(res, ctx.prefixo);
       const cookie = ctx?.nomeCookie || nomeCookie;
       const tratar = () => tratarPedido(req, res, { antesDaRota, paginaErro, cookie });
       return ctx ? await correrNoContexto(ctx, tratar) : await tratar();
@@ -211,8 +255,10 @@ async function tratarPedido(req, res, { antesDaRota, paginaErro, cookie }) {
       req.corpo = req.method === 'POST' ? await lerCorpo(req) : {};
 
       // A sessão é guardada na BD antes de a resposta sair (assim o pedido seguinte já a encontra)
+      // (o cookie é o do contexto no momento de responder: o login da Conversas pelo /login geral
+      // entra a meio do pedido numa escola, e a sessão tem de ficar com o cookie dessa escola)
       const responder = (estado, cabecalhos, conteudo) =>
-        guardarSessao(req, res, cookie)
+        guardarSessao(req, res, contextoAtual()?.nomeCookie || cookie)
           .then(() => {
             res.writeHead(estado, cabecalhos);
             res.end(conteudo);
@@ -272,4 +318,5 @@ module.exports = {
   guardarSessao,
   lerCookies,
   acrescentarCookie,
+  prefixarCaminho,
 };
