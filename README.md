@@ -1,13 +1,22 @@
 # Sistema de Gestão Escolar — versão beta (0.1)
 
 Plataforma web para consulta e gestão de informação escolar, com painéis para o
-**Aluno**, o **Professor**, o **Encarregado de educação**, o **Funcionário** e o **Administrador**.
+**Aluno**, o **Professor**, o **Encarregado de educação**, o **Funcionário** e o **Administrador** (direção) de cada
+escola, e um **painel da plataforma** para criar e gerir várias escolas na mesma instalação.
+
+O projeto tem três aplicações:
+
+| Aplicação | Para quê | Comando | Endereço |
+| --- | --- | --- | --- |
+| **Gestão Escolar** | Faltas, sumários, avaliação, horários, justificativos… (e o painel da plataforma) | `npm start` | http://localhost:3000 (plataforma em `/plataforma`) |
+| **Conversas** | Canais por turma e mensagens privadas, com o aspeto do Microsoft Teams | `npm run conversas` | http://localhost:3100 |
+| **InformaNege** | Site de apresentação e venda do software | `npm run informanege` | http://localhost:3200 |
 
 ## Como executar
 
 Requisitos:
-- **Node.js 22.13 ou superior** (testado com Node 26)
-- **XAMPP** com o **MySQL** ligado (no painel do XAMPP, botão *Start* do MySQL)
+- **Node.js 22.13 ou superior** (testado com Node 24 e 26)
+- **XAMPP** com o **MySQL/MariaDB** ligado (no painel do XAMPP, botão *Start* do MySQL)
 
 ```bash
 npm install        # só na primeira vez (instala o mysql2, a ligação ao MySQL)
@@ -17,9 +26,9 @@ npm run seed       # APAGA a base de dados e recria os dados de demonstração
 npm run atualizar-bd  # atualiza todas as bases de dados (central e de cada escola) sem apagar dados
 ```
 
-Na primeira execução, a base de dados **`gestao_escolar`** é criada automaticamente no MySQL
-e preenchida com dados de demonstração. Pode ser consultada no **phpMyAdmin**
-(http://localhost/phpmyadmin).
+Na primeira execução são criadas automaticamente no MySQL a base de dados **`gestao_escolar`** (a primeira
+escola, preenchida com dados de demonstração) e a **`gestao_plataforma`** (a lista de escolas e a conta do gestor).
+Podem ser consultadas no **phpMyAdmin** (http://localhost/phpmyadmin).
 
 ### Configuração do MySQL
 
@@ -121,11 +130,12 @@ partir do browser — fica com ícone próprio e abre em janela própria, sem ba
 - Só os ficheiros estáticos (CSS, JS, ícones) ficam em cache — as páginas têm sempre dados do
   utilizador autenticado, por isso são sempre pedidas à rede. Sem ligação, mostra-se
   [public/offline.html](public/offline.html).
-- Os ícones (`public/icons/`) mostram o caderno do logótipo a branco sobre fundo preto, com margem à volta
-  para o Android os poder recortar em círculo ou com cantos redondos (ícones "maskable").
-- Sempre que se mudar o CSS, o JavaScript ou os ícones, sobe-se a versão da cache em `public/sw.js`
-  (`gestao-escolar-estaticos-v2`, `-v3`, …): o service worker novo apaga a cache antiga e quem tem a app
-  instalada vê logo a versão nova.
+- Os ícones (`public/icons/`) mostram o caderno do logótipo antigo a branco sobre fundo preto, com margem à volta
+  para o Android os poder recortar em círculo ou com cantos redondos (ícones "maskable"). Ainda não foram
+  trocados pelo capelo do logótipo atual.
+- As páginas pedem o CSS e o JavaScript com a data do ficheiro no endereço (`/static/estilo.css?v=…`), por isso
+  depois de uma alteração o browser vai sempre buscar a versão nova, sem ser preciso limpar a cache. Se mudarem
+  os ícones, sobe-se a versão da cache em `public/sw.js` (`gestao-escolar-estaticos-v6`, `-v7`, …).
 
 ### Contas de demonstração
 
@@ -148,34 +158,35 @@ e `primeironome.ultimonome.numerodeprocesso@epmontijo.edu.pt` para alunos (ex.: 
 ## Conversas — app separada (tipo Teams)
 
 Uma segunda aplicação, à parte da Gestão Escolar, para conversa por turma (canais) e mensagens
-privadas. Tem o seu próprio visual (faixa de navegação + acento roxo partilhado com o InformaNege,
-para se distinguir da Gestão Escolar; a página de entrada tem o mesmo desenho da da Gestão Escolar, em roxo) e o seu próprio servidor, mas liga-se à **mesma base de
-dados** — usa as contas que a direção já cria (professor ou aluno; o administrador não tem acesso
-a esta app, só professor e aluno).
+privadas. Tem o seu próprio servidor, mas liga-se às **mesmas bases de dados** — usa as contas que a direção já
+cria (professor ou aluno; o administrador não tem acesso a esta app, só professor e aluno).
 
 ```bash
 npm run conversas        # inicia em http://localhost:3100
 npm run conversas:dev    # reinicia sozinho quando se altera o código
 ```
 
-Pode correr ao mesmo tempo que a Gestão Escolar (portas diferentes: 3000 e 3100) — usei o mesmo
-MySQL para as duas nesta máquina, com `DB_PORT=3120 TEAMS_PORT=3100 npm run conversas` (ajuste
-`TEAMS_PORT` se a 3100 estiver ocupada; as restantes variáveis `DB_*` são as mesmas do `src/db.js`).
+Pode correr ao mesmo tempo que a Gestão Escolar (portas diferentes: 3000 e 3100), com as mesmas variáveis `DB_*`
+do `src/db.js` (ajuste `TEAMS_PORT` se a 3100 estiver ocupada).
 **Arranque sempre a Gestão Escolar pelo menos uma vez antes** (é ela que cria/atualiza as tabelas;
 o Conversas só as usa, para as duas aplicações nunca tentarem alterar a base de dados ao mesmo tempo).
 
+**Aspeto**: imita o mais possível o Microsoft Teams (com o nome e o logótipo da Conversas) — barra de título com a
+pesquisa de pessoas ao centro e o avatar com a bolinha de presença, faixa de aplicações à esquerda com ícone e nome
+(Chat, Equipas), cada turma com um quadrado colorido com as iniciais, e separadores no cabeçalho ("Publicações" num
+canal, "Chat" numa conversa). Nos canais as mensagens são **publicações em cartões**; nas conversas privadas são
+**balões**, os próprios à direita em lilás. Tem tema escuro e, no telemóvel, a faixa passa para baixo.
+
 - Entra-se com o **email institucional**, não com o número de processo (só aqui — na Gestão Escolar
-  continua a ser o número de processo).
-- **Equipas** (barra de navegação à esquerda): turmas → canais. Cada canal **é uma disciplina** —
+  continua a ser o número de processo). A escola é descoberta pelo domínio do email.
+- **Equipas**: turmas → canais. Cada canal **é uma disciplina** —
   o professor escolhe, de entre as disciplinas que leciona nessa turma, qual ainda não tem canal
   (só pode haver um canal por disciplina por turma). Qualquer professor que lecione a turma vê e
   gere todos os seus canais; o aluno só vê e escreve nos canais aos quais foi adicionado.
-- **Mensagens** (segunda secção da barra de navegação): conversas privadas 1 para 1. Professores
+- **Chat**: conversas privadas 1 para 1. Professores
   podem falar entre si e com qualquer aluno que lecionem; um aluno só pode iniciar conversa com um
   professor que lhe dê aulas — não há mensagens entre alunos, pela mesma razão por que são sempre
   os professores a controlar quem entra num canal.
-- Entra-se com o **email institucional**, não com o número de processo (só aqui — na Gestão Escolar
-  continua a ser o número de processo).
 - Sessão própria (cookie `sid_conversas`, diferente do `sid` da Gestão Escolar) — entrar numa não
   faz entrar automaticamente na outra, mesmo sendo a mesma conta.
 - Se a conta ainda tiver a palavra-passe temporária por trocar (ver Segurança), esta app recusa o
@@ -227,8 +238,8 @@ na secção de preços de `informanege/vistas.js`.
 ## Funcionalidades
 
 ### Painel do Aluno
-O aluno não tem menu lateral: no topo aparece a **ficha de identificação** (fotografia, processo, nome, situação,
-ano letivo, curso, turma, diretor de turma e encarregado de educação) e por baixo uma fila de **separadores**.
+No topo de cada página aparece a **ficha de identificação** (fotografia, processo, nome, situação, ano letivo,
+curso, turma, diretor de turma e encarregado de educação); as secções estão no menu lateral.
 - Informações: calendário do ano letivo (início e fim dos períodos, com o período atual assinalado),
   interrupções letivas, avisos da escola, aulas de hoje, próximas avaliações e a **próxima reunião de turma**
   — para o delegado e o subdelegado aparece em destaque, com a indicação de que foram convocados
@@ -296,13 +307,13 @@ centro de recursos, cozinha e portaria): um painel de boas-vindas com o cargo e 
 administração — não há aqui funcionalidades de negócio próprias de cada cargo (sem catálogo de
 biblioteca, folha de RH, etc.), só a conta e a área pessoal.
 
-### Painel do Administrador
+### Painel do Administrador (direção da escola)
 - Painel com estatísticas, turmas e faltas recentes por justificar
 - Turmas: criar, editar (nome, ano letivo, curso, diretor de turma, **delegado e subdelegado**) e apagar; ver os alunos,
   disciplinas, professores e reuniões marcadas de cada turma (e ler as atas já escritas). Um aluno que muda de turma deixa de ser delegado/subdelegado da antiga.
   Só se pode apagar uma turma sem alunos e sem faltas, para não perder histórico.
-- Professores: criar, editar e apagar (com conta de acesso), email institucional (obrigatoriamente
-  `@epmontijo.edu.pt`) e escolher as disciplinas que cada um leciona; ficha do professor com o seu horário semanal
+- Professores: criar, editar e apagar (com conta de acesso), email institucional (obrigatoriamente com o domínio
+  da escola, ex.: `@epmontijo.edu.pt`) e escolher as disciplinas que cada um leciona; ficha do professor com o seu horário semanal
 - Disciplinas: criar, editar e apagar (só se nunca foram usadas) e gerir os **módulos** de cada disciplina (n.º, nome e horas)
 - Funcionários (pessoal não-docente): criar, editar e apagar contas de acesso para informático, auxiliar escolar,
   RH, biblioteca, secretaria, centro de recursos, cozinha e portaria — cada um com um **cargo**, email institucional
@@ -321,7 +332,7 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
   data de nascimento, contacto, nome da mãe/encarregado de educação, turma. A fotografia é reduzida no
   browser (máx. 480 px) antes de ser enviada.
   **Ao criar**, o email institucional e a palavra-passe de acesso são **gerados automaticamente**
-  (não se escrevem à mão): o email fica `primeironome.ultimonome.numerodeprocesso@epmontijo.edu.pt`
+  (não se escrevem à mão): o email fica `primeironome.ultimonome.numerodeprocesso@<domínio da escola>`
   (o número de processo garante que nunca há dois iguais) e a palavra-passe é aleatória — aparecem os
   dois numa mensagem só uma vez, para copiar e dar ao aluno. Depois de criado, o email pode ser editado
   à mão na ficha, se for preciso corrigir.
@@ -340,12 +351,21 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
   com destaque para mudanças de diretor de turma, de delegado/subdelegado, de curso de uma turma e de turma de um aluno.
   Mostra os 200 registos mais recentes, com filtro por tipo.
 
-### Aspeto (preto e branco)
-A interface usa só tons de cinzento, sem cores. Para a informação não depender da cor:
-- os estados têm três formas diferentes — ok = só contorno, aviso = fundo cinzento, perigo = invertido (fundo escuro,
-  texto claro) — e as mensagens têm um símbolo à esquerda (✓, ! ou ×);
-- os links no meio do texto e das tabelas são sublinhados;
-- o que está acima do limite de faltas ou bloqueado aparece às riscas.
+### Aspeto
+Cada parte tem a sua cara, para nunca se confundirem:
+- **Página de entrada** (login, primeira palavra-passe, recuperação, erros): barra branca com o logótipo (o capelo,
+  igual ao do InformaNege), uma faixa com a ilustração da escola e um painel translúcido ao centro, com três colunas
+  de informação por baixo. Fica sempre clara. Para usar uma fotografia verdadeira da escola, basta guardá-la em
+  `public/imagens/escola.jpg`.
+- **Painéis das escolas** ([public/painel.css](public/painel.css)): menu lateral verde-escuro com ícones e o nome da
+  escola, barra no topo com a data e a conta, conteúdo em cartões claros com cantos redondos, etiquetas em pílula e
+  uma cor por disciplina no horário. Tem tema escuro e, no telemóvel, o menu passa a uma gaveta.
+- **Painel da plataforma** ([public/plataforma.css](public/plataforma.css)): consola escura, azul-noite com acento
+  âmbar, sempre escura.
+- **Conversas**: o aspeto do Microsoft Teams (ver acima).
+
+Para a informação não depender só da cor: as mensagens têm um símbolo à esquerda (✓, ! ou ×), os estados têm
+também texto, os links no meio do texto são sublinhados e o que está acima do limite de faltas aparece às riscas.
 
 ## Estrutura do projeto
 
@@ -359,7 +379,9 @@ src/
   lib/recursos.js     Localização de public/database/data (diferente quando empacotado em .app)
   lib/auditoria.js    Regista no histórico de auditoria (logs_auditoria) quem fez o quê e quando
   lib/ata.js          Monta o texto formal da ata da reunião (datas e horas por extenso)
-  vistas/layout.js    Estrutura das páginas, menu, avatar, grelha do horário
+  atualizar-bd.js     Atualiza todas as bases de dados sem arrancar o servidor (npm run atualizar-bd)
+  lib/pdf.js          Gerador de PDF simples, sem bibliotecas (lista de palavras-passe dos alunos)
+  vistas/layout.js    Estrutura das páginas (entrada e painéis), menu lateral, avatar, grelha do horário
   rotas/aluno.js      Painel do aluno
   rotas/professor.js  Painel do professor (turmas, Dar aula, testes, horário, Novidades do DT)
   rotas/atas.js       Atas das reuniões de turma (diretor de turma escreve; professores e direção leem)
@@ -383,17 +405,20 @@ src/
   lib/email.js          Envio de email por SMTP (ou para a consola, se o SMTP não estiver configurado)
 database/escola.sql   Esquema da base de dados de cada escola (todas as tabelas)
 database/plataforma.sql Esquema da base de dados central (escolas, gestor e sessões do gestor)
-public/               CSS, JavaScript do browser (incl. editor-horario.js e ata.js, o ditado ao microfone) e ícone
+public/               CSS (estilo.css: base e entrada; painel.css: painéis das escolas; plataforma.css: painel
+                      da plataforma), JavaScript do browser (incl. editor-horario.js e ata.js, o ditado ao microfone),
+                      ícones e imagens/capa-escola.svg (a ilustração da página de entrada)
 public/vendor/        Bibliotecas de terceiros incluídas localmente (Chart.js, para os gráficos de assiduidade)
 data/fotos/           Fotografias dos alunos (a BD guarda o nome do ficheiro)
 data/justificativos/  Justificativos enviados pelos encarregados (a BD guarda o nome do ficheiro)
 scripts/build-mac.sh  Gera o GestaoEscolar.app (npm run build:mac)
 teams/                App separada "Conversas" (npm run conversas) — visual e servidor próprios,
                       mesma base de dados (usa src/db.js e src/lib/util.js da Gestão Escolar)
-  app.js              Arranque, login/logout (só professor/aluno), sessão própria
+  app.js              Arranque, login/logout (só professor/aluno), sessão própria, escola pelo domínio do email
   rotas.js            Turmas, canais, membros e mensagens
-  vistas.js           HTML e componentes (sidebar, balões de mensagem)
-  publico/            CSS (acento índigo), JavaScript do browser e ícone, próprios desta app
+  privadas.js         Conversas privadas (Chat)
+  vistas.js           HTML e componentes (barra de título, faixa, lista, publicações e balões)
+  publico/            CSS (aspeto do Teams), JavaScript do browser e ícone, próprios desta app
 ```
 
 ## Base de dados (MySQL — `gestao_escolar`)
@@ -432,8 +457,10 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 
 - Palavras-passe guardadas com `scrypt` e sal aleatório
 - Sessões com cookie `HttpOnly` e `SameSite=Lax`; novo identificador de sessão após o login
-- Cada área (`/aluno`, `/professor`, `/admin`) só é acessível pelo papel correspondente;
-  o professor só vê alunos das turmas onde leciona
+- Cada área (`/aluno`, `/professor`, `/admin`, `/funcionario`, `/encarregado`) só é acessível pelo papel
+  correspondente; o professor só vê alunos das turmas onde leciona; o painel da plataforma (`/plataforma`) tem uma
+  conta à parte, que não é de nenhuma escola
+- Cada escola tem a sua base de dados: uma sessão de uma escola não serve noutra
 - Todo o texto é escapado antes de ir para o HTML (proteção contra XSS)
 - Verificação da origem dos pedidos POST (proteção básica contra CSRF)
 - Fotografias validadas (tipo e assinatura do ficheiro) e servidas apenas a utilizadores autenticados
@@ -457,7 +484,8 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - A recuperação de palavra-passe só envia emails a sério com um servidor SMTP configurado (ver "Recuperação de
   palavra-passe"); sem ele, a ligação aparece só na consola do servidor. O administrador não tem email na ficha,
   por isso não pode usar a recuperação
-- Fora do primeiro acesso forçado, não há alteração voluntária da palavra-passe pelo próprio utilizador
+- Fora do primeiro acesso forçado e da recuperação por email, o próprio utilizador não tem um ecrã para mudar a
+  palavra-passe (só o gestor da plataforma tem, para a sua conta)
 - Sem HTTPS — para uso real deve ficar atrás de um servidor com HTTPS (ex.: nginx, Caddy)
 - O encarregado de educação só é avisado por email da resposta aos justificativos (e só se tiver email na ficha);
   não há aviso quando é marcada uma falta nova
@@ -469,13 +497,9 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 
 ## Ideias para próximas versões
 
-Notificações ao encarregado de educação · exportação para Excel ·
-alteração de palavra-passe fora do primeiro acesso.
+Aviso ao encarregado de educação quando é marcada uma falta nova · ecrã para cada utilizador mudar a sua
+palavra-passe · ícones da aplicação instalável com o logótipo atual · ecrã para editar os tempos letivos.
 
-O horário, as faltas e as pautas já têm um botão "Imprimir / Exportar PDF" (usa a função de impressão do
-browser — no diálogo de impressão, escolher "Guardar como PDF" em vez de uma impressora).
-
-O diretor de turma já vê, sempre que abre "As minhas turmas", um cartão "Faltas a acompanhar" com os alunos
-da(s) turma(s) que dirige que estejam perto (≥ 7%) ou acima (≥ 10%) do limite de faltas numa disciplina —
-o mesmo limite já usado na avaliação por módulos. Só aparece a quem tem `diretor_id` numa turma.
-# PAPPre
+Já feito, de ideias anteriores: exportar as faltas para Excel (CSV), avisar o encarregado por email da resposta aos
+justificativos, recuperar a palavra-passe por email, e o botão "Imprimir / Exportar PDF" no horário, nas faltas e nas
+pautas (usa a função de impressão do browser — no diálogo de impressão, escolher "Guardar como PDF").
