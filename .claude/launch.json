@@ -62,6 +62,19 @@
       }
     },
     {
+      "name": "conversas-teste-xampp",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "teams/app.js"
+      ],
+      "port": 3102,
+      "env": {
+        "DB_PORT": "3306",
+        "DB_NAME": "gestao_escolar_teste",
+        "TEAMS_PORT": "3102"
+      }
+    },
+    {
       "name": "informanege",
       "runtimeExecutable": "node",
       "runtimeArgs": [

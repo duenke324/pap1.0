@@ -22,6 +22,11 @@ const {
   gerarPasswordsAlunos,
 } = require('../lib/escolas');
 const { h, gerarHash, verificarPassword, formatarData, hoje, iniciais } = require('../lib/util');
+const { pdfPalavrasPasse } = require('../lib/pdf');
+const { APP_URL } = require('../lib/email');
+
+// Endereço de entrada da escola, completo (ex.: http://localhost:3000/escola/epmontijo)
+const ligacaoDaEscolaPara = (escola) => `${APP_URL}/escola/${escola.codigo}`;
 
 // ---------- Escolha da escola (público) ----------
 get('/escolas', async (req, res) => {
@@ -343,7 +348,8 @@ function formExportar(escolaId, turmaId, texto, descricao, classe = 'pf-botao pf
   return `<form method="post" action="/plataforma/escolas/${escolaId}/exportar-passwords"
       data-confirmar="Gerar palavras-passe novas para ${h(descricao)} e descarregar o ficheiro? As palavras-passe atuais deixam de funcionar e cada aluno tem de escolher uma sua no próximo acesso.">
       <input type="hidden" name="turma" value="${h(turmaId)}">
-      <button class="${classe}">${iconePf('descarregar')}<span>${h(texto)}</span></button>
+      <button class="${classe}" name="formato" value="pdf" title="Gera palavras-passe novas e descarrega um PDF para imprimir">${iconePf('descarregar')}<span>${h(texto)} (PDF)</span></button>
+      <button class="pf-botao-texto" name="formato" value="csv" title="O mesmo, num ficheiro para o Excel">CSV</button>
     </form>`;
 }
 
@@ -425,7 +431,7 @@ get('/plataforma/escolas/:id', async (req, res) => {
     </form>
     ${seccoes || `<p class="pf-vazio">${pesquisa ? 'Nenhum aluno encontrado.' : 'Esta escola ainda não tem turmas nem alunos.'}</p>`}
     <p class="pf-suave pf-pequeno">As palavras-passe atuais não podem ser vistas nem exportadas: a base de dados só guarda uma versão cifrada.
-      Por isso, exportar gera palavras-passe novas e o ficheiro é a única cópia delas.</p>`;
+      Por isso, exportar gera palavras-passe novas e o ficheiro (PDF para imprimir, ou CSV para o Excel) é a única cópia delas.</p>`;
   res.html(paginaPlataforma(req, escola.nome, conteudo));
 });
 
@@ -464,15 +470,41 @@ post('/plataforma/escolas/:id/exportar-passwords', async (req, res) => {
     return res.redirecionar(`/plataforma/escolas/${escola.id}`);
   }
 
+  const parte = turma === 'todas' ? 'todos' : (alunos[0].turma || 'sem-turma').normalize('NFD').replace(/[^\w-]+/g, '-');
+  const nomeFicheiro = `palavras-passe-${escola.codigo}-${parte}-${hoje()}`;
+
+  if (req.corpo.formato !== 'csv') {
+    // PDF: uma tabela por turma (cada turma começa numa página nova), para imprimir e entregar
+    const grupos = [];
+    for (const a of alunos) {
+      const titulo = a.turma ? `Turma ${a.turma}` : 'Sem turma';
+      let g = grupos.find((x) => x.titulo === titulo);
+      if (!g) grupos.push((g = { titulo, linhas: [] }));
+      g.linhas.push({ numero: a.username, nome: a.nome, password: a.password });
+    }
+    const pdf = pdfPalavrasPasse({
+      escola: escola.nome,
+      enderecoEntrada: ligacaoDaEscolaPara(escola),
+      grupos,
+      geradoEm: formatarData(hoje()),
+    });
+    res.writeHead(200, {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${nomeFicheiro}.pdf"`,
+      'Content-Length': pdf.length,
+      'Cache-Control': 'no-store',
+    });
+    return res.end(pdf);
+  }
+
   const linhas = [
     ['Escola', 'Turma', 'N.º de processo (utilizador)', 'Nome', 'Email', 'Palavra-passe temporária', 'Endereço de entrada'],
     ...alunos.map((a) => [escola.nome, a.turma || 'Sem turma', a.username, a.nome, a.email || '', a.password, `/escola/${escola.codigo}`]),
   ];
   const csv = '﻿' + linhas.map((l) => l.map(celulaCsv).join(';')).join('\r\n') + '\r\n';
-  const parte = turma === 'todas' ? 'todos' : (alunos[0].turma || 'sem-turma').normalize('NFD').replace(/[^\w-]+/g, '-');
   res.writeHead(200, {
     'Content-Type': 'text/csv; charset=utf-8',
-    'Content-Disposition': `attachment; filename="palavras-passe-${escola.codigo}-${parte}-${hoje()}.csv"`,
+    'Content-Disposition': `attachment; filename="${nomeFicheiro}.csv"`,
     'Cache-Control': 'no-store',
   });
   res.end(csv);

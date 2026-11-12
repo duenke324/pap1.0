@@ -54,8 +54,9 @@ Como funciona por dentro:
   escola (ninguém dela entra; os dados ficam guardados). Não há botão para apagar uma escola.
 - **Ver alunos** (em cada escola) mostra os alunos por turma, com pesquisa, e o estado da conta de cada um.
   Daí dá para **gerar uma palavra-passe nova** para um aluno (aparece uma só vez no ecrã), ou para uma turma ou a
-  escola toda de uma vez, que **descarrega um ficheiro CSV** (abre no Excel) com o n.º de processo, o nome, o email
-  e a palavra-passe temporária de cada aluno, para entregar. As palavras-passe atuais nunca podem ser vistas nem
+  escola toda de uma vez, que **descarrega um PDF** para imprimir (uma tabela por turma, cada turma numa página nova,
+  com o n.º de processo, o nome completo e a palavra-passe temporária) — ou, pelo botão "CSV" ao lado, um ficheiro
+  para o Excel. O PDF é gerado pela própria aplicação, sem bibliotecas ([src/lib/pdf.js](src/lib/pdf.js)). As palavras-passe atuais nunca podem ser vistas nem
   exportadas (só se guarda uma versão cifrada): por isso exportar gera sempre palavras-passe novas, as antigas deixam
   de funcionar, cada aluno é obrigado a escolher uma sua no próximo acesso, e fica registado na auditoria da escola.
 - O painel da plataforma tem um aspeto próprio, escuro (consola azul-noite com acento âmbar, em `public/plataforma.css`),

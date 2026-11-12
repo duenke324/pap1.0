@@ -2,7 +2,21 @@
 // navegação + lista clara + canais com #), com duas secções: Equipas (canais por disciplina,
 // dentro de cada turma) e Mensagens (conversas privadas 1 para 1).
 const { h, iniciais } = require('../src/lib/util');
+const fs = require('node:fs');
+const path = require('node:path');
 const { escolaAtual } = require('../src/lib/contexto');
+
+// Endereço de um ficheiro de publico/ com a data da última alteração (ex.: /static/estilo.css?v=mh3k2a):
+// quando o ficheiro muda, o endereço muda, e o browser nunca usa uma cópia antiga do CSS ou do JavaScript.
+function estatico(ficheiro) {
+  let versao = '0';
+  try {
+    versao = Math.round(fs.statSync(path.join(__dirname, 'publico', ficheiro)).mtimeMs).toString(36);
+  } catch {
+    // ficheiro em falta: o pedido dá 404, como antes
+  }
+  return `/static/${ficheiro}?v=${versao}`;
+}
 
 const ICONES = {
   sair: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H4"/>',
@@ -14,6 +28,7 @@ const ICONES = {
   mensagens: '<path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v8A1.5 1.5 0 0 1 18.5 16H10l-4.5 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-8Z"/><path d="M8 9.5h8M8 12h5"/>',
   nova: '<path d="M12 5v14M5 12h14"/>',
   pesquisar: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  mais: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
 };
 
 function icone(nome, classe = 'icone') {
@@ -54,9 +69,9 @@ function documento(titulo, corpo, classeBody = '') {
   <title>${h(titulo)} · Conversas</title>
   <meta name="color-scheme" content="light dark">
   <script>try { var t = localStorage.getItem('tema-conversas'); if (t === 'claro' || t === 'escuro') document.documentElement.dataset.tema = t; } catch (e) {}</script>
-  <link rel="stylesheet" href="/static/estilo.css">
+  <link rel="stylesheet" href="${estatico('estilo.css')}">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <script src="/static/app.js" defer></script>
+  <script src="${estatico('app.js')}" defer></script>
 </head>
 <body class="${classeBody}">
 ${corpo}
@@ -127,6 +142,11 @@ function paginaLogin({ email = '', erro = '', mensagens = [] } = {}) {
   });
 }
 
+// Azulejo quadrado com as iniciais da turma (o Teams mostra cada equipa assim); a cor sai do nome
+function azulejoEquipa(nome, classe = 'azulejo-equipa') {
+  return `<span class="${classe} avatar-cor-${corAvatar(nome)}" aria-hidden="true">${h(iniciais(nome))}</span>`;
+}
+
 // estrutura: [{ turma: {id, nome}, canais: [{id, nome}] }]
 function arvoreHtml(estrutura, canalAtivoId) {
   if (!estrutura.length) {
@@ -136,7 +156,7 @@ function arvoreHtml(estrutura, canalAtivoId) {
     .map(
       ({ turma, canais, podeGerir }) => `
     <div class="turma-grupo">
-      <div class="turma-cabecalho"><span title="${h(turma.nome)}">${h(turma.nome)}</span>${podeGerir ? `<a href="/turma/${turma.id}">Gerir</a>` : ''}</div>
+      <div class="turma-cabecalho">${azulejoEquipa(turma.nome)}<span class="turma-nome" title="${h(turma.nome)}">${h(turma.nome)}</span>${podeGerir ? `<a href="/turma/${turma.id}" class="turma-gerir" title="Gerir canais de ${h(turma.nome)}" aria-label="Gerir canais de ${h(turma.nome)}">${icone('mais')}</a>` : ''}</div>
       ${
         canais.length
           ? canais
@@ -182,50 +202,64 @@ function pagina(
     distintivoTitulo = '',
     cabecalhoAvatar = '',
     cabecalhoExtra = '',
+    separador = '',
   },
   conteudo
 ) {
   const u = req.utilizador;
   const equipasAtivo = secaoAtiva === 'equipas';
+  const papel = u.papel === 'professor' ? 'Professor' : 'Aluno';
   const listaHtml = equipasAtivo
-    ? `<div class="lista-cabecalho">Equipas</div>
+    ? `<div class="lista-cabecalho-linha"><h2 class="lista-cabecalho">Equipas</h2></div>
        <nav class="arvore" aria-label="Turmas e canais">${arvoreHtml(arvore, canalAtivoId)}</nav>`
     : `<div class="lista-cabecalho-linha">
-         <div class="lista-cabecalho">Mensagens</div>
+         <h2 class="lista-cabecalho">Chat</h2>
          <a class="botao-icone" href="/mensagens/nova" title="Nova conversa" aria-label="Nova conversa">${icone('nova')}</a>
        </div>
        <nav class="arvore" aria-label="Conversas">${listaConversasHtml(conversas, conversaAtivaId)}</nav>`;
+  // Cabeçalho do conteúdo: num canal, o azulejo da turma; numa conversa, o avatar da pessoa
+  const iconeTitulo = canalAtivoId && subtitulo ? azulejoEquipa(subtitulo, 'azulejo-equipa grande') : cabecalhoAvatar;
+  const nomeSeparador = separador || (canalAtivoId ? 'Publicações' : conversaAtivaId ? 'Chat' : '');
 
   return documento(
     titulo,
     `
 <div class="app">
-  <nav class="rail" aria-label="Conversas">
-    <a href="/" class="rail-logo" title="Conversas" aria-label="Página inicial">${LOGO}</a>
-    <div class="rail-nav">
-      <a href="/" class="rail-botao${equipasAtivo ? ' ativo' : ''}"${equipasAtivo ? ' aria-current="page"' : ''} title="Equipas" aria-label="Equipas">${icone('equipas')}</a>
-      <a href="/mensagens" class="rail-botao${!equipasAtivo ? ' ativo' : ''}"${!equipasAtivo ? ' aria-current="page"' : ''} title="Mensagens" aria-label="Mensagens">${icone('mensagens')}</a>
-    </div>
-    <div class="rail-fim">
+  <header class="barra-titulo">
+    <button class="botao-icone so-movel" data-alternar-menu aria-controls="lateral" aria-label="Abrir lista">${icone('menu')}</button>
+    <a href="/" class="barra-marca" aria-label="Conversas — página inicial">${LOGO}<span>Conversas</span></a>
+    <form class="barra-pesquisa" method="get" action="/mensagens/nova" role="search">
+      ${icone('pesquisar')}
+      <input type="search" name="q" placeholder="Pesquisar pessoas" aria-label="Pesquisar pessoas para conversar">
+    </form>
+    <div class="barra-conta">
       ${botaoTema()}
-      ${avatarHtml(u.nome, 'avatar rail-avatar', `${u.nome} · ${u.papel === 'professor' ? 'Professor' : 'Aluno'}`)}
+      <span class="barra-avatar" title="${h(u.nome)} · ${papel}">${avatarHtml(u.nome, 'avatar')}<span class="presenca" aria-hidden="true"></span></span>
       <form method="post" action="/logout"><button class="botao-icone" title="Terminar sessão" aria-label="Terminar sessão">${icone('sair')}</button></form>
     </div>
-  </nav>
-  <aside class="lista-canais" id="lateral">${listaHtml}</aside>
-  <main class="conteudo">
-    <header class="topo-canal">
-      <button class="botao-icone so-movel" data-alternar-menu aria-label="Abrir menu">${icone('menu')}</button>
-      ${cabecalhoAvatar}
-      <div class="topo-canal-titulo">
-        ${subtitulo ? `<span class="etiqueta-turma">${h(subtitulo)}</span>` : ''}
-        <h1>${canalAtivoId ? '<span class="texto-suave">#</span> ' : ''}${h(titulo)}${distintivoTitulo ? ` ${distintivoTitulo}` : ''}</h1>
-      </div>
-      <div class="topo-canal-extra">${cabecalhoExtra}</div>
-    </header>
-    ${mensagensFlash(req.lerFlash())}
-    ${conteudo}
-  </main>
+  </header>
+  <div class="app-corpo">
+    <nav class="rail" aria-label="Secções">
+      <a href="/mensagens" class="rail-botao${!equipasAtivo ? ' ativo' : ''}"${!equipasAtivo ? ' aria-current="page"' : ''}>${icone('mensagens')}<span>Chat</span></a>
+      <a href="/" class="rail-botao${equipasAtivo ? ' ativo' : ''}"${equipasAtivo ? ' aria-current="page"' : ''}>${icone('equipas')}<span>Equipas</span></a>
+    </nav>
+    <aside class="lista-canais" id="lateral">${listaHtml}</aside>
+    <main class="conteudo">
+      <header class="topo-canal">
+        <div class="topo-canal-linha">
+          ${iconeTitulo}
+          <div class="topo-canal-titulo">
+            <h1>${h(titulo)}${distintivoTitulo ? ` ${distintivoTitulo}` : ''}</h1>
+            ${subtitulo ? `<span class="etiqueta-turma">${h(subtitulo)}</span>` : ''}
+          </div>
+          <div class="topo-canal-extra">${cabecalhoExtra}</div>
+        </div>
+        ${nomeSeparador ? `<nav class="separadores" aria-label="Separadores"><span class="separador ativo" aria-current="page">${h(nomeSeparador)}</span></nav>` : ''}
+      </header>
+      ${mensagensFlash(req.lerFlash())}
+      ${conteudo}
+    </main>
+  </div>
 </div>`
   );
 }

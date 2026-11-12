@@ -305,15 +305,15 @@ get('/turma/:turmaId/canal/:canalId', async (req, res) => {
 
   const conteudo = `
     ${gestaoHtml}
-    <div class="corpo-canal" data-canal data-canal-api="/turma/${canal.turma_id}/canal/${canal.id}">
+    <div class="corpo-canal corpo-publicacoes" data-canal data-canal-api="/turma/${canal.turma_id}/canal/${canal.id}">
       <div class="mensagens" data-canal-mensagens role="log" aria-live="polite" aria-label="Mensagens do canal">${
         mensagensHtml || vazio(pesquisaMensagens ? `Nenhuma mensagem encontrada para "${pesquisaMensagens}".` : 'Ainda não há mensagens. Seja o primeiro a escrever.')
       }</div>
       <form class="compositor" data-canal-form method="post" action="/turma/${canal.turma_id}/canal/${canal.id}/mensagens">
         <div class="compositor-caixa">
-          <textarea name="texto" maxlength="2000" required placeholder="Escrever mensagem…" aria-label="Mensagem"></textarea>
+          <textarea name="texto" maxlength="2000" required placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea>
+          <button class="botao-enviar" aria-label="Enviar mensagem" title="Enviar mensagem">${icone('enviar')}</button>
         </div>
-        <button class="botao-enviar" aria-label="Enviar mensagem" title="Enviar mensagem">${icone('enviar')}</button>
       </form>
     </div>`;
   res.html(

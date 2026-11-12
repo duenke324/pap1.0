@@ -166,13 +166,13 @@ get('/mensagens/:id', async (req, res) => {
   const conversas = await conversasDoUtilizador(req.utilizador.id);
   const mensagensHtml = (await mensagensDaConversa(conversa.id)).map((m) => mensagemHtml(m, req.utilizador.id)).join('');
   const conteudo = `
-    <div class="corpo-canal" data-canal data-canal-api="/mensagens/${conversa.id}">
+    <div class="corpo-canal corpo-chat" data-canal data-canal-api="/mensagens/${conversa.id}">
       <div class="mensagens" data-canal-mensagens role="log" aria-live="polite" aria-label="Mensagens da conversa">${mensagensHtml || vazio('Ainda não há mensagens. Diga olá.')}</div>
       <form class="compositor" data-canal-form method="post" action="/mensagens/${conversa.id}">
         <div class="compositor-caixa">
-          <textarea name="texto" maxlength="2000" required placeholder="Escrever mensagem…" aria-label="Mensagem"></textarea>
+          <textarea name="texto" maxlength="2000" required placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea>
+          <button class="botao-enviar" aria-label="Enviar mensagem" title="Enviar mensagem">${icone('enviar')}</button>
         </div>
-        <button class="botao-enviar" aria-label="Enviar mensagem" title="Enviar mensagem">${icone('enviar')}</button>
       </form>
     </div>`;
   res.html(
