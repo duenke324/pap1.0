@@ -294,3 +294,25 @@
   .pf-kpi small { display: none; }
   .pf-detalhes { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ----- Endereços de cada escola (cartões da lista e página da escola) ----- */
+.pf-enderecos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .45rem; }
+.pf-enderecos li {
+  display: flex; align-items: center; gap: .8rem; padding: .6rem .75rem;
+  border: 1px solid var(--pf-linha); border-radius: 10px; background: var(--pf-fundo-2);
+}
+.pf-endereco-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.pf-endereco-texto strong { font-size: .84rem; }
+.pf-endereco-texto small { color: var(--pf-suave); font-size: .76rem; }
+.pf-endereco-texto a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--pf-texto); }
+.pf-endereco-texto a:hover { text-decoration: underline; }
+.pf-enderecos.compacta li { padding: .45rem .6rem; }
+.pf-enderecos.compacta strong { font: 600 .64rem var(--pf-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--pf-suave); }
+.pf-enderecos.compacta code { font-size: .78rem; }
+.pf-copiar {
+  flex: none; padding: .3rem .7rem; border: 1px solid var(--pf-linha-forte); border-radius: 8px;
+  background: transparent; color: var(--pf-texto); font: 600 .78rem var(--letra); cursor: pointer;
+}
+.pf-copiar:hover { background: #fff; color: #000; border-color: #fff; }
+.pf-cartao-enderecos { margin-bottom: 1.6rem; }
+.pf-cartao-enderecos > p { margin-bottom: .9rem; }

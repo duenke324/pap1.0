@@ -148,3 +148,21 @@ document.querySelectorAll('[data-formulario-foto]').forEach((form) => {
     }
   });
 });
+
+// Botões "Copiar" (ex.: os endereços de uma escola no painel da plataforma): copia o texto de
+// data-copiar e mostra "Copiado" durante um momento. Sem acesso à área de transferência, seleciona
+// o endereço ao lado para se copiar à mão.
+document.addEventListener('click', async (e) => {
+  const botao = e.target.closest('[data-copiar]');
+  if (!botao) return;
+  const original = botao.textContent;
+  try {
+    await navigator.clipboard.writeText(botao.dataset.copiar);
+    botao.textContent = 'Copiado';
+  } catch {
+    const codigo = botao.parentElement.querySelector('code');
+    if (codigo) getSelection().selectAllChildren(codigo);
+    botao.textContent = 'Selecionado';
+  }
+  setTimeout(() => (botao.textContent = original), 1600);
+});

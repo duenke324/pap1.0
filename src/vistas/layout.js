@@ -116,8 +116,7 @@ function icone(nome) {
   return `<svg class="icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES[nome] || ''}</svg>`;
 }
 
-// Logótipo: o capelo do site InformaNege (o mesmo desenho de informanege/vistas.js), para a marca
-// ser a mesma no site de apresentação e na aplicação. A cor vem do CSS (tema claro e escuro).
+// Logótipo: um capelo. A cor vem do CSS (tema claro e escuro).
 const LOGO =
   '<svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/><path d="M22 10v6.5"/></svg>';
 

@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.1
+# Sistema de Gestão Escolar — versão 1.2
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
@@ -6,13 +6,12 @@ Plataforma web para consulta e gestão de informação escolar, com painéis par
 **Aluno**, o **Professor**, o **Encarregado de educação**, o **Funcionário** e o **Administrador** (direção) de cada
 escola, e um **painel da plataforma** para criar e gerir várias escolas na mesma instalação.
 
-O projeto tem três aplicações:
+O projeto tem duas aplicações:
 
 | Aplicação | Para quê | Comando | Endereço |
 | --- | --- | --- | --- |
 | **Gestão Escolar** | Faltas, sumários, avaliação, horários, justificativos… (e o painel da plataforma) | `npm start` | http://localhost:3000/epmontijo (cada escola em `/<código>`; plataforma em `/plataforma`) |
 | **Conversas** | Canais por turma e mensagens privadas, com o aspeto do Microsoft Teams | `npm run conversas` | http://localhost:3100/epmontijo (cada escola em `/<código>`) |
-| **InformaNege** | Site de apresentação e venda do software | `npm run informanege` | http://localhost:3200 |
 
 ## Como executar
 
@@ -205,47 +204,6 @@ canal, "Chat" numa conversa). Nos canais as mensagens são **publicações em ca
 - A conversa por turma vive só aqui — a Gestão Escolar já não tem separador "Canais" (foi retirado
   para não haver duas versões da mesma coisa); as tabelas continuam partilhadas na mesma base de dados.
 
-## InformaNege — site de vendas (`npm run informanege`, porta 3200)
-
-Página de apresentação do software (`informanege/`), para mostrar numa demonstração/apresentação.
-Propositadamente simples: sem base de dados, sem sessões, sem JavaScript no browser — só HTML e CSS
-estáticos servidos por um pequeno servidor Node (não reutiliza `src/lib/servidor.js`, que exige base
-de dados para guardar sessões, inútil aqui). A única exceção é a rota `POST /comprar`, que cria a
-sessão de pagamento no Stripe.
-
-O botão "Ver demonstração" **não é um mockup**: abre a Gestão Escolar real (`http://localhost:3000`)
-numa nova aba, com as contas de demonstração listadas na própria página. Por construção, não há nada
-para manter sincronizado entre o site e o painel — mudou o painel, a demonstração mostra sempre a
-versão atual, porque é a mesma aplicação. O mesmo vale para as capturas de ecrã em `informanege/publico/capturas/`
-— são do software real, tiradas com as contas de demonstração.
-
-### Subscrever (contacto por email) e pagamento (Stripe, construído mas não ligado ainda)
-
-Por agora, o botão **"Subscrever agora"** da secção de preços leva a `/subscrever`: agradece o interesse
-e mostra o email de contacto com um `mailto:` já preenchido (assunto e corpo com nome da escola e número
-de alunos) — ver `paginaInteresseRegistado()` em `informanege/vistas.js`. Sem pagamento automático por
-agora; as subscrições são combinadas diretamente por email.
-
-Já está construído, à espera das chaves reais da Stripe, um **checkout embutido** (Stripe Embedded
-Checkout) em `/checkout`: o cliente não sai do site — a página é nossa, só os campos do cartão em si
-ficam num iframe do Stripe (obrigatório por segurança; os números do cartão nunca passam pelo nosso
-servidor) — ver `informanege/pagamento.js` e `paginaCheckout()` em `informanege/vistas.js`. Sem chaves
-configuradas, `/checkout` mostra uma pré-visualização (campos de exemplo, sem contactar o Stripe).
-Para ligar este checkout ao botão "Subscrever agora", troque o `href="/subscrever"` para `href="/checkout"`
-na secção de preços de `informanege/vistas.js`.
-- `STRIPE_SECRET_KEY` **e** `STRIPE_PUBLISHABLE_KEY`: as duas obrigatórias para o checkout funcionar.
-  A secreta cria a sessão de pagamento no servidor; a publicável vai para a página (é feita para isso,
-  não é segredo). **Nunca** colocar a chave secreta no código — só como variável de ambiente
-  (`STRIPE_SECRET_KEY=sk_... STRIPE_PUBLISHABLE_KEY=pk_... npm run informanege`), tal como `DB_PORT` ou `GESTAO_URL`.
-  Para testar sem risco, use as chaves de **modo de teste** do Stripe (`sk_test_...`/`pk_test_...`) — só
-  trocar para `sk_live_...`/`pk_live_...` quando estiver mesmo pronto para cobrar a sério.
-- `SITE_URL`: endereço público do site, usado no `return_url` para onde o Stripe.js traz o cliente de
-  volta depois do pagamento, em `/pagamento/resultado` (por omissão, `http://localhost:3200`).
-- É a única dependência npm nova do projeto (pacote `stripe`): para dinheiro a sério, a fiabilidade da
-  biblioteca oficial pesa mais do que manter zero dependências. O `https://js.stripe.com/v3/` (o script
-  que desenha os campos do cartão) tem de ser carregado diretamente do domínio do Stripe — não pode ser
-  copiado para o projeto, é uma exigência de segurança do próprio Stripe.
-
 ## Funcionalidades
 
 ### Painel do Aluno
@@ -364,8 +322,7 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
 
 ### Aspeto
 Cada parte tem a sua cara, para nunca se confundirem:
-- **Página de entrada** (login, primeira palavra-passe, recuperação, erros): barra branca com o logótipo (o capelo,
-  igual ao do InformaNege), uma faixa com a ilustração da escola e um painel translúcido ao centro, com três colunas
+- **Página de entrada** (login, primeira palavra-passe, recuperação, erros): barra branca com o logótipo (o capelo), uma faixa com a ilustração da escola e um painel translúcido ao centro, com três colunas
   de informação por baixo. Fica sempre clara. Para usar uma fotografia verdadeira da escola, basta guardá-la em
   `public/imagens/escola.jpg`.
 - **Painéis das escolas** ([public/painel.css](public/painel.css)): menu lateral verde-escuro com ícones e o nome da
@@ -490,7 +447,7 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 
 - Os tempos letivos (08:30, 09:30, …) estão na tabela `tempos` e ainda não têm ecrã de edição
 - Várias escolas: a lista de escolas em `/escolas` é pública (mostra os nomes); `npm run seed` só recria a primeira
-  escola; o site InformaNege e a aplicação para Mac não foram revistos para várias escolas; não se pode apagar uma
+  escola; a aplicação para Mac não foi revista para várias escolas; não se pode apagar uma
   escola pelo painel (só desativar)
 - A recuperação de palavra-passe só envia emails a sério com um servidor SMTP configurado (ver "Recuperação de
   palavra-passe"); sem ele, a ligação aparece só na consola do servidor. O administrador não tem email na ficha,

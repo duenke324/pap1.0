@@ -28,6 +28,35 @@ const { APP_URL } = require('../lib/email');
 // Endereço de entrada da escola, completo (ex.: http://localhost:3000/epmontijo)
 const ligacaoDaEscolaPara = (escola) => `${APP_URL}/${escola.codigo}`;
 
+// Endereço público da Conversas (a outra aplicação). Numa instalação real define-se CONVERSAS_URL,
+// tal como APP_URL para a Gestão Escolar; por omissão, a porta da Conversas neste computador.
+const CONVERSAS_URL = (process.env.CONVERSAS_URL || `http://localhost:${Number(process.env.TEAMS_PORT) || 3100}`).replace(/\/+$/, '');
+
+// Os endereços de uma escola, para dar à escola: entrada da Gestão Escolar, Conversas e recuperação
+function enderecosDaEscola(escola) {
+  return [
+    { nome: 'Gestão Escolar', descricao: 'entrada de alunos, professores, funcionários, encarregados e direção', url: `${APP_URL}/${escola.codigo}/login` },
+    { nome: 'Conversas', descricao: 'canais por turma e mensagens privadas (professores e alunos)', url: `${CONVERSAS_URL}/${escola.codigo}/login` },
+    { nome: 'Recuperar palavra-passe', descricao: 'para quem se esqueceu (recebe uma ligação por email)', url: `${APP_URL}/${escola.codigo}/recuperar-password` },
+  ];
+}
+
+// Lista dos endereços com "Abrir" e "Copiar"; compacta = só o nome e o endereço (nos cartões da lista)
+function listaEnderecos(escola, { compacta = false } = {}) {
+  const linhas = enderecosDaEscola(escola).slice(0, compacta ? 2 : undefined);
+  return `<ul class="pf-enderecos${compacta ? ' compacta' : ''}">${linhas
+    .map(
+      (l) => `<li>
+        <div class="pf-endereco-texto">
+          <strong>${h(l.nome)}</strong>${compacta ? '' : `<small>${h(l.descricao)}</small>`}
+          <a href="${h(l.url)}" target="_blank" rel="noopener"><code>${h(l.url)}</code></a>
+        </div>
+        <button type="button" class="pf-copiar" data-copiar="${h(l.url)}" aria-label="Copiar o endereço da ${h(l.nome)}">Copiar</button>
+      </li>`
+    )
+    .join('')}</ul>`;
+}
+
 // ---------- Escolha da escola (público) ----------
 get('/escolas', async (req, res) => {
   const escolas = await escolasAtivas();
@@ -198,6 +227,7 @@ function cartaoEscola(e) {
       <div><dt>Direção</dt><dd>${h(e.direcao_nome || '—')}</dd></div>
       <div><dt>Criada em</dt><dd>${h(formatarData(e.criado_em))}</dd></div>
     </dl>
+    ${listaEnderecos(e, { compacta: true })}
     <div class="pf-escola-acoes">
       <a class="pf-botao" href="${base}">${iconePf('alunos')}<span>Ver alunos</span></a>
       ${e.ativa ? `<a class="pf-botao pf-botao-sec" href="/${h(e.codigo)}/login" target="_blank" rel="noopener">Abrir escola</a>` : ''}
@@ -338,10 +368,11 @@ post('/plataforma/escolas', async (req, res) => {
   } else {
     req.flash(
       'sucesso',
-      `Escola "${r.escola.nome}" criada. Endereço de entrada: /${r.escola.codigo} · Conta da direção: ${r.username} · Palavra-passe temporária: ${r.password} (anote-a agora — não vai voltar a ser mostrada).`
+      `Escola "${r.escola.nome}" criada. Conta da direção: ${r.username} · Palavra-passe temporária: ${r.password} (anote-a agora — não vai voltar a ser mostrada). Os endereços da escola estão em baixo.`
     );
+    // Segue para a página da escola, onde os endereços aparecem logo em cima
+    return res.redirecionar(`/plataforma/escolas/${r.escola.id}`);
   }
-  res.redirecionar('/plataforma');
 });
 
 const carregarEscola = (id) => plataforma.um('SELECT * FROM escolas WHERE id = ?', id);
@@ -488,6 +519,11 @@ get('/plataforma/escolas/:id', async (req, res) => {
         <p class="pf-suave">Alunos por turma. Gerar uma palavra-passe nova obriga o aluno a escolher uma sua no próximo acesso.</p>
       </div>
       ${todosAlunos.some((a) => a.utilizador_id) && !pesquisa ? formExportar(escola.id, 'todas', 'Novas palavras-passe de todos', `todos os alunos de ${escola.nome}`, 'pf-botao') : ''}
+    </section>
+    <section class="pf-cartao pf-cartao-enderecos">
+      <h2>Endereços da escola</h2>
+      <p class="pf-suave">Os endereços a dar à escola. Cada um já leva o código da escola (<code>/${h(escola.codigo)}</code>).</p>
+      ${listaEnderecos(escola)}
     </section>
     <section class="pf-kpis" aria-label="Totais">
       <div class="pf-kpi"><span>Alunos</span><strong>${pesquisa ? todosAlunos.length : dados.total}</strong><small>${pesquisa ? 'encontrados' : 'na escola'}</small></div>

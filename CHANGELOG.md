@@ -3,6 +3,17 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.2.0] — 2026-11-13
+
+### Novo
+- **Endereços de cada escola no painel da plataforma**: ao criar uma escola, abre logo a página dela com os
+  endereços próprios — Gestão Escolar (`/<código>/login`), Conversas (`/<código>/login`) e recuperar
+  palavra-passe — cada um com um botão **Copiar**. Os cartões da lista de escolas também mostram os dois principais.
+
+### Removido
+- O **site de vendas InformaNege** (pasta `informanege/`, scripts `npm run informanege` e a dependência `stripe`).
+  O projeto fica com duas aplicações: a Gestão Escolar e a Conversas.
+
 ## [1.1.0] — 2026-11-13
 
 ### Novo

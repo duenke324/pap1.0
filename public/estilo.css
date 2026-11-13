@@ -136,7 +136,7 @@ a.marca:hover { text-decoration: none; }
 .cabecalho-ano { margin: 0; color: var(--tinta-suave); font: .76rem var(--letra-dados); }
 
 /* Logótipo: as cores seguem o tema */
-/* Logótipo (capelo, igual ao do site InformaNege): só traço, na cor de acento */
+/* Logótipo (capelo): só traço, na cor de acento */
 .logo { width: 32px; height: 32px; flex: none; fill: none; stroke: var(--acento); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .utilizador { display: flex; align-items: center; gap: .3rem; margin-left: auto; min-width: 0; }

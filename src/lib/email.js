@@ -1,5 +1,5 @@
 // Envio de email (usado na recuperação de palavra-passe).
-// Precisa de um servidor SMTP, indicado por variáveis de ambiente — tal como as chaves do Stripe,
+// Precisa de um servidor SMTP, indicado por variáveis de ambiente — tal como DB_PASSWORD,
 // nunca ficam escritas no código:
 //   SMTP_HOST, SMTP_PORT (587 por omissão), SMTP_USER, SMTP_PASS
 //   SMTP_FROM  remetente, ex.: "Gestão Escolar <secretaria@epmontijo.edu.pt>" (por omissão, SMTP_USER)
