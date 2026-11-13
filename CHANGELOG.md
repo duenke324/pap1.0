@@ -3,6 +3,20 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.3.0] — 2026-11-13
+
+### Novo
+- **Tudo instalável como app (PWA)**: a Gestão Escolar, a Conversas e o painel da plataforma podem ser
+  instalados no telemóvel ou no computador ("Instalar app" / "Adicionar ao ecrã principal").
+- **Uma app por escola**: cada escola tem o seu manifesto (`/<código>/manifest.webmanifest`), por isso a app
+  instalada tem o nome da escola e abre logo nos endereços dela. Com duas escolas, ficam duas apps.
+- **Conversas como app**: ícone próprio (balão roxo), página de "sem ligação" e cache dos ficheiros estáticos.
+- **Painel da plataforma como app** à parte, que abre em `/plataforma`.
+
+### Alterado
+- Ícones novos da Gestão Escolar com o capelo do logótipo (antes era um livro), incluindo versões
+  "maskable" para Android.
+
 ## [1.2.0] — 2026-11-13
 
 ### Novo

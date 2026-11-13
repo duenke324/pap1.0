@@ -2,7 +2,8 @@
 // As contas (professor/aluno) são as mesmas que a direção já cria no painel principal;
 // esta app não gere contas nem palavras-passe.
 const path = require('node:path');
-const { get, post, criarServidor, renovarSessao, terminarSessao, guardarSessao, acrescentarCookie } = require('../src/lib/servidor');
+const { get, post, criarServidor, renovarSessao, terminarSessao, guardarSessao, acrescentarCookie, enviarFicheiro } = require('../src/lib/servidor');
+const { manifesto, enviarManifesto } = require('../src/lib/pwa');
 const { um, plataforma, escolaPorDominio, CONFIG } = require('../src/db');
 const { verificarPassword, h } = require('../src/lib/util');
 const { correrNoContexto, contextoAtual, escolaAtual } = require('../src/lib/contexto');
@@ -17,6 +18,9 @@ const { paginaEntrada, paginaLogin } = require('./vistas');
 
 const PORTA = Number(process.env.TEAMS_PORT || process.env.PORT) || 3100;
 const NOME_COOKIE = 'sid_conversas';
+const PASTA_PUBLICA = path.join(__dirname, 'publico');
+// Ficheiros do PWA: abrem sem sessão (o browser pede-os sem cookies) e o service worker fica na raiz
+const FICHEIROS_PWA = ['/manifest.webmanifest', '/sw.js', '/offline.html'];
 
 // Tal como na Gestão Escolar, cada escola tem os seus endereços: /epmontijo/, /epmontijo/mensagens…
 // (e o seu cookie de sessão, sid_conversas_epmontijo). O /login sem escola serve para todas: a escola
@@ -24,7 +28,9 @@ const NOME_COOKIE = 'sid_conversas';
 async function resolverContexto(req, res) {
   const ctx = await resolverContextoComPrefixo(req, res, { base: NOME_COOKIE });
   if (ctx) return ctx;
-  if (req.caminho === '/login' || req.caminho === '/logout') return { ...contextoPlataforma(), nomeCookie: NOME_COOKIE };
+  if (req.caminho === '/login' || req.caminho === '/logout' || FICHEIROS_PWA.includes(req.caminho)) {
+    return { ...contextoPlataforma(), nomeCookie: NOME_COOKIE };
+  }
   // Endereço sem escola: leva para o mesmo endereço dentro da escola deste browser (ou da única que existe)
   const escola =
     (await escolaDoPedido(req, `escola_${NOME_COOKIE}`)) || (await escolaDoPedido(req, 'escola_conversas'));
@@ -63,7 +69,7 @@ async function antesDaRota(req, res) {
     req.utilizador = await um('SELECT id, username, nome, papel FROM utilizadores WHERE id = ?', id);
     if (!req.utilizador) await terminarSessao(req);
   }
-  const publico = req.caminho === '/login';
+  const publico = req.caminho === '/login' || FICHEIROS_PWA.includes(req.caminho);
   if (!publico && !req.utilizador) {
     res.redirecionar('/login');
     return false;
@@ -139,6 +145,29 @@ post('/logout', async (req, res) => {
   res.redirecionar('/login');
 });
 
+// PWA: cada escola tem o seu manifesto (/epmontijo/manifest.webmanifest), para a Conversas de cada escola
+// se instalar como uma app à parte, que abre logo nos endereços dela.
+get('/manifest.webmanifest', (req, res) => {
+  const escola = escolaAtual();
+  enviarManifesto(
+    res,
+    manifesto({
+      nome: escola.id ? `Conversas — ${escola.nome}` : 'Conversas',
+      nomeCurto: 'Conversas',
+      descricao: 'Mensagens entre professores e alunos',
+      inicio: escola.id ? `/${escola.codigo}/` : '/',
+      icones: '/static/icons',
+      corTema: '#5b5fc7',
+    })
+  );
+});
+get('/sw.js', (req, res) => {
+  if (!enviarFicheiro(res, PASTA_PUBLICA, 'sw.js', 0)) paginaErro(req, res, 404);
+});
+get('/offline.html', (req, res) => {
+  if (!enviarFicheiro(res, PASTA_PUBLICA, 'offline.html', 3600)) paginaErro(req, res, 404);
+});
+
 require('./rotas');
 require('./privadas');
 
@@ -153,7 +182,7 @@ async function iniciar() {
   }
   if (!escolas.length) throw new Error('Ainda não há nenhuma escola ativa. Crie uma no painel da plataforma da Gestão Escolar.');
   const servidor = criarServidor({
-    pastaPublica: path.join(__dirname, 'publico'),
+    pastaPublica: PASTA_PUBLICA,
     antesDaRota,
     paginaErro,
     nomeCookie: NOME_COOKIE,

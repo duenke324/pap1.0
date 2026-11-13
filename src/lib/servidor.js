@@ -173,7 +173,8 @@ function enviarFicheiro(res, pasta, relativo, cacheSegundos = 0) {
 // tudo o que sai para o browser — nos links, formulários, imagens e atributos data-* das páginas HTML e
 // nos redirecionamentos. Assim cada escola tem os seus endereços sem ser preciso mudar centenas de links.
 // Ficam de fora os endereços que não são de nenhuma escola.
-const SEM_PREFIXO = ['static/', 'escolas', 'plataforma', 'sw.js', 'manifest.webmanifest', 'offline.html'];
+// (o manifest.webmanifest leva o código, para cada escola se instalar como uma app própria, com o nome dela)
+const SEM_PREFIXO = ['static/', 'escolas', 'plataforma', 'sw.js', 'offline.html'];
 
 function prefixarCaminho(caminho, prefixo) {
   if (typeof caminho !== 'string' || !caminho.startsWith('/') || caminho.startsWith('//')) return caminho;

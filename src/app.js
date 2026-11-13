@@ -8,6 +8,7 @@ const { paginaEntrada, mensagensFlash } = require('./vistas/layout');
 const { semearSeVazia } = require('./seed');
 const { correrNoContexto, escolaAtual, contextoAtual } = require('./lib/contexto');
 const { resolverContextoGestao, contextoDaEscola, prepararTudo } = require('./lib/escolas');
+const { manifesto, nomeCurto, enviarManifesto } = require('./lib/pwa');
 
 const PORTA = Number(process.env.PORT) || 3000;
 const PASTA_PUBLICA = path.join(pastaBase(), 'public');
@@ -50,7 +51,8 @@ async function antesDaRota(req, res) {
   if (/^\/plataforma(\/|$)/.test(req.caminho)) {
     const gestorId = req.sessao.dados.gestorId;
     if (gestorId) req.gestor = await plataforma.um('SELECT id, username, nome, deve_redefinir_password FROM gestores WHERE id = ?', gestorId);
-    if (!req.gestor && req.caminho !== '/plataforma/login') {
+    // (o manifesto do PWA tem de abrir sem sessão: o browser pede-o sem cookies)
+    if (!req.gestor && !['/plataforma/login', '/plataforma/manifest.webmanifest'].includes(req.caminho)) {
       res.redirecionar('/plataforma/login');
       return false;
     }
@@ -240,9 +242,34 @@ get('/', (req, res) => res.redirecionar(PAGINA_INICIAL[req.utilizador.papel]));
 // PWA: manifesto e service worker, acessíveis sem sessão (inclusive no ecrã de login).
 // O service worker tem de ser servido na raiz do site (não em /static/) para o seu âmbito
 // cobrir toda a aplicação, e nunca em cache, para as atualizações chegarem sem demora.
+// Cada escola tem o seu manifesto (/epmontijo/manifest.webmanifest): a app instalada tem o nome da escola
+// e abre nos endereços dela. Sem escola (ex.: a página de escolha da escola), é o manifesto geral.
 get('/manifest.webmanifest', (req, res) => {
-  if (!enviarFicheiro(res, PASTA_PUBLICA, 'manifest.webmanifest', 3600)) paginaErro(req, res, 404);
+  const escola = escolaAtual();
+  if (!escola.id) return enviarFicheiro(res, PASTA_PUBLICA, 'manifest.webmanifest', 300) || paginaErro(req, res, 404);
+  enviarManifesto(
+    res,
+    manifesto({
+      nome: escola.nome,
+      nomeCurto: nomeCurto(escola.nome, escola.codigo),
+      descricao: `Faltas, sumários, avaliação e horários — ${escola.nome}`,
+      inicio: `/${escola.codigo}/`,
+      icones: '/static/icons',
+    })
+  );
 });
+get('/plataforma/manifest.webmanifest', (req, res) =>
+  enviarManifesto(
+    res,
+    manifesto({
+      nome: 'Plataforma — Gestão Escolar',
+      nomeCurto: 'Plataforma',
+      descricao: 'Consola para criar e gerir as escolas',
+      inicio: '/plataforma',
+      icones: '/static/icons',
+    })
+  )
+);
 get('/sw.js', (req, res) => {
   if (!enviarFicheiro(res, PASTA_PUBLICA, 'sw.js', 0)) paginaErro(req, res, 404);
 });

@@ -1,3 +1,10 @@
+// PWA: regista o service worker (cache dos ficheiros estáticos e página de "sem ligação")
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 // Conversas: tema, menu lateral em ecrãs pequenos, e o canal de conversa (funciona sem
 // JavaScript — o formulário normal recarrega a página; com JavaScript, fica mais fluido).
 

@@ -153,7 +153,9 @@ function estatico(ficheiro) {
 }
 
 // estilosExtra: folhas de estilo de public/ carregadas depois de estilo.css (ex.: ['painel.css'])
-function documento(titulo, corpo, classeBody = '', estilosExtra = []) {
+// manifesto: o do PWA. Nas páginas de uma escola, /manifest.webmanifest passa a /<código>/manifest.webmanifest
+// (cada escola instala-se como uma app com o nome dela); o painel da plataforma tem o seu.
+function documento(titulo, corpo, classeBody = '', estilosExtra = [], { manifesto = '/manifest.webmanifest', nomeApp = escolaAtual().nome } = {}) {
   return `<!doctype html>
 <html lang="pt-PT">
 <head>
@@ -165,13 +167,13 @@ function documento(titulo, corpo, classeBody = '', estilosExtra = []) {
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Gestão Escolar">
+  <meta name="apple-mobile-web-app-title" content="${h(nomeApp)}">
   <script>try { var t = localStorage.getItem('tema'); if (t === 'claro' || t === 'escuro') document.documentElement.dataset.tema = t; } catch (e) {}</script>
   <link rel="preload" href="/static/vendor/fontes/plex-sans-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/vendor/fontes/newsreader.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="${estatico('estilo.css')}">
   ${estilosExtra.map((f) => `<link rel="stylesheet" href="${estatico(f)}">`).join('\n  ')}
-  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="manifest" href="${manifesto}">
   <link rel="icon" href="${estatico('favicon.svg')}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <script src="${estatico('app.js')}" defer></script>

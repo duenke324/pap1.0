@@ -68,9 +68,16 @@ function documento(titulo, corpo, classeBody = '') {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${h(titulo)} · Conversas</title>
   <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#5b5fc7">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Conversas">
   <script>try { var t = localStorage.getItem('tema-conversas'); if (t === 'claro' || t === 'escuro') document.documentElement.dataset.tema = t; } catch (e) {}</script>
   <link rel="stylesheet" href="${estatico('estilo.css')}">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <script src="${estatico('app.js')}" defer></script>
 </head>
 <body class="${classeBody}">

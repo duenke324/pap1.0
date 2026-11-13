@@ -99,6 +99,9 @@ const ICONES_PF = {
 };
 const iconePf = (nome) => `<svg class="pf-icone" viewBox="0 0 24 24" aria-hidden="true">${ICONES_PF[nome] || ''}</svg>`;
 
+// PWA do painel da plataforma: instala-se à parte das escolas (ver /plataforma/manifest.webmanifest)
+const MANIFESTO_PLATAFORMA = { manifesto: '/plataforma/manifest.webmanifest', nomeApp: 'Plataforma' };
+
 function paginaPlataforma(req, titulo, conteudo, { ativo = 'escolas' } = {}) {
   return documento(
     `${titulo} · Plataforma`,
@@ -123,7 +126,8 @@ function paginaPlataforma(req, titulo, conteudo, { ativo = 'escolas' } = {}) {
       ${conteudo}
     </main>`,
     'plataforma',
-    ['plataforma.css']
+    ['plataforma.css'],
+    MANIFESTO_PLATAFORMA
   );
 }
 
@@ -150,7 +154,8 @@ function paginaLoginPlataforma(req, { username = '', erro = '' } = {}) {
       </div>
     </main>`,
     'plataforma',
-    ['plataforma.css']
+    ['plataforma.css'],
+    MANIFESTO_PLATAFORMA
   );
 }
 

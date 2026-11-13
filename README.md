@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.2
+# Sistema de Gestão Escolar — versão 1.3
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
@@ -130,19 +130,25 @@ phpMyAdmin (separador *Importar*), mas não é necessário: a aplicação execut
 
 ### Aplicação instalável (PWA)
 
-A Gestão Escolar é também uma **Progressive Web App**: no Chrome/Edge aparece um ícone de instalar
-na barra de endereço, e no telemóvel (Android ou iOS) dá para "Adicionar ao ecrã principal" a
+As duas aplicações e o painel da plataforma são **Progressive Web Apps**: no Chrome/Edge aparece um ícone
+de instalar na barra de endereço, e no telemóvel (Android ou iOS) dá para "Adicionar ao ecrã principal" a
 partir do browser — fica com ícone próprio e abre em janela própria, sem barra do browser.
 
-- Manifesto em [public/manifest.webmanifest](public/manifest.webmanifest) e service worker em
-  [public/sw.js](public/sw.js) (servido na raiz do site, `/sw.js`, para o seu âmbito cobrir a
-  aplicação toda).
+| App | Manifesto | Abre em | Nome da app instalada |
+|-----|-----------|---------|------------------------|
+| Gestão Escolar | `/<código>/manifest.webmanifest` | `/<código>/` | o nome da escola |
+| Conversas | `/<código>/manifest.webmanifest` (porta 3100) | `/<código>/` | "Conversas — <escola>" |
+| Painel da plataforma | `/plataforma/manifest.webmanifest` | `/plataforma` | "Plataforma" |
+
+- **Uma app por escola**: os manifestos são gerados pelo servidor ([src/lib/pwa.js](src/lib/pwa.js)) com o nome
+  e os endereços de cada escola, por isso quem usa duas escolas fica com duas apps no telemóvel.
+- Service workers em [public/sw.js](public/sw.js) e [teams/publico/sw.js](teams/publico/sw.js) (servidos na
+  raiz, `/sw.js`, para o seu âmbito cobrir todas as escolas).
 - Só os ficheiros estáticos (CSS, JS, ícones) ficam em cache — as páginas têm sempre dados do
-  utilizador autenticado, por isso são sempre pedidas à rede. Sem ligação, mostra-se
-  [public/offline.html](public/offline.html).
-- Os ícones (`public/icons/`) mostram o caderno do logótipo antigo a branco sobre fundo preto, com margem à volta
-  para o Android os poder recortar em círculo ou com cantos redondos (ícones "maskable"). Ainda não foram
-  trocados pelo capelo do logótipo atual.
+  utilizador autenticado, por isso são sempre pedidas à rede. Sem ligação, mostra-se uma página de
+  "sem ligação" ([public/offline.html](public/offline.html), [teams/publico/offline.html](teams/publico/offline.html)).
+- Ícones em `public/icons/` (capelo branco sobre preto) e `teams/publico/icons/` (balão branco sobre roxo),
+  com versões "maskable" para o Android os poder recortar em círculo ou com cantos redondos.
 - As páginas pedem o CSS e o JavaScript com a data do ficheiro no endereço (`/static/estilo.css?v=…`), por isso
   depois de uma alteração o browser vai sempre buscar a versão nova, sem ser preciso limpar a cache. Se mudarem
   os ícones, sobe-se a versão da cache em `public/sw.js` (`gestao-escolar-estaticos-v6`, `-v7`, …).
