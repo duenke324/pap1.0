@@ -316,3 +316,13 @@
 .pf-copiar:hover { background: #fff; color: #000; border-color: #fff; }
 .pf-cartao-enderecos { margin-bottom: 1.6rem; }
 .pf-cartao-enderecos > p { margin-bottom: .9rem; }
+
+/* Instaladores da escola (página da escola) */
+.pf-cartao-instaladores { margin-bottom: 1.6rem; }
+.pf-cartao-instaladores > p { margin-bottom: .9rem; }
+.pf-instaladores { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .9rem; margin-bottom: .9rem; }
+.pf-instalador { border: 1px solid var(--pf-linha); border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: .6rem; }
+.pf-instalador h3 { margin: 0; font-size: 1rem; display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.pf-instalador h3 small { font-weight: 500; font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; color: var(--pf-suave); }
+.pf-instalador p { margin: 0; flex: 1; }
+.pf-instalador .pf-botao, .pf-instalador .pf-botao-sec { align-self: flex-start; }

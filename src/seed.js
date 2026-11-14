@@ -1,6 +1,6 @@
 // Dados de demonstração.
 //  - Ao arrancar a app, é chamado semearSeVazia() (só cria dados se a BD estiver vazia).
-//  - "npm run seed" apaga a base de dados MySQL e volta a criá-la do zero.
+//  - "npm run seed" apaga os dados da primeira escola e volta a criá-los (as outras escolas não mudam).
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -365,32 +365,43 @@ async function semearSeVazia() {
 
 module.exports = { semearSeVazia };
 
-// Execução direta (npm run seed): apaga a base de dados e cria tudo de novo
+// Execução direta (npm run seed): apaga os dados da primeira escola e cria os de demonstração.
+// As outras escolas, a lista de escolas e a conta do gestor ficam como estão.
 if (require.main === module) {
   (async () => {
-    const { fecharLigacoes, CONFIG, PASTA_FOTOS, PASTA_JUSTIFICATIVOS, prepararBaseDeDados } = require('./db');
-    const mysql = require('mysql2/promise');
+    const { fecharLigacoes, CONFIG, TABELAS_ESCOLA, executar, todos } = require('./db');
+    const { prepararTudo, contextoDaEscola, TEMPOS_PADRAO } = require('./lib/escolas');
+    const { correrNoContexto } = require('./lib/contexto');
+    const { pastaFotos, pastaJustificativos } = require('./db');
     try {
-      const ligacao = await mysql.createConnection({ host: CONFIG.host, port: CONFIG.port, user: CONFIG.user, password: CONFIG.password });
-      // Apaga só as fotografias desta base de dados (a pasta data/fotos pode ser partilhada por outras)
-      let fotos = [];
-      let justificativos = [];
+      const [escola] = await prepararTudo();
+      await correrNoContexto(contextoDaEscola(escola), async () => {
+        // Fotografias e justificativos desta escola
+        for (const { fotografia } of await todos('SELECT fotografia FROM alunos WHERE fotografia IS NOT NULL')) {
+          fs.rmSync(path.join(pastaFotos(), path.basename(fotografia)), { force: true });
+        }
+        for (const { ficheiro } of await todos('SELECT ficheiro FROM justificativos')) {
+          fs.rmSync(path.join(pastaJustificativos(), path.basename(ficheiro)), { force: true });
+        }
+      });
+      // Apaga as linhas desta escola em todas as tabelas (sem verificar as chaves estrangeiras, que
+      // ligam tabelas entre si: apagam-se todas, por isso não fica nada a apontar para o vazio)
+      const ligacao = await require('mysql2/promise').createConnection(CONFIG);
       try {
-        [fotos] = await ligacao.query(`SELECT fotografia FROM \`${CONFIG.database}\`.alunos WHERE fotografia IS NOT NULL`);
-        [justificativos] = await ligacao.query(`SELECT ficheiro FROM \`${CONFIG.database}\`.justificativos`);
-      } catch {
-        // a base de dados (ou a tabela, numa versão anterior) ainda não existe
+        await ligacao.query('SET FOREIGN_KEY_CHECKS = 0');
+        for (const t of TABELAS_ESCOLA) await ligacao.query(`DELETE FROM \`tb_${t}\` WHERE escola_id = ?`, [escola.id]);
+        await ligacao.query('SET FOREIGN_KEY_CHECKS = 1');
+      } finally {
+        await ligacao.end();
       }
-      await ligacao.query(`DROP DATABASE IF EXISTS \`${CONFIG.database}\``);
-      await ligacao.end();
-      for (const { fotografia } of fotos) fs.rmSync(path.join(PASTA_FOTOS, path.basename(fotografia)), { force: true });
-      for (const { ficheiro } of justificativos) fs.rmSync(path.join(PASTA_JUSTIFICATIVOS, path.basename(ficheiro)), { force: true });
-      await prepararBaseDeDados();
-      await semear();
-      console.log(`Base de dados "${CONFIG.database}" recriada com dados de demonstração.`);
+      await correrNoContexto(contextoDaEscola(escola), async () => {
+        for (const [inicio, fim] of TEMPOS_PADRAO) await executar('INSERT INTO tempos (hora_inicio, hora_fim) VALUES (?, ?)', inicio, fim);
+        await semear();
+      });
+      console.log(`Dados de demonstração da escola "${escola.nome}" (escola_id ${escola.id}) recriados em "${CONFIG.database}".`);
       console.log('  1000 / admin123   ·   1001…1005 / prof123   ·   3001…3008 / func123   ·   2450…2456, 2310…2315 / aluno123   ·   EE2450, EE2310 / ee123');
     } catch (erro) {
-      console.error('Erro ao criar a base de dados:', erro.message);
+      console.error('Erro ao criar os dados de demonstração:', erro.message);
       console.error('Confirme que o MySQL está ligado no painel do XAMPP.');
       process.exitCode = 1;
     } finally {

@@ -39,7 +39,7 @@ const get = (caminho, handler) => rota('GET', caminho, handler);
 const post = (caminho, handler) => rota('POST', caminho, handler);
 
 // ---------- Sessões (guardadas na tabela "sessoes" da base de dados) ----------
-const { executar, um, plataforma, BD_PLATAFORMA } = require('../db');
+const { executar, um, plataforma } = require('../db');
 const { correrNoContexto, contextoAtual } = require('./contexto');
 
 function lerCookies(req) {
@@ -104,15 +104,11 @@ async function terminarSessao(req) {
   req.sessao = { token: null, dados: {} };
 }
 
-// Apaga sessões expiradas de hora a hora, na base de dados central e na de cada escola
+// Apaga sessões expiradas de hora a hora, de todas as escolas e da plataforma de uma vez
+// (na tabela "a sério", tb_sessoes; a vista sessoes só mostraria as de uma escola)
 setInterval(async () => {
   try {
-    const bases = [BD_PLATAFORMA, ...(await plataforma.todos('SELECT base_dados FROM escolas')).map((e) => e.base_dados)];
-    for (const bd of bases) {
-      await correrNoContexto({ bd, escola: null, nomeCookie: 'sid' }, () =>
-        executar('DELETE FROM sessoes WHERE ultimo_acesso < NOW() - INTERVAL ? SECOND', DURACAO_SESSAO / 1000)
-      );
-    }
+    await plataforma.executar('DELETE FROM tb_sessoes WHERE ultimo_acesso < NOW() - INTERVAL ? SECOND', DURACAO_SESSAO / 1000);
   } catch (e) {
     console.error('Erro ao limpar sessões:', e.message);
   }

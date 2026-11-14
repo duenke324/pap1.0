@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.3
+# Sistema de Gestão Escolar — versão 1.4
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
@@ -23,13 +23,13 @@ Requisitos:
 npm install        # só na primeira vez (instala o mysql2, a ligação ao MySQL)
 npm start          # inicia em http://localhost:3000
 npm run dev        # reinicia sozinho quando se altera o código
-npm run seed       # APAGA a base de dados e recria os dados de demonstração
-npm run atualizar-bd  # atualiza todas as bases de dados (central e de cada escola) sem apagar dados
+npm run seed       # APAGA os dados da primeira escola e recria os de demonstração (as outras escolas ficam)
+npm run atualizar-bd  # atualiza a base de dados sem apagar dados
 ```
 
-Na primeira execução são criadas automaticamente no MySQL a base de dados **`gestao_escolar`** (a primeira
-escola, preenchida com dados de demonstração) e a **`gestao_plataforma`** (a lista de escolas e a conta do gestor).
-Podem ser consultadas no **phpMyAdmin** (http://localhost/phpmyadmin).
+Na primeira execução é criada automaticamente no MySQL a base de dados **`gestao_escolar`**, com todas as escolas
+lá dentro (a primeira, "Escola Profissional do Montijo", preenchida com dados de demonstração), a lista de escolas e
+a conta do gestor. Pode ser consultada no **phpMyAdmin** (http://localhost/phpmyadmin).
 
 ### Configuração do MySQL
 
@@ -51,10 +51,12 @@ A mesma instalação serve **várias escolas**. Quem gere a instalação entra n
 
 Como funciona por dentro:
 
-- **Uma base de dados por escola** (`gestao_<código>`), criada a partir do mesmo `database/escola.sql`; os dados de uma
-  escola nunca se misturam com os de outra, e o mesmo número de processo pode existir em duas escolas. Uma base de
-  dados central, `gestao_plataforma`, guarda só a lista de escolas e a conta do gestor.
-  A base de dados que já existia (`gestao_escolar`) ficou registada como a primeira escola, "Escola Profissional do Montijo".
+- **Todas as escolas na mesma base de dados** (`gestao_escolar`), separadas pelo `escola_id`: cada tabela
+  "a sério" chama-se `tb_…` (`tb_alunos`, `tb_turmas`…) e tem a coluna `escola_id`; com o nome antigo (`alunos`,
+  `turmas`…) há uma **vista** que só mostra as linhas da escola de quem está ligado. Os dados de uma escola nunca se
+  misturam com os de outra, e o mesmo número de processo pode existir em duas escolas (ver "Base de dados").
+- **Instaladores de cada escola**: na página da escola, no painel da plataforma, há dois instaladores feitos só para
+  ela (ver "Instaladores da escola").
 - **Endereços de cada escola**: o código da escola vai no início de todos os endereços — `/epmontijo/login`,
   `/epmontijo/aluno`, `/epmontijo/admin/faltas`… — em todos os painéis, e na Conversas (`localhost:3100/epmontijo/`).
   O código é feito a partir do domínio (`esalcochete.edu.pt` → `/esalcochete`) e não pode ser uma palavra que a
@@ -127,6 +129,22 @@ instalado e ligado à parte** (isto só embrulha a aplicação, não a base de d
 
 O esquema completo está em [database/escola.sql](database/escola.sql). Pode importá-lo à mão no
 phpMyAdmin (separador *Importar*), mas não é necessário: a aplicação executa-o ao arrancar.
+
+### Instaladores da escola
+
+Na página de cada escola, no painel da plataforma (`/plataforma/escolas/<id>`), há dois instaladores feitos só para
+essa escola, gerados na hora com os dados e endereços atuais ([src/lib/instaladores.js](src/lib/instaladores.js)):
+
+| Instalador | Para quem | O que faz |
+|------------|-----------|-----------|
+| **Atalho de app** (`Instalar <escola>.cmd`, 20 KB) | alunos, professores, funcionários | cria no ambiente de trabalho e no menu Iniciar os ícones "<escola>" e "Conversas – <escola>", que abrem em janela própria no Edge ou no Chrome (como a app instalada), e um "Desinstalar" |
+| **Servidor completo** (`<código>-servidor.zip`, ~45 MB) | a escola, para ter o seu servidor | a aplicação, o Node para Windows e **só os dados dessa escola** (`dados-escola.json`, fotografias, justificativos); `instalar.cmd` cria a `gestao_escolar` no XAMPP desse PC e importa os dados; `iniciar.cmd` arranca a Gestão Escolar e a Conversas |
+
+- O atalho usa os endereços desta instalação (`APP_URL`, `CONVERSAS_URL`): para servir noutros computadores, o
+  servidor tem de estar acessível na rede e essas variáveis definidas com o endereço dele.
+- O servidor completo não instala por cima de uma `gestao_escolar` que já tenha **outra** escola. Reinstalar a mesma
+  escola substitui os dados dela pelos do pacote.
+- O `.zip` é feito sem bibliotecas externas ([src/lib/zip.js](src/lib/zip.js)) e o ícone `.ico` a partir dos PNG da app.
 
 ### Aplicação instalável (PWA)
 
@@ -353,7 +371,8 @@ src/
   lib/recursos.js     Localização de public/database/data (diferente quando empacotado em .app)
   lib/auditoria.js    Regista no histórico de auditoria (logs_auditoria) quem fez o quê e quando
   lib/ata.js          Monta o texto formal da ata da reunião (datas e horas por extenso)
-  atualizar-bd.js     Atualiza todas as bases de dados sem arrancar o servidor (npm run atualizar-bd)
+  atualizar-bd.js     Atualiza a base de dados sem arrancar o servidor (npm run atualizar-bd)
+  importar-escola.js  Instala os dados de uma escola (usado pelo instalar.cmd do servidor completo)
   lib/pdf.js          Gerador de PDF simples, sem bibliotecas (lista de palavras-passe dos alunos)
   vistas/layout.js    Estrutura das páginas (entrada e painéis), menu lateral, avatar, grelha do horário
   rotas/aluno.js      Painel do aluno
@@ -377,8 +396,8 @@ src/
   lib/escolas.js        Escolhe a escola de cada pedido, prepara as bases de dados no arranque e cria escolas
   rotas/recuperacao.js  Recuperação de palavra-passe (pedido e ligação enviada por email)
   lib/email.js          Envio de email por SMTP (ou para a consola, se o SMTP não estiver configurado)
-database/escola.sql   Esquema da base de dados de cada escola (todas as tabelas)
-database/plataforma.sql Esquema da base de dados central (escolas, gestor e sessões do gestor)
+database/escola.sql   Esquema de uma escola (a aplicação converte-o para tb_… + vistas, ver src/db.js)
+database/plataforma.sql Tabelas da plataforma (escolas e gestor), na mesma base de dados
 public/               CSS (estilo.css: base e entrada; painel.css: painéis das escolas; plataforma.css: painel
                       da plataforma), JavaScript do browser (incl. editor-horario.js e ata.js, o ditado ao microfone),
                       ícones e imagens/capa-escola.svg (a ilustração da página de entrada)
@@ -397,15 +416,31 @@ teams/                App separada "Conversas" (npm run conversas) — visual e 
 
 ## Base de dados (MySQL — `gestao_escolar`)
 
-Cada escola tem uma base de dados com estas tabelas (a da primeira escola chama-se `gestao_escolar`; as seguintes,
-`gestao_<código>`). À parte, a base de dados central `gestao_plataforma` tem só três tabelas: `escolas` (código, nome,
-domínio de email, base de dados, direção, ativa), `gestores` (a conta do gestor da plataforma) e `sessoes` (os logins dele);
-o esquema está em [database/plataforma.sql](database/plataforma.sql).
+Tudo fica numa só base de dados, `gestao_escolar`, com as escolas separadas lá dentro ([src/db.js](src/db.js)):
 
-`npm run atualizar-bd` atualiza todas de uma vez, sem arrancar o servidor: cria a central se faltar e acrescenta as
-tabelas e colunas novas à base de dados de cada escola, sem apagar dados (é o que a aplicação faz sozinha ao arrancar).
+| No phpMyAdmin | O que é |
+|---------------|---------|
+| `escolas` | uma linha por escola: o `id` é o `escola_id` dessa escola em todas as outras tabelas ([database/plataforma.sql](database/plataforma.sql)) |
+| `gestores` | a conta do gestor da plataforma |
+| `tb_alunos`, `tb_turmas`, … (30) | os dados de **todas** as escolas; a primeira coluna, `escola_id`, diz de que escola é cada linha |
+| `alunos`, `turmas`, … (30 vistas) | o mesmo que `tb_…`, mas só com as linhas da escola de quem está ligado |
 
-Tudo o que é criado ou alterado numa escola fica guardado nestas tabelas:
+- Cada ligação da aplicação à base de dados começa com `SET @escola_id = <id da escola>`; as vistas filtram por
+  `escola_id = escola_atual()` (uma função que devolve esse valor). Assim, as consultas da aplicação continuam a ser
+  `SELECT * FROM alunos` e **nunca veem dados de outra escola**, mesmo que uma consulta se esqueça de filtrar.
+- Ao inserir pela vista, um gatilho (`tb_…_escola`) preenche o `escola_id`; o `WITH CHECK OPTION` das vistas impede
+  alterar ou apagar linhas de outra escola.
+- Valores que têm de ser únicos (utilizador, email, número de processo, nome da turma…) são únicos **por escola**.
+- As sessões do gestor ficam em `tb_sessoes` com `escola_id = 0` (a "escola" da plataforma).
+- Fotografias e justificativos ficam em `data/fotos/<código>/` e `data/justificativos/<código>/`.
+- **Vindo da versão 1.3** (uma base de dados por escola + `gestao_plataforma`): no primeiro arranque a aplicação traz
+  as escolas e o gestor da `gestao_plataforma` e converte as tabelas da `gestao_escolar` para este formato (os dados
+  ficam na primeira escola). A `gestao_plataforma` não é apagada — pode ser apagada à mão depois. Escolas que tinham
+  uma base de dados própria com dados não são juntas automaticamente (os números `id` iam chocar): a aplicação avisa.
+
+`npm run atualizar-bd` faz o mesmo que o arranque (cria o que faltar, converte, recria as vistas) sem abrir o servidor.
+
+Em cada escola, as tabelas (vistas) são:
 
 `utilizadores` (login e papel) · `turmas` · `disciplinas` · `professores` · `alunos` ·
 `professor_disciplinas` · `tempos` (tempos letivos do dia) ·
@@ -434,7 +469,7 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - Cada área (`/aluno`, `/professor`, `/admin`, `/funcionario`, `/encarregado`) só é acessível pelo papel
   correspondente; o professor só vê alunos das turmas onde leciona; o painel da plataforma (`/plataforma`) tem uma
   conta à parte, que não é de nenhuma escola
-- Cada escola tem a sua base de dados: uma sessão de uma escola não serve noutra
+- Cada escola só vê as suas linhas (vistas por escola, ver "Base de dados"): uma sessão de uma escola não serve noutra
 - Todo o texto é escapado antes de ir para o HTML (proteção contra XSS)
 - Verificação da origem dos pedidos POST (proteção básica contra CSRF)
 - Fotografias validadas (tipo e assinatura do ficheiro) e servidas apenas a utilizadores autenticados
@@ -467,7 +502,7 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - Uma base de dados criada antes do papel Encarregado não tem as contas de demonstração `EE2450`/`EE2310`: crie a
   conta na ficha do aluno, ou use `npm run seed`
 - Uma base de dados criada antes do papel Funcionário não tem as contas de demonstração 3001…3008: o arranque só
-  preenche dados numa base vazia. `npm run seed` recria tudo com os dados de demonstração (e apaga os atuais)
+  preenche dados numa base vazia. `npm run seed` recria a primeira escola com os dados de demonstração (e apaga os atuais)
 
 ## Ideias para próximas versões
 

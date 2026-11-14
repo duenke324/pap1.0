@@ -3,7 +3,27 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
-## [1.3.0] — 2026-11-13
+## [1.4.0] — 2026-11-13
+
+### Novo
+- **Instaladores de cada escola**: na página da escola, no painel da plataforma, ficam logo disponíveis (desde que a
+  escola é criada) dois instaladores feitos só para ela:
+  - **Atalho de app** (`.cmd` para Windows): cria no ambiente de trabalho e no menu Iniciar os ícones da escola e da
+    Conversas, que abrem em janela própria, com um "Desinstalar".
+  - **Servidor completo** (`.zip`): a aplicação, o Node e só os dados dessa escola, com `instalar.cmd` (cria a base de
+    dados no XAMPP e importa os dados) e `iniciar.cmd`.
+- `src/importar-escola.js`: instala os dados de uma escola noutro servidor (usado pelo `instalar.cmd`).
+
+### Alterado
+- **Todas as escolas na mesma base de dados (`gestao_escolar`)**, em vez de uma base de dados por escola mais a
+  `gestao_plataforma`. As tabelas passaram a `tb_…` com a coluna `escola_id`; com os nomes antigos ficam vistas que só
+  mostram a escola de quem está ligado (uma escola nunca vê nem altera os dados de outra). Utilizador, email, número
+  de processo e nome da turma são únicos por escola.
+- No primeiro arranque, a base de dados antiga é convertida sozinha: escolas e gestor vêm da `gestao_plataforma` e os
+  dados ficam na primeira escola. As fotografias e os justificativos passaram para uma subpasta com o código da escola.
+- `npm run seed` recria só os dados da primeira escola (as outras escolas, a lista de escolas e o gestor ficam).
+
+ — 2026-11-13
 
 ### Novo
 - **Tudo instalável como app (PWA)**: a Gestão Escolar, a Conversas e o painel da plataforma podem ser

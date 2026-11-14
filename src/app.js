@@ -313,8 +313,8 @@ async function iniciar() {
   let escolas = [];
   try {
     escolas = await prepararTudo();
-    // Dados de demonstração: só na primeira escola (a base de dados original), e só se estiver vazia
-    const primeira = escolas.find((e) => e.base_dados === CONFIG.database);
+    // Dados de demonstração: só na primeira escola, e só se estiver vazia
+    const primeira = escolas[0];
     if (primeira) await correrNoContexto(contextoDaEscola(primeira), semearSeVazia);
   } catch (erro) {
     console.error(`\nNão foi possível ligar ao MySQL em ${CONFIG.host}:${CONFIG.port} (utilizador "${CONFIG.user}").`);
@@ -340,7 +340,8 @@ async function iniciar() {
   });
   servidor.listen(PORTA, () => {
     console.log(`Gestão Escolar a correr em http://localhost:${PORTA}  (${escolas.length} escola(s))`);
-    for (const e of escolas) console.log(`  ${e.ativa ? '' : '[inativa] '}${e.nome} → http://localhost:${PORTA}/${e.codigo}  (MySQL: ${e.base_dados})`);
+    console.log(`  MySQL: base de dados "${CONFIG.database}" (escolas separadas pelo escola_id)`);
+    for (const e of escolas) console.log(`  ${e.ativa ? '' : '[inativa] '}${e.nome} → http://localhost:${PORTA}/${e.codigo}  (escola_id ${e.id})`);
     console.log(`  Painel da plataforma → http://localhost:${PORTA}/plataforma`);
   });
 }

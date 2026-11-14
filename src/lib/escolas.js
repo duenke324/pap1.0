@@ -1,19 +1,15 @@
-// Várias escolas na mesma instalação: cada escola tem a sua base de dados, e uma base de dados
-// central (a "plataforma") guarda a lista de escolas e a conta de quem as gere.
+// Várias escolas na mesma instalação, todas na mesma base de dados (gestao_escolar): a tabela escolas
+// guarda a lista de escolas, e cada linha das outras tabelas tem o escola_id da sua escola (ver src/db.js).
 // Este módulo decide a que escola pertence cada pedido, prepara tudo no arranque e cria escolas novas.
 const {
   plataforma,
   escolasAtivas,
   escolaPorCodigo,
-  prepararPlataforma,
   prepararBaseDeDados,
-  nomeBdValido,
   executar,
   um,
   todos,
   transacao,
-  CONFIG,
-  BD_PLATAFORMA,
 } = require('../db');
 const { correrNoContexto } = require('./contexto');
 const { lerCookies, acrescentarCookie } = require('./servidor');
@@ -22,11 +18,12 @@ const { gerarHash, gerarPasswordTemporaria } = require('./util');
 const COOKIE_ESCOLA = 'escola';
 const USERNAME_DIRECAO = 'direcao';
 
-const contextoPlataforma = () => ({ bd: BD_PLATAFORMA, escola: null, nomeCookie: 'sid_plataforma' });
+// A plataforma é a "escola 0": não vê dados de nenhuma escola (só as tabelas escolas e gestores)
+const contextoPlataforma = () => ({ escolaId: 0, escola: null, nomeCookie: 'sid_plataforma' });
 // prefixo: o código da escola no início dos endereços (/epmontijo/aluno). Cada escola tem o seu cookie
 // de sessão (sid_epmontijo, sid_outra…), por isso dá para ter sessão aberta em duas escolas ao mesmo tempo.
 const contextoDaEscola = (escola, base = 'sid') => ({
-  bd: escola.base_dados,
+  escolaId: escola.id,
   escola,
   prefixo: escola.codigo,
   nomeCookie: `${base}_${escola.codigo}`,
@@ -101,11 +98,10 @@ async function resolverContextoGestao(req, res) {
 }
 
 // ---------- Arranque ----------
-// Prepara a base de dados central e a de cada escola (cria o que faltar e aplica as migrações).
-// Na primeira vez regista como primeira escola a base de dados que já existia (CONFIG.database)
-// e cria a conta do gestor da plataforma.
+// Prepara a base de dados (cria o que faltar, aplica as migrações e, na primeira vez, junta tudo na
+// mesma base de dados — ver src/db.js) e cria a conta do gestor da plataforma.
 async function prepararTudo() {
-  await prepararPlataforma();
+  await prepararBaseDeDados();
 
   if (!(await plataforma.um('SELECT 1 FROM gestores LIMIT 1'))) {
     await plataforma.executar(
@@ -114,21 +110,14 @@ async function prepararTudo() {
     );
   }
 
-  if (!(await plataforma.um('SELECT 1 FROM escolas LIMIT 1'))) {
-    await plataforma.executar(
-      `INSERT INTO escolas (codigo, nome, dominio_email, base_dados, direcao_nome) VALUES (?, ?, ?, ?, ?)`,
-      'epmontijo',
-      'Escola Profissional do Montijo',
-      'epmontijo.edu.pt',
-      CONFIG.database,
-      'Secretaria'
-    );
-  }
-
-  const escolas = await plataforma.todos('SELECT * FROM escolas ORDER BY id');
-  for (const escola of escolas) await prepararBaseDeDados(escola.base_dados);
-  return escolas;
+  return plataforma.todos('SELECT * FROM escolas ORDER BY id');
 }
+
+// Tempos letivos com que cada escola nova começa (a escola pode mudá-los no editor de horários)
+const TEMPOS_PADRAO = [
+  ['08:30', '09:20'], ['09:30', '10:20'], ['10:35', '11:25'], ['11:35', '12:25'],
+  ['13:30', '14:20'], ['14:30', '15:20'], ['15:30', '16:20'], ['16:30', '17:20'],
+];
 
 // ---------- Criar uma escola ----------
 // "Liceu de Setúbal" → "liceu_de_setubal"
@@ -149,7 +138,7 @@ function normalizarDominio(texto) {
   return String(texto || '').trim().toLowerCase().replace(/^@+/, '');
 }
 
-// Cria a base de dados da escola, a conta da direção (administrador dessa escola) e regista a escola.
+// Regista a escola e cria a conta da direção (administrador dessa escola) e os tempos letivos dela.
 // Devolve { erro } ou { escola, username, password } (a palavra-passe temporária só existe aqui).
 async function criarEscola({ nome, dominio, direcao, codigo }) {
   nome = String(nome || '').trim().slice(0, 120);
@@ -168,46 +157,40 @@ async function criarEscola({ nome, dominio, direcao, codigo }) {
   // o código vai no início dos endereços da escola: não pode ser uma palavra que a aplicação já usa
   if (CODIGOS_RESERVADOS.has(codigo)) codigo = `${codigo}_escola`;
 
-  // Numa instalação de testes (DB_NAME definido, ex.: gestao_escolar_teste) as escolas novas ficam com
-  // esse prefixo, para nunca reutilizarem a base de dados de uma escola verdadeira no mesmo servidor
-  const baseDados = process.env.DB_NAME ? `${CONFIG.database}_${codigo}` : `gestao_${codigo}`;
-  if (!nomeBdValido(baseDados) || baseDados === BD_PLATAFORMA) return { erro: 'O código da escola não é válido.' };
-  const repetida = await plataforma.um(
-    'SELECT codigo, dominio_email FROM escolas WHERE codigo = ? OR dominio_email = ? OR base_dados = ?',
-    codigo,
-    dominio,
-    baseDados
-  );
+  const repetida = await plataforma.um('SELECT codigo, dominio_email FROM escolas WHERE codigo = ? OR dominio_email = ?', codigo, dominio);
   if (repetida) {
     return { erro: repetida.dominio_email === dominio ? `Já existe uma escola com o domínio @${dominio}.` : `Já existe uma escola com o código "${codigo}".` };
   }
 
-  await prepararBaseDeDados(baseDados);
-  const password = gerarPasswordTemporaria();
-  const escola = { codigo, nome, dominio_email: dominio, base_dados: baseDados, direcao_nome: direcao, ativa: 1 };
-  await correrNoContexto(contextoDaEscola(escola), async () => {
-    // (se a base de dados já existia de uma tentativa anterior, reaproveita a conta da direção)
-    const existente = await um('SELECT id FROM utilizadores WHERE username = ?', USERNAME_DIRECAO);
-    if (existente) {
-      await executar('UPDATE utilizadores SET password_hash = ?, nome = ?, deve_redefinir_password = 1 WHERE id = ?', gerarHash(password), direcao, existente.id);
-    } else {
-      await executar(
-        `INSERT INTO utilizadores (username, password_hash, papel, nome, deve_redefinir_password) VALUES (?, ?, 'admin', ?, 1)`,
-        USERNAME_DIRECAO,
-        gerarHash(password),
-        direcao
-      );
-    }
-  });
   const r = await plataforma.executar(
-    'INSERT INTO escolas (codigo, nome, dominio_email, base_dados, direcao_nome) VALUES (?, ?, ?, ?, ?)',
+    'INSERT INTO escolas (codigo, nome, dominio_email, direcao_nome) VALUES (?, ?, ?, ?)',
     codigo,
     nome,
     dominio,
-    baseDados,
     direcao
   );
-  return { escola: { ...escola, id: r.lastInsertRowid }, username: USERNAME_DIRECAO, password };
+  const escola = { id: r.lastInsertRowid, codigo, nome, dominio_email: dominio, direcao_nome: direcao, ativa: 1 };
+  const password = gerarPasswordTemporaria();
+  try {
+    // Corre "dentro" da escola nova: as linhas criadas ficam com o escola_id dela
+    await correrNoContexto(contextoDaEscola(escola), () =>
+      transacao(async (tx) => {
+        await tx.executar(
+          `INSERT INTO utilizadores (username, password_hash, papel, nome, deve_redefinir_password) VALUES (?, ?, 'admin', ?, 1)`,
+          USERNAME_DIRECAO,
+          gerarHash(password),
+          direcao
+        );
+        for (const [inicio, fim] of TEMPOS_PADRAO) {
+          await tx.executar('INSERT INTO tempos (hora_inicio, hora_fim) VALUES (?, ?)', inicio, fim);
+        }
+      })
+    );
+  } catch (erro) {
+    await plataforma.executar('DELETE FROM escolas WHERE id = ?', escola.id); // não fica uma escola sem direção
+    throw erro;
+  }
+  return { escola, username: USERNAME_DIRECAO, password };
 }
 
 // Gera uma palavra-passe temporária nova para a direção de uma escola (o primeiro administrador)
@@ -222,7 +205,7 @@ async function reporPasswordDirecao(escola) {
 }
 
 // ---------- Alunos de uma escola (para o painel da plataforma) ----------
-// Tudo corre na base de dados da escola indicada, seja qual for a escola do pedido.
+// Tudo corre nos dados da escola indicada, seja qual for a escola do pedido.
 const naEscola = (escola, fn) => correrNoContexto(contextoDaEscola(escola), fn);
 
 async function alunosPorTurma(escola, pesquisa = '') {
@@ -290,6 +273,7 @@ async function gerarPasswordsAlunos(escola, filtro = {}) {
 }
 
 module.exports = {
+  TEMPOS_PADRAO,
   alunosPorTurma,
   gerarPasswordsAlunos,
   COOKIE_ESCOLA,

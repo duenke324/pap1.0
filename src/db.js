@@ -14,15 +14,31 @@ const CONFIG = {
   database: process.env.DB_NAME || 'gestao_escolar',
 };
 
-// Base de dados central da plataforma: a lista de escolas e a conta de quem as gere.
-// Cada escola tem depois a sua própria base de dados (a da primeira escola é CONFIG.database).
-// (com DB_NAME definido — ex.: uma base de dados de testes — a central também fica à parte)
-const BD_PLATAFORMA = process.env.DB_PLATAFORMA || (process.env.DB_NAME ? `${process.env.DB_NAME}_plataforma` : 'gestao_plataforma');
+// Tudo numa só base de dados (CONFIG.database, "gestao_escolar"): a lista de escolas, a conta do gestor
+// da plataforma e os dados de todas as escolas.
+//
+// Como as escolas ficam separadas lá dentro:
+//  - cada tabela "a sério" chama-se tb_<nome> (tb_alunos, tb_turmas…) e tem uma coluna escola_id;
+//  - com o nome antigo (alunos, turmas…) existe uma vista que só mostra as linhas da escola de quem
+//    está a usar a ligação: WHERE escola_id = escola_atual(). A função escola_atual() devolve a
+//    variável @escola_id, que cada ligação recebe ao abrir (ver poolDaEscola, abaixo);
+//  - ao inserir pela vista, um gatilho (trigger) preenche o escola_id sozinho, e o "WITH CHECK OPTION"
+//    impede gravar ou alterar linhas de outra escola.
+// Assim as consultas da aplicação continuam iguais ("SELECT * FROM alunos") e uma escola nunca vê os
+// dados de outra, mesmo que uma consulta se esqueça de filtrar. A escola 0 é a plataforma (as sessões
+// do gestor ficam em tb_sessoes com escola_id = 0).
+
+// Bases de dados das versões anteriores (uma central e uma por escola): só são lidas uma vez, para
+// trazer os dados para a base de dados única. Não são apagadas.
+const BD_PLATAFORMA_ANTIGA = process.env.DB_PLATAFORMA || (process.env.DB_NAME ? `${process.env.DB_NAME}_plataforma` : 'gestao_plataforma');
 
 const PASTA_DADOS = path.join(pastaBase(), 'data');
 const PASTA_FOTOS = path.join(PASTA_DADOS, 'fotos');
 const FICHEIRO_ESQUEMA = path.join(pastaBase(), 'database', 'escola.sql');
 const FICHEIRO_ESQUEMA_PLATAFORMA = path.join(pastaBase(), 'database', 'plataforma.sql');
+
+// As tabelas de cada escola são as de database/escola.sql (pela ordem em que lá aparecem)
+const TABELAS_ESCOLA = [...fs.readFileSync(FICHEIRO_ESQUEMA, 'utf8').matchAll(/CREATE TABLE IF NOT EXISTS (\w+)/g)].map((m) => m[1]);
 
 // Justificativos de faltas enviados pelos encarregados de educação (PDF ou imagem)
 const PASTA_JUSTIFICATIVOS = path.join(PASTA_DADOS, 'justificativos');
@@ -30,12 +46,12 @@ const PASTA_JUSTIFICATIVOS = path.join(PASTA_DADOS, 'justificativos');
 fs.mkdirSync(PASTA_FOTOS, { recursive: true });
 fs.mkdirSync(PASTA_JUSTIFICATIVOS, { recursive: true });
 
-// Os ficheiros de cada escola ficam numa subpasta com o nome da sua base de dados, para nunca se
-// misturarem. A primeira escola (CONFIG.database) usa a pasta principal, onde os ficheiros já estavam.
+// Os ficheiros de cada escola (fotografias, justificativos) ficam numa subpasta com o código da escola
+// (data/fotos/epmontijo/…), para nunca se misturarem
 function pastaDaEscola(base) {
-  const bd = contextoAtual()?.bd;
-  if (!bd || bd === CONFIG.database || bd === BD_PLATAFORMA) return base;
-  const pasta = path.join(base, bd);
+  const codigo = contextoAtual()?.escola?.codigo;
+  if (!codigo) return base;
+  const pasta = path.join(base, codigo);
   fs.mkdirSync(pasta, { recursive: true });
   return pasta;
 }
@@ -43,27 +59,28 @@ const pastaFotos = () => pastaDaEscola(PASTA_FOTOS);
 const pastaJustificativos = () => pastaDaEscola(PASTA_JUSTIFICATIVOS);
 
 // ---------- Ligações ----------
-// Um conjunto de ligações ("pool") por base de dados, criado na primeira vez que é preciso
+// Um conjunto de ligações ("pool") por escola, criado na primeira vez que é preciso. Todas as ligações
+// de uma escola começam com SET @escola_id = <id da escola>, por isso as vistas só lhes mostram essa escola.
 const pools = new Map();
-function poolDe(bd) {
-  if (!pools.has(bd)) {
-    pools.set(
-      bd,
-      mysql.createPool({
-        ...CONFIG,
-        database: bd,
-        charset: 'utf8mb4',
-        dateStrings: true, // datas chegam como texto 'AAAA-MM-DD' (sem problemas de fuso horário)
-        connectionLimit: 10,
-      })
-    );
+function poolDaEscola(escolaId) {
+  const id = Number(escolaId) || 0;
+  if (!pools.has(id)) {
+    const pool = mysql.createPool({
+      ...CONFIG,
+      charset: 'utf8mb4',
+      dateStrings: true, // datas chegam como texto 'AAAA-MM-DD' (sem problemas de fuso horário)
+      connectionLimit: 10,
+    });
+    // (corre antes de qualquer consulta feita nesta ligação: o mysql2 executa-as por ordem)
+    pool.pool.on('connection', (ligacao) => ligacao.query(`SET @escola_id = ${id}`));
+    pools.set(id, pool);
   }
-  return pools.get(bd);
+  return pools.get(id);
 }
 
-// A base de dados do pedido atual (ver lib/contexto.js); fora de um pedido, a da primeira escola
+// A escola do pedido atual (ver lib/contexto.js); fora de um pedido, a escola 0 (que não tem dados)
 function poolAtual() {
-  return poolDe(contextoAtual()?.bd || CONFIG.database);
+  return poolDaEscola(contextoAtual()?.escolaId);
 }
 
 async function fecharLigacoes() {
@@ -87,34 +104,172 @@ function nomeBdValido(bd) {
   return /^[a-z][a-z0-9_]{2,50}$/.test(bd);
 }
 
-// Cria a base de dados de uma escola e as suas tabelas (se ainda não existirem) a partir de
-// database/escola.sql, e aplica as migrações. Por omissão, a da primeira escola.
-async function prepararBaseDeDados(bd = CONFIG.database) {
+// ---------- Preparar a base de dados no arranque ----------
+// 1. cria a base de dados e as tabelas da plataforma (escolas, gestores);
+// 2. na primeira vez, traz as escolas e o gestor da base de dados central antiga (gestao_plataforma);
+// 3. cria as tabelas das escolas (escola.sql) ou atualiza as de uma versão anterior (migrar);
+// 4. converte-as para o formato de várias escolas (tb_…, escola_id) — só na primeira vez;
+// 5. (re)cria a função escola_atual(), as vistas e os gatilhos.
+// Devolve as escolas registadas.
+async function prepararBaseDeDados() {
+  const bd = CONFIG.database;
   if (!nomeBdValido(bd)) throw new Error(`Nome de base de dados inválido: ${bd}`);
   const ligacao = await ligacaoDeAdministracao();
   try {
-    const sql = fs.readFileSync(FICHEIRO_ESQUEMA, 'utf8').replaceAll('gestao_escolar', bd);
-    await ligacao.query(sql);
-    await migrar(ligacao, bd);
+    await ligacao.query(fs.readFileSync(FICHEIRO_ESQUEMA_PLATAFORMA, 'utf8').replaceAll('gestao_escolar', bd));
+    const tipoTabela = async (base, nome) =>
+      (await ligacao.query('SELECT TABLE_TYPE AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?', [base, nome]))[0][0]?.t ||
+      null;
+    const existeBd = async (nome) => (await ligacao.query('SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', [nome]))[0].length > 0;
+
+    // Escolas e gestor da versão anterior (base de dados central à parte)
+    let escolasAntigas = [];
+    if (BD_PLATAFORMA_ANTIGA !== bd && (await tipoTabela(BD_PLATAFORMA_ANTIGA, 'escolas'))) {
+      const antiga = `\`${BD_PLATAFORMA_ANTIGA}\``;
+      [escolasAntigas] = await ligacao.query(`SELECT id, codigo, base_dados FROM ${antiga}.escolas ORDER BY id`);
+      const [[{ n }]] = await ligacao.query('SELECT COUNT(*) AS n FROM escolas');
+      if (n === 0 && escolasAntigas.length) {
+        await ligacao.query(
+          `INSERT INTO escolas (id, codigo, nome, dominio_email, direcao_nome, ativa, criado_em)
+           SELECT id, codigo, nome, dominio_email, direcao_nome, ativa, criado_em FROM ${antiga}.escolas`
+        );
+        await ligacao.query(
+          `INSERT IGNORE INTO gestores (id, username, password_hash, nome, deve_redefinir_password)
+           SELECT id, username, password_hash, nome, deve_redefinir_password FROM ${antiga}.gestores`
+        );
+        console.log(`Escolas e gestor trazidos da base de dados "${BD_PLATAFORMA_ANTIGA}" para "${bd}".`);
+      }
+    }
+
+    // Tabelas das escolas ainda no formato antigo (uma escola só)?
+    const jaConvertida = Boolean(await tipoTabela(bd, 'tb_utilizadores'));
+
+    // Escolas da versão anterior que tinham a sua própria base de dados (com dados): não se juntam
+    // sozinhas, porque os números (id) de cada uma começavam todos no 1 e iam chocar uns com os outros
+    if (!jaConvertida) {
+      for (const e of escolasAntigas) {
+        if (e.base_dados === bd || !(await existeBd(e.base_dados))) continue;
+        if (await tipoTabela(e.base_dados, 'utilizadores')) {
+          throw new Error(
+            `A escola "${e.codigo}" ainda tem os dados numa base de dados própria ("${e.base_dados}"), que não ` +
+              `pode ser junta automaticamente. Exporte-a no phpMyAdmin e apague-a antes de juntar tudo em "${bd}".`
+          );
+        }
+      }
+    }
+
+    // A primeira escola: a dona dos dados que já estavam nesta base de dados
+    let [[primeira]] = await ligacao.query('SELECT id, codigo FROM escolas ORDER BY id LIMIT 1');
+    const donaAntiga = escolasAntigas.find((e) => e.base_dados === bd);
+    if (donaAntiga) primeira = donaAntiga;
+    if (!primeira) {
+      const [r] = await ligacao.query(
+        `INSERT INTO escolas (codigo, nome, dominio_email, direcao_nome)
+         VALUES ('epmontijo', 'Escola Profissional do Montijo', 'epmontijo.edu.pt', 'Secretaria')`
+      );
+      primeira = { id: r.insertId, codigo: 'epmontijo' };
+    }
+
+    // Tabelas das escolas: novas (escola.sql) ou de uma versão anterior, ainda com o nome antigo
+    if (!jaConvertida) {
+      if ((await tipoTabela(bd, 'utilizadores')) !== 'BASE TABLE') {
+        await ligacao.query(fs.readFileSync(FICHEIRO_ESQUEMA, 'utf8').replaceAll('gestao_escolar', bd));
+      }
+      await migrar(ligacao, bd);
+    }
+    await converterParaVariasEscolas(ligacao, bd, primeira);
+    await criarVistas(ligacao, bd);
+
+    const [escolas] = await ligacao.query('SELECT * FROM escolas ORDER BY id');
+    return escolas;
   } finally {
     await ligacao.end();
   }
 }
 
-// Cria a base de dados central (lista de escolas, conta do gestor da plataforma e as sessões dele)
-async function prepararPlataforma() {
-  if (!nomeBdValido(BD_PLATAFORMA)) throw new Error(`Nome de base de dados inválido: ${BD_PLATAFORMA}`);
-  const ligacao = await ligacaoDeAdministracao();
-  try {
-    // O esquema está em database/plataforma.sql (tal como o de cada escola está em escola.sql)
-    const sql = fs.readFileSync(FICHEIRO_ESQUEMA_PLATAFORMA, 'utf8').replaceAll('gestao_plataforma', BD_PLATAFORMA);
-    await ligacao.query(sql);
-  } finally {
-    await ligacao.end();
+// Passa as tabelas de uma escola só para o formato de várias escolas. Cada passo verifica se já foi
+// feito, por isso pode correr em todos os arranques (e retomar se uma vez ficou a meio).
+async function converterParaVariasEscolas(ligacao, bd, primeira) {
+  const tipo = async (nome) =>
+    (await ligacao.query('SELECT TABLE_TYPE AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?', [bd, nome]))[0][0]?.t || null;
+  let convertidas = 0;
+
+  // 1. nome antigo → tb_<nome> (as chaves estrangeiras acompanham a mudança de nome)
+  const renomear = [];
+  for (const t of TABELAS_ESCOLA) if ((await tipo(t)) === 'BASE TABLE' && !(await tipo(`tb_${t}`))) renomear.push(t);
+  if (renomear.length) await ligacao.query(`RENAME TABLE ${renomear.map((t) => `\`${t}\` TO \`tb_${t}\``).join(', ')}`);
+
+  for (const t of TABELAS_ESCOLA) {
+    const tabela = `tb_${t}`;
+    // 2. coluna escola_id: as linhas que já existiam são da primeira escola
+    const [colunas] = await ligacao.query(
+      `SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = 'escola_id'`,
+      [bd, tabela]
+    );
+    if (!colunas.length) {
+      await ligacao.query(
+        `ALTER TABLE \`${tabela}\` ADD COLUMN escola_id INT UNSIGNED NOT NULL DEFAULT ${Number(primeira.id)} FIRST, ADD INDEX idx_escola (escola_id)`
+      );
+      await ligacao.query(`ALTER TABLE \`${tabela}\` ALTER COLUMN escola_id SET DEFAULT 0`);
+      convertidas++;
+    }
+    // 3. valores únicos "por escola": o mesmo username, email, número de processo, nome de turma… pode
+    //    existir em escolas diferentes. (Os únicos que levam números *_id já são de uma só escola.)
+    const [indices] = await ligacao.query(
+      `SELECT INDEX_NAME AS nome, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS colunas
+         FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND NON_UNIQUE = 0 AND INDEX_NAME <> 'PRIMARY'
+        GROUP BY INDEX_NAME`,
+      [bd, tabela]
+    );
+    for (const { nome, colunas: lista } of indices) {
+      const cols = lista.split(',');
+      if (cols[0] === 'escola_id' || cols.some((c) => c === 'id' || c.endsWith('_id'))) continue;
+      await ligacao.query(
+        `ALTER TABLE \`${tabela}\` DROP INDEX \`${nome}\`, ADD UNIQUE KEY \`${nome}\` (escola_id, ${cols.map((c) => `\`${c}\``).join(', ')})`
+      );
+    }
+  }
+
+  if (convertidas) {
+    // Os ficheiros da primeira escola (fotografias, justificativos) passam para a subpasta dela
+    for (const base of [PASTA_FOTOS, PASTA_JUSTIFICATIVOS]) {
+      const destino = path.join(base, primeira.codigo);
+      fs.mkdirSync(destino, { recursive: true });
+      for (const f of fs.readdirSync(base, { withFileTypes: true })) {
+        if (f.isFile()) fs.renameSync(path.join(base, f.name), path.join(destino, f.name));
+      }
+    }
+    console.log(`Base de dados "${bd}" convertida para várias escolas (${convertidas} tabelas; os dados existentes ficaram na escola "${primeira.codigo}").`);
   }
 }
 
-// Atualiza bases de dados criadas por versões anteriores da aplicação
+// Função escola_atual(), uma vista por tabela (com o nome antigo) e o gatilho que preenche o escola_id.
+// Volta a ser criado em cada arranque, para as vistas acompanharem colunas novas.
+async function criarVistas(ligacao, bd) {
+  await ligacao.query('CREATE OR REPLACE FUNCTION escola_atual() RETURNS INT UNSIGNED DETERMINISTIC NO SQL RETURN @escola_id');
+  for (const t of TABELAS_ESCOLA) {
+    const tabela = `tb_${t}`;
+    const [colunas] = await ligacao.query(
+      `SELECT COLUMN_NAME AS c FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME <> 'escola_id' ORDER BY ORDINAL_POSITION`,
+      [bd, tabela]
+    );
+    await ligacao.query(
+      `CREATE OR REPLACE ALGORITHM = MERGE SQL SECURITY INVOKER VIEW \`${t}\` AS
+         SELECT ${colunas.map(({ c }) => `\`${c}\``).join(', ')} FROM \`${tabela}\`
+          WHERE escola_id = escola_atual()
+         WITH CASCADED CHECK OPTION`
+    );
+    await ligacao.query(
+      `CREATE OR REPLACE TRIGGER \`${tabela}_escola\` BEFORE INSERT ON \`${tabela}\` FOR EACH ROW
+         SET NEW.escola_id = COALESCE(NULLIF(NEW.escola_id, 0), escola_atual(), 0)`
+    );
+  }
+}
+
+// Atualiza bases de dados criadas por versões anteriores da aplicação (ainda com uma escola só,
+// antes da conversão para tb_…; ver prepararBaseDeDados)
 async function migrar(ligacao, bd) {
   const existeColuna = async (tabela, coluna) =>
     (
@@ -278,10 +433,10 @@ function criarAtalhos(obterLigacao) {
   };
 }
 
-// Consultas à base de dados da escola do pedido atual
+// Consultas aos dados da escola do pedido atual
 const { todos, um, executar } = criarAtalhos(poolAtual);
-// Consultas à base de dados central (escolas e gestor), seja qual for o pedido
-const plataforma = criarAtalhos(() => poolDe(BD_PLATAFORMA));
+// Consultas da plataforma (escolas, gestor e as sessões dele), seja qual for o pedido: escola 0
+const plataforma = criarAtalhos(() => poolDaEscola(0));
 
 // ---------- Escolas ----------
 function escolasAtivas() {
@@ -320,11 +475,10 @@ module.exports = {
   escolaPorCodigo,
   escolaPorDominio,
   prepararBaseDeDados,
-  prepararPlataforma,
   nomeBdValido,
   fecharLigacoes,
   CONFIG,
-  BD_PLATAFORMA,
+  TABELAS_ESCOLA,
   PASTA_DADOS,
   PASTA_FOTOS,
   PASTA_JUSTIFICATIVOS,

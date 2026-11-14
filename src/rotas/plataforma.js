@@ -24,6 +24,7 @@ const {
 const { h, gerarHash, verificarPassword, formatarData, hoje, iniciais } = require('../lib/util');
 const { pdfPalavrasPasse } = require('../lib/pdf');
 const { APP_URL } = require('../lib/email');
+const { instaladorAtalho, pacoteServidor } = require('../lib/instaladores');
 
 // Endereço de entrada da escola, completo (ex.: http://localhost:3000/epmontijo)
 const ligacaoDaEscolaPara = (escola) => `${APP_URL}/${escola.codigo}`;
@@ -181,17 +182,19 @@ post('/plataforma/logout', async (req, res) => {
 });
 
 // ---------- Visão geral: as escolas ----------
-// Números de cada escola, lidos da base de dados dela (o nome foi validado quando a escola foi criada)
+// Números de cada escola (contados nas tabelas tb_…, pelo escola_id)
 async function resumoDaEscola(escola) {
   try {
-    const bd = `\`${escola.base_dados}\``;
     return await plataforma.um(
-      `SELECT (SELECT COUNT(*) FROM ${bd}.alunos) AS alunos,
-              (SELECT COUNT(*) FROM ${bd}.professores) AS professores,
-              (SELECT COUNT(*) FROM ${bd}.turmas) AS turmas`
+      `SELECT (SELECT COUNT(*) FROM tb_alunos WHERE escola_id = ?) AS alunos,
+              (SELECT COUNT(*) FROM tb_professores WHERE escola_id = ?) AS professores,
+              (SELECT COUNT(*) FROM tb_turmas WHERE escola_id = ?) AS turmas`,
+      escola.id,
+      escola.id,
+      escola.id
     );
   } catch {
-    return null; // base de dados em falta ou incompleta
+    return null;
   }
 }
 
@@ -530,6 +533,7 @@ get('/plataforma/escolas/:id', async (req, res) => {
       <p class="pf-suave">Os endereços a dar à escola. Cada um já leva o código da escola (<code>/${h(escola.codigo)}</code>).</p>
       ${listaEnderecos(escola)}
     </section>
+    ${cartaoInstaladores(escola)}
     <section class="pf-kpis" aria-label="Totais">
       <div class="pf-kpi"><span>Alunos</span><strong>${pesquisa ? todosAlunos.length : dados.total}</strong><small>${pesquisa ? 'encontrados' : 'na escola'}</small></div>
       <div class="pf-kpi"><span>Turmas</span><strong>${dados.grupos.filter((g) => g.turma.id).length}</strong><small>com e sem alunos</small></div>
@@ -544,6 +548,56 @@ get('/plataforma/escolas/:id', async (req, res) => {
     <p class="pf-suave pf-pequeno">As palavras-passe atuais não podem ser vistas nem exportadas: a base de dados só guarda uma versão cifrada.
       Por isso, exportar gera palavras-passe novas e o ficheiro (PDF para imprimir, ou CSV para o Excel) é a única cópia delas.</p>`;
   res.html(paginaPlataforma(req, escola.nome, conteudo));
+});
+
+// ---------- Instaladores da escola (ver lib/instaladores.js) ----------
+function cartaoInstaladores(escola) {
+  const base = `/plataforma/escolas/${escola.id}/instalador`;
+  return `<section class="pf-cartao pf-cartao-instaladores">
+      <h2>${iconePf('descarregar')} Instaladores da escola</h2>
+      <p class="pf-suave">Feitos só para <strong>${h(escola.nome)}</strong>, sempre com os dados e endereços atuais.</p>
+      <div class="pf-instaladores">
+        <article class="pf-instalador">
+          <h3>Atalho de app <small>Windows · .cmd</small></h3>
+          <p class="pf-suave pf-pequeno">Para alunos, professores e funcionários. Cria no ambiente de trabalho e no menu Iniciar os ícones
+            "${h(escola.nome)}" e "Conversas", que abrem em janela própria (como a app instalada).</p>
+          <a class="pf-botao" href="${base}/atalho" download>${iconePf('descarregar')}<span>Descarregar atalho</span></a>
+        </article>
+        <article class="pf-instalador">
+          <h3>Servidor completo <small>Windows · .zip</small></h3>
+          <p class="pf-suave pf-pequeno">Para a escola ter o seu próprio servidor: a aplicação, o Node e só os dados desta escola
+            (alunos, turmas, faltas, fotografias…). Precisa do XAMPP no PC da escola. Demora alguns segundos a preparar.</p>
+          <a class="pf-botao-sec" href="${base}/servidor" download>${iconePf('descarregar')}<span>Descarregar servidor</span></a>
+        </article>
+      </div>
+      <p class="pf-suave pf-pequeno">O atalho usa os endereços desta instalação (${h(APP_URL)}). Para funcionar noutros computadores, o servidor
+        tem de estar acessível na rede e o APP_URL / CONVERSAS_URL definidos com esse endereço.</p>
+    </section>`;
+}
+
+function enviarDescarga(res, { nome, dados }, tipo) {
+  res.writeHead(200, {
+    'Content-Type': tipo,
+    'Content-Length': dados.length,
+    'Content-Disposition': `attachment; filename="${nome.normalize('NFD').replace(/[^\x20-\x7e]/g, '').replace(/"/g, '')}"; filename*=UTF-8''${encodeURIComponent(nome)}`,
+    'Cache-Control': 'no-store',
+  });
+  res.end(dados);
+}
+
+get('/plataforma/escolas/:id/instalador/atalho', async (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  const escola = await carregarEscola(req.params.id);
+  if (!escola) return res.redirecionar('/plataforma');
+  const [gestao, conversas] = enderecosDaEscola(escola);
+  enviarDescarga(res, instaladorAtalho(escola, { urlGestao: gestao.url, urlConversas: conversas.url }), 'application/octet-stream');
+});
+
+get('/plataforma/escolas/:id/instalador/servidor', async (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  const escola = await carregarEscola(req.params.id);
+  if (!escola) return res.redirecionar('/plataforma');
+  enviarDescarga(res, await pacoteServidor(escola), 'application/zip');
 });
 
 post('/plataforma/escolas/:id/alunos/:alunoId/password', async (req, res) => {
