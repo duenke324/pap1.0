@@ -20,6 +20,7 @@ USE gestao_escolar;
 -- nome:          aparece no lugar de "Gestão Escolar" nas páginas e nos emails da escola
 -- dominio_email: o que vem depois do @ nos emails institucionais da escola
 -- direcao_nome:  quem administra a escola (tem a conta "direcao" dessa escola)
+-- foto:          a foto ou logótipo da escola (ficheiro em data/fotos/<código>/), escolhida no painel
 -- ativa = 0:     ninguém dessa escola consegue entrar; os dados ficam guardados
 CREATE TABLE IF NOT EXISTS escolas (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -27,9 +28,12 @@ CREATE TABLE IF NOT EXISTS escolas (
   nome          VARCHAR(120) NOT NULL,
   dominio_email VARCHAR(120) NOT NULL UNIQUE,
   direcao_nome  VARCHAR(120),
+  foto          VARCHAR(40),
   ativa         TINYINT(1)   NOT NULL DEFAULT 1,
   criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE = InnoDB;
+-- (bases de dados de antes da versão 1.5: acrescenta a coluna da foto)
+ALTER TABLE escolas ADD COLUMN IF NOT EXISTS foto VARCHAR(40) AFTER direcao_nome;
 
 -- Conta do gestor da plataforma (quem cria as escolas). Não é uma conta de nenhuma escola.
 -- deve_redefinir_password: fica a 1 na conta inicial; tem de ser trocada no primeiro acesso.

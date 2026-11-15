@@ -326,3 +326,28 @@
 .pf-instalador h3 small { font-weight: 500; font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; color: var(--pf-suave); }
 .pf-instalador p { margin: 0; flex: 1; }
 .pf-instalador .pf-botao, .pf-instalador .pf-botao-sec { align-self: flex-start; }
+
+/* ---------- Foto da escola ---------- */
+.pf-escola-foto { object-fit: cover; padding: 0; background: #ffffff; }
+.pf-foto-cabeca {
+  display: grid; place-items: center; flex: none; width: 64px; height: 64px; border-radius: 16px;
+  background: var(--pf-cartao-2); border: 1px solid var(--pf-linha-forte); color: #ffffff; font-weight: 700; font-size: 1.3rem;
+}
+.pf-cabeca:has(> .pf-foto-cabeca) { justify-content: flex-start; }
+.pf-cabeca:has(> .pf-foto-cabeca) > div { flex: 1; }
+.pf-campo-foto { display: flex; flex-direction: column; gap: .5rem; }
+.pf-campo-foto-titulo { font-weight: 600; font-size: .9rem; }
+.pf-campo-foto-titulo small { font-weight: 400; color: var(--pf-suave); }
+.pf-campo-foto-linha { display: flex; align-items: center; gap: 1rem; }
+.pf-campo-foto-acoes { display: flex; flex-direction: column; gap: .35rem; align-items: flex-start; }
+.pf-foto-grande {
+  display: grid; place-items: center; width: 84px; height: 84px; border-radius: 18px; flex: none;
+  background: var(--pf-cartao-2); border: 1px solid var(--pf-linha-forte); color: #ffffff; font-weight: 700; font-size: 1.5rem;
+}
+.pf-foto-vazia { color: var(--pf-suave); border-style: dashed; }
+.pf-botao-ficheiro { position: relative; overflow: hidden; cursor: pointer; }
+.pf-botao-ficheiro input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pf-botao-ficheiro:focus-within { outline: 2px solid var(--pf-acento); outline-offset: 2px; }
+.pf-escola-info { margin-bottom: 1.6rem; align-items: start; }
+.pf-escola-info .pf-cartao { margin-bottom: 0; }
+.pf-cartao-destaque { border: 2px solid var(--pf-acento); }

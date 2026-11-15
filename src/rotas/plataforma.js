@@ -25,6 +25,7 @@ const { h, gerarHash, verificarPassword, formatarData, hoje, iniciais } = requir
 const { pdfPalavrasPasse } = require('../lib/pdf');
 const { APP_URL } = require('../lib/email');
 const { instaladorAtalho, pacoteServidor } = require('../lib/instaladores');
+const { urlFotoEscola, guardarFotoEscola, removerFotoEscola } = require('../lib/foto-escola');
 
 // Endereço de entrada da escola, completo (ex.: http://localhost:3000/epmontijo)
 const ligacaoDaEscolaPara = (escola) => `${APP_URL}/${escola.codigo}`;
@@ -210,12 +211,35 @@ const cartaoPassword = (obrigatorio) => `
     </form>
   </section>`;
 
+// Foto da escola (se tiver) ou as iniciais do nome
+const siglaOuFoto = (e, classe = 'pf-escola-sigla') =>
+  urlFotoEscola(e)
+    ? `<img class="${classe} pf-escola-foto" src="${h(urlFotoEscola(e, 256))}" alt="" width="44" height="44">`
+    : `<span class="${classe}" aria-hidden="true">${h(iniciais(e.nome))}</span>`;
+
+// Campo para escolher a foto: o browser corta-a em quadrado e prepara os PNG (ver public/app.js, data-foto-escola)
+function campoFotoEscola(escola = null) {
+  return `<div class="pf-campo-foto" data-foto-escola>
+      <span class="pf-campo-foto-titulo">Foto ou logótipo da escola <small>(opcional · JPG, PNG ou WEBP)</small></span>
+      <div class="pf-campo-foto-linha">
+        <span class="pf-foto-previa" data-previa-foto>${escola ? siglaOuFoto(escola, 'pf-foto-grande') : '<span class="pf-foto-grande pf-foto-vazia" aria-hidden="true">?</span>'}</span>
+        <span class="pf-campo-foto-acoes">
+          <label class="pf-botao pf-botao-sec pf-botao-ficheiro">Escolher imagem
+            <input type="file" accept="image/jpeg,image/png,image/webp" data-ficheiro-foto-escola></label>
+          <small class="pf-suave">Fica como ícone da app da escola e dos instaladores. É cortada em quadrado.</small>
+        </span>
+      </div>
+      <input type="hidden" name="foto_grande" data-foto-grande>
+      <input type="hidden" name="foto_pequena" data-foto-pequena>
+    </div>`;
+}
+
 function cartaoEscola(e) {
   const base = `/plataforma/escolas/${e.id}`;
   const r = e.resumo;
   return `<article class="pf-escola${e.ativa ? '' : ' inativa'}">
     <header class="pf-escola-topo">
-      <span class="pf-escola-sigla" aria-hidden="true">${h(iniciais(e.nome))}</span>
+      ${siglaOuFoto(e)}
       <div class="pf-escola-nome">
         <h3>${h(e.nome)}</h3>
         <p><code>@${h(e.dominio_email)}</code> · <a href="/${h(e.codigo)}/login">/${h(e.codigo)}</a></p>
@@ -240,6 +264,8 @@ function cartaoEscola(e) {
       <a class="pf-botao" href="${base}">${iconePf('alunos')}<span>Ver alunos</span></a>
       ${e.ativa ? `<a class="pf-botao pf-botao-sec" href="/${h(e.codigo)}/login" target="_blank" rel="noopener">Abrir escola</a>` : ''}
     </div>
+    <a class="pf-botao pf-botao-sec pf-botao-bloco" href="${base}/instalador/atalho" download>${iconePf('descarregar')}<span>Descarregar a app da escola</span></a>
+    <a class="pf-botao-texto" href="${base}#instaladores">Outros instaladores (servidor completo)</a>
     <details class="pf-editar">
       <summary>Mais ações</summary>
       <div class="pf-mais">
@@ -281,7 +307,7 @@ get('/plataforma', async (req, res) => {
       <div>
         <p class="pf-sobre">Visão geral</p>
         <h1>Escolas</h1>
-        <p class="pf-suave">Cada escola tem a sua base de dados, o seu endereço (/código) e o seu domínio de email.</p>
+        <p class="pf-suave">Cada escola tem os seus dados (separados das outras), o seu endereço (/código), o seu domínio de email e a sua foto.</p>
       </div>
       <a class="pf-botao" href="/plataforma/nova">${iconePf('mais')}<span>Nova escola</span></a>
     </section>
@@ -317,7 +343,7 @@ get('/plataforma/nova', (req, res) => {
       <div>
         <p class="pf-sobre">Escolas</p>
         <h1>Nova escola</h1>
-        <p class="pf-suave">Três dados e a escola fica pronta a usar.</p>
+        <p class="pf-suave">Três dados (e a foto, se quiser) e a escola fica pronta a usar.</p>
       </div>
     </section>
     <div class="pf-duas-colunas">
@@ -329,15 +355,17 @@ get('/plataforma/nova', (req, res) => {
             <input name="dominio" maxlength="120" placeholder="Ex.: esalcochete.edu.pt" required></label>
           <label>Nome da direção <small>(quem vai administrar a escola)</small>
             <input name="direcao" maxlength="120" placeholder="Ex.: Direção ou Maria Silva" required></label>
+          ${campoFotoEscola()}
           <button class="pf-botao pf-botao-bloco">Criar escola</button>
         </form>
       </section>
       <section class="pf-cartao pf-cartao-suave">
         <h2>O que acontece ao criar</h2>
         <ol class="pf-passos">
-          <li>É criada uma <strong>base de dados só desta escola</strong>.</li>
+          <li>A escola fica <strong>separada das outras</strong> na base de dados: só vê os seus dados.</li>
           <li>A escola fica com o seu <strong>endereço</strong>, feito a partir do domínio (ex.: <code>/esalcochete</code>).</li>
           <li>É criada a <strong>conta da direção</strong> (utilizador <code>direcao</code>), com uma palavra-passe temporária mostrada uma só vez.</li>
+          <li>Ficam logo prontos os <strong>instaladores da escola</strong> (atalho de app e servidor completo), com a foto da escola como ícone.</li>
           <li>A direção entra e cria as turmas, alunos, professores, disciplinas e módulos.</li>
         </ol>
       </section>
@@ -376,14 +404,41 @@ post('/plataforma/escolas', async (req, res) => {
   } else {
     req.flash(
       'sucesso',
-      `Escola "${r.escola.nome}" criada. Conta da direção: ${r.username} · Palavra-passe temporária: ${r.password} (anote-a agora — não vai voltar a ser mostrada). Os endereços da escola estão em baixo.`
+      `Escola "${r.escola.nome}" criada. Conta da direção: ${r.username} · Palavra-passe temporária: ${r.password} (anote-a agora — não vai voltar a ser mostrada). O instalador da escola está logo em baixo.`
     );
-    // Segue para a página da escola, onde os endereços aparecem logo em cima
-    return res.redirecionar(`/plataforma/escolas/${r.escola.id}`);
+    if (req.corpo.foto_grande) {
+      try {
+        await guardarFotoEscola(await carregarEscola(r.escola.id), { grande: req.corpo.foto_grande, pequena: req.corpo.foto_pequena });
+      } catch (erro) {
+        req.flash('erro', `A escola foi criada, mas a foto não ficou guardada: ${erro.message} Pode escolhê-la outra vez em baixo.`);
+      }
+    }
+    // Segue para a página da escola, com os instaladores logo em cima
+    return res.redirecionar(`/plataforma/escolas/${r.escola.id}?criada=1`);
   }
 });
 
 const carregarEscola = (id) => plataforma.um('SELECT * FROM escolas WHERE id = ?', id);
+
+post('/plataforma/escolas/:id/foto', async (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  const escola = await carregarEscola(req.params.id);
+  if (!escola) return res.redirecionar('/plataforma');
+  try {
+    if (req.corpo.remover) {
+      await removerFotoEscola(escola);
+      req.flash('sucesso', `Foto de "${escola.nome}" removida. Os instaladores voltam a ter o ícone da Gestão Escolar.`);
+    } else if (req.corpo.foto_grande) {
+      await guardarFotoEscola(escola, { grande: req.corpo.foto_grande, pequena: req.corpo.foto_pequena });
+      req.flash('sucesso', `Foto de "${escola.nome}" guardada. Descarregue outra vez o instalador para ter o ícone novo.`);
+    } else {
+      req.flash('erro', 'Escolha primeiro uma imagem.');
+    }
+  } catch (erro) {
+    req.flash('erro', erro.message);
+  }
+  res.redirecionar(`/plataforma/escolas/${escola.id}`);
+});
 
 post('/plataforma/escolas/:id/editar', async (req, res) => {
   if (exigirPasswordPropria(req, res)) return;
@@ -467,6 +522,7 @@ get('/plataforma/escolas/:id', async (req, res) => {
   const escola = await carregarEscola(req.params.id);
   if (!escola) return res.redirecionar('/plataforma');
   const pesquisa = String(req.query.q || '').trim().slice(0, 60);
+  const criada = req.query.criada === '1';
 
   let dados;
   try {
@@ -521,6 +577,7 @@ get('/plataforma/escolas/:id', async (req, res) => {
   const conteudo = `
     <a class="pf-voltar" href="/plataforma">${iconePf('seta')}<span>Escolas</span></a>
     <section class="pf-cabeca">
+      ${siglaOuFoto(escola, 'pf-foto-cabeca')}
       <div>
         <p class="pf-sobre"><code>@${h(escola.dominio_email)}</code> · /${h(escola.codigo)}</p>
         <h1>${h(escola.nome)}</h1>
@@ -528,12 +585,16 @@ get('/plataforma/escolas/:id', async (req, res) => {
       </div>
       ${todosAlunos.some((a) => a.utilizador_id) && !pesquisa ? formExportar(escola.id, 'todas', 'Novas palavras-passe de todos', `todos os alunos de ${escola.nome}`, 'pf-botao') : ''}
     </section>
-    <section class="pf-cartao pf-cartao-enderecos">
-      <h2>Endereços da escola</h2>
-      <p class="pf-suave">Os endereços a dar à escola. Cada um já leva o código da escola (<code>/${h(escola.codigo)}</code>).</p>
-      ${listaEnderecos(escola)}
-    </section>
-    ${cartaoInstaladores(escola)}
+    ${criada ? cartaoInstaladores(escola, { destaque: true }) : ''}
+    <div class="pf-duas-colunas pf-escola-info">
+      <section class="pf-cartao pf-cartao-enderecos">
+        <h2>Endereços da escola</h2>
+        <p class="pf-suave">Os endereços a dar à escola. Cada um já leva o código da escola (<code>/${h(escola.codigo)}</code>).</p>
+        ${listaEnderecos(escola)}
+      </section>
+      ${cartaoFoto(escola)}
+    </div>
+    ${criada ? '' : cartaoInstaladores(escola)}
     <section class="pf-kpis" aria-label="Totais">
       <div class="pf-kpi"><span>Alunos</span><strong>${pesquisa ? todosAlunos.length : dados.total}</strong><small>${pesquisa ? 'encontrados' : 'na escola'}</small></div>
       <div class="pf-kpi"><span>Turmas</span><strong>${dados.grupos.filter((g) => g.turma.id).length}</strong><small>com e sem alunos</small></div>
@@ -551,11 +612,24 @@ get('/plataforma/escolas/:id', async (req, res) => {
 });
 
 // ---------- Instaladores da escola (ver lib/instaladores.js) ----------
-function cartaoInstaladores(escola) {
+function cartaoFoto(escola) {
+  return `<section class="pf-cartao pf-cartao-foto">
+      <h2>Foto da escola</h2>
+      <form method="post" action="/plataforma/escolas/${escola.id}/foto" class="pf-form">
+        ${campoFotoEscola(escola)}
+        <div class="pf-mais-linha">
+          <button class="pf-botao">Guardar foto</button>
+          ${urlFotoEscola(escola) ? '<button class="pf-botao-texto perigo" name="remover" value="1" formnovalidate>Remover foto</button>' : ''}
+        </div>
+      </form>
+    </section>`;
+}
+
+function cartaoInstaladores(escola, { destaque = false } = {}) {
   const base = `/plataforma/escolas/${escola.id}/instalador`;
-  return `<section class="pf-cartao pf-cartao-instaladores">
-      <h2>${iconePf('descarregar')} Instaladores da escola</h2>
-      <p class="pf-suave">Feitos só para <strong>${h(escola.nome)}</strong>, sempre com os dados e endereços atuais.</p>
+  return `<section class="pf-cartao pf-cartao-instaladores${destaque ? ' pf-cartao-destaque' : ''}" id="instaladores">
+      <h2>${iconePf('descarregar')} ${destaque ? 'Já pode descarregar o instalador da escola' : 'Instaladores da escola'}</h2>
+      <p class="pf-suave">Feitos só para <strong>${h(escola.nome)}</strong>, sempre com os dados e endereços atuais${urlFotoEscola(escola) ? ' e com a foto da escola como ícone' : ''}.</p>
       <div class="pf-instaladores">
         <article class="pf-instalador">
           <h3>Atalho de app <small>Windows · .cmd</small></h3>

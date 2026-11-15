@@ -149,6 +149,45 @@ document.querySelectorAll('[data-formulario-foto]').forEach((form) => {
   });
 });
 
+// Foto da escola (painel da plataforma): corta a imagem em quadrado, ao centro, e prepara dois PNG
+// (512 e 256 píxeis) para os campos escondidos. Vira o ícone da app da escola e dos instaladores.
+document.querySelectorAll('[data-foto-escola]').forEach((campo) => {
+  const entrada = campo.querySelector('[data-ficheiro-foto-escola]');
+  const grande = campo.querySelector('[data-foto-grande]');
+  const pequena = campo.querySelector('[data-foto-pequena]');
+  const previa = campo.querySelector('[data-previa-foto]');
+  const quadrado = (imagem, lado) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = lado;
+    const corte = Math.min(imagem.width, imagem.height);
+    canvas.getContext('2d').drawImage(imagem, (imagem.width - corte) / 2, (imagem.height - corte) / 2, corte, corte, 0, 0, lado, lado);
+    return canvas.toDataURL('image/png');
+  };
+  entrada.addEventListener('change', async () => {
+    const ficheiro = entrada.files[0];
+    grande.value = pequena.value = '';
+    if (!ficheiro) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(ficheiro.type)) {
+      alert('Escolha uma imagem JPG, PNG ou WEBP.');
+      entrada.value = '';
+      return;
+    }
+    try {
+      const imagem = await createImageBitmap(ficheiro);
+      grande.value = quadrado(imagem, 512);
+      pequena.value = quadrado(imagem, 256);
+      const img = document.createElement('img');
+      img.className = 'pf-foto-grande pf-escola-foto';
+      img.src = pequena.value;
+      img.alt = 'Pré-visualização da foto da escola';
+      previa.replaceChildren(img);
+    } catch {
+      alert('Não foi possível ler a imagem.');
+      entrada.value = '';
+    }
+  });
+});
+
 // Botões "Copiar" (ex.: os endereços de uma escola no painel da plataforma): copia o texto de
 // data-copiar e mostra "Copiado" durante um momento. Sem acesso à área de transferência, seleciona
 // o endereço ao lado para se copiar à mão.

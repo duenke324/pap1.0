@@ -32,9 +32,9 @@ const { pastaBase } = require('./lib/recursos');
       );
     }
     await ligacao.query(
-      `INSERT INTO escolas (id, codigo, nome, dominio_email, direcao_nome) VALUES (?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE nome = VALUES(nome), dominio_email = VALUES(dominio_email), direcao_nome = VALUES(direcao_nome)`,
-      [escola.id, escola.codigo, escola.nome, escola.dominio_email, escola.direcao_nome]
+      `INSERT INTO escolas (id, codigo, nome, dominio_email, direcao_nome, foto) VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE nome = VALUES(nome), dominio_email = VALUES(dominio_email), direcao_nome = VALUES(direcao_nome), foto = VALUES(foto)`,
+      [escola.id, escola.codigo, escola.nome, escola.dominio_email, escola.direcao_nome, escola.foto || null]
     );
     await ligacao.end();
     ligacao = null;

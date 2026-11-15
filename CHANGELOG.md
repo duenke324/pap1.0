@@ -3,6 +3,19 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.5.0] — 2026-11-15
+
+### Novo
+- **Foto da escola**: ao criar uma escola no painel da plataforma pode escolher-se uma foto ou logótipo (cortada em
+  quadrado no browser). Na página de cada escola há o cartão "Foto da escola" para a mudar ou remover.
+- A foto passa a ser o ícone da escola na lista de escolas, no cabeçalho da página dela, na app instalada (PWA) e nos
+  ícones criados pelos instaladores (atalho de app e servidor completo).
+- **Botão "Descarregar a app da escola"** em cada escola da lista do painel; ao criar uma escola, a página dela abre
+  com os instaladores logo em cima.
+
+### Alterado
+- Coluna `foto` na tabela `escolas` (acrescentada sozinha no arranque); os ficheiros ficam em `data/fotos/<código>/`.
+
 ## [1.4.0] — 2026-11-13
 
 ### Novo

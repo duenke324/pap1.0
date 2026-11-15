@@ -8,7 +8,8 @@ function nomeCurto(nome, codigo) {
   return codigo ? codigo.toUpperCase() : nome.slice(0, 14);
 }
 
-function manifesto({ nome, nomeCurto: curto, descricao, inicio, ambito = inicio, icones, corTema = '#000000', corFundo = '#ffffff' }) {
+// foto: { grande, pequena } = a foto da escola (512 e 256 píxeis), que passa a ser o ícone da app
+function manifesto({ nome, nomeCurto: curto, descricao, inicio, ambito = inicio, icones, foto = null, corTema = '#000000', corFundo = '#ffffff' }) {
   return {
     name: nome,
     short_name: curto,
@@ -23,7 +24,12 @@ function manifesto({ nome, nomeCurto: curto, descricao, inicio, ambito = inicio,
     lang: 'pt-PT',
     dir: 'ltr',
     categories: ['education'],
-    icons: [
+    icons: foto
+      ? [
+          { src: foto.pequena, sizes: '256x256', type: 'image/png', purpose: 'any' },
+          { src: foto.grande, sizes: '512x512', type: 'image/png', purpose: 'any' },
+        ]
+      : [
       { src: `${icones}/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: `${icones}/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: `${icones}/maskable-192.png`, sizes: '192x192', type: 'image/png', purpose: 'maskable' },

@@ -12,6 +12,7 @@ const path = require('node:path');
 const { pastaBase } = require('./recursos');
 const { plataforma, TABELAS_ESCOLA, PASTA_FOTOS, PASTA_JUSTIFICATIVOS } = require('../db');
 const { criarZip } = require('./zip');
+const { ficheiroFotoEscola } = require('./foto-escola');
 
 // Nome que pode ir num nome de ficheiro do Windows
 const nomeFicheiro = (texto) => String(texto).replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim() || 'Escola';
@@ -40,6 +41,11 @@ function icoDePngs(ficheiros) {
 }
 
 const icones = (pasta) => icoDePngs(['icon-96.png', 'icon-192.png'].map((f) => path.join(pastaBase(), pasta, 'icons', f)));
+// Ícone da escola: a foto escolhida no painel, se houver; senão o ícone da Gestão Escolar
+const iconeDaEscola = (escola) => {
+  const foto = ficheiroFotoEscola(escola, 256);
+  return foto ? icoDePngs([foto]) : icones('public');
+};
 
 // ---------- 1. Atalho de app ----------
 // Um .cmd que se executa a si próprio em PowerShell (a parte depois de ##POWERSHELL##): assim é um só
@@ -57,7 +63,7 @@ $urlConversas = ${plicas(urlConversas)}
 Write-Host ''
 Write-Host "  A instalar $nome..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Force -Path $pasta | Out-Null
-[IO.File]::WriteAllBytes((Join-Path $pasta 'gestao.ico'), [Convert]::FromBase64String('${icones('public').toString('base64')}'))
+[IO.File]::WriteAllBytes((Join-Path $pasta 'gestao.ico'), [Convert]::FromBase64String('${iconeDaEscola(escola).toString('base64')}'))
 [IO.File]::WriteAllBytes((Join-Path $pasta 'conversas.ico'), [Convert]::FromBase64String('${icones(path.join('teams', 'publico')).toString('base64')}'))
 
 # Abre em janela própria (modo "app") no Microsoft Edge, que vem com o Windows, ou no Google Chrome
@@ -136,8 +142,8 @@ async function exportarDadosEscola(escola) {
     const linhas = await plataforma.todos(`SELECT * FROM \`tb_${t}\` WHERE escola_id = ? ORDER BY 1`, escola.id);
     tabelas[t] = linhas.map(({ escola_id, ...resto }) => resto);
   }
-  const { id, codigo, nome, dominio_email, direcao_nome } = escola;
-  return { formato: 'gestao-escolar-escola', versao: 1, exportado_em: new Date().toISOString(), escola: { id, codigo, nome, dominio_email, direcao_nome }, tabelas };
+  const { id, codigo, nome, dominio_email, direcao_nome, foto } = escola;
+  return { formato: 'gestao-escolar-escola', versao: 1, exportado_em: new Date().toISOString(), escola: { id, codigo, nome, dominio_email, direcao_nome, foto: foto || null }, tabelas };
 }
 
 // Ficheiros de uma pasta (recursivo), com o caminho relativo à pasta base
@@ -234,7 +240,7 @@ async function pacoteServidor(escola) {
   const { iniciar, instalar, leiaMe } = textosDoPacote(escola);
   ficheiros.push(
     { nome: `${pastaZip}/dados-escola.json`, dados: JSON.stringify(await exportarDadosEscola(escola)) },
-    { nome: `${pastaZip}/public/favicon.ico`, dados: icones('public') },
+    { nome: `${pastaZip}/public/favicon.ico`, dados: iconeDaEscola(escola) },
     { nome: `${pastaZip}/iniciar.cmd`, dados: iniciar },
     { nome: `${pastaZip}/instalar.cmd`, dados: instalar },
     { nome: `${pastaZip}/LEIA-ME.txt`, dados: leiaMe.replace(/\r?\n/g, '\r\n') }

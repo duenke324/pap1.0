@@ -1,4 +1,5 @@
 // Ponto de entrada da aplicação
+const fs = require('node:fs');
 const path = require('node:path');
 const { pastaBase } = require('./lib/recursos');
 const { get, post, criarServidor, renovarSessao, terminarSessao, enviarFicheiro, guardarSessao } = require('./lib/servidor');
@@ -9,6 +10,7 @@ const { semearSeVazia } = require('./seed');
 const { correrNoContexto, escolaAtual, contextoAtual } = require('./lib/contexto');
 const { resolverContextoGestao, contextoDaEscola, prepararTudo } = require('./lib/escolas');
 const { manifesto, nomeCurto, enviarManifesto } = require('./lib/pwa');
+const { ficheiroFotoEscola, urlFotoEscola } = require('./lib/foto-escola');
 
 const PORTA = Number(process.env.PORT) || 3000;
 const PASTA_PUBLICA = path.join(pastaBase(), 'public');
@@ -67,7 +69,7 @@ async function antesDaRota(req, res) {
     if (!req.utilizador) await terminarSessao(req);
   }
 
-  const ficheiroPwa = ['/manifest.webmanifest', '/sw.js', '/offline.html'].includes(req.caminho);
+  const ficheiroPwa = ['/manifest.webmanifest', '/sw.js', '/offline.html'].includes(req.caminho) || req.caminho.startsWith('/foto-escola/');
   // (a recuperação de palavra-passe tem de funcionar sem sessão: é para quem não consegue entrar)
   const publico = req.caminho === '/login' || ficheiroPwa || /^\/recuperar-password(\/|$)/.test(req.caminho);
   if (!publico && !req.utilizador) {
@@ -255,8 +257,18 @@ get('/manifest.webmanifest', (req, res) => {
       descricao: `Faltas, sumários, avaliação e horários — ${escola.nome}`,
       inicio: `/${escola.codigo}/`,
       icones: '/static/icons',
+      foto: urlFotoEscola(escola) && { grande: urlFotoEscola(escola), pequena: urlFotoEscola(escola, 256) },
     })
   );
+});
+// Foto da escola (escolhida no painel da plataforma): pública, porque é o ícone da app e aparece no login
+get('/foto-escola/:ficheiro', (req, res) => {
+  const escola = escolaAtual();
+  const m = /^(escola-[a-f0-9]{12})(-256)?\.png$/.exec(req.params.ficheiro);
+  const ficheiro = m && m[1] === escola.foto && ficheiroFotoEscola(escola, m[2] ? 256 : 512);
+  if (!ficheiro) return paginaErro(req, res, 404);
+  res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+  fs.createReadStream(ficheiro).pipe(res);
 });
 get('/plataforma/manifest.webmanifest', (req, res) =>
   enviarManifesto(

@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.4
+# Sistema de Gestão Escolar — versão 1.5
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
@@ -131,6 +131,10 @@ O esquema completo está em [database/escola.sql](database/escola.sql). Pode imp
 phpMyAdmin (separador *Importar*), mas não é necessário: a aplicação executa-o ao arrancar.
 
 ### Instaladores da escola
+
+Ao criar uma escola pode escolher-se a **foto da escola** (muda-se depois no cartão "Foto da escola", na página dela):
+fica como ícone da escola no painel, na app instalada e nos instaladores. Cada escola da lista tem o botão
+**"Descarregar a app da escola"** (o atalho de app abaixo).
 
 Na página de cada escola, no painel da plataforma (`/plataforma/escolas/<id>`), há dois instaladores feitos só para
 essa escola, gerados na hora com os dados e endereços atuais ([src/lib/instaladores.js](src/lib/instaladores.js)):
