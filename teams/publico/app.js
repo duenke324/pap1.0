@@ -208,3 +208,61 @@ document.addEventListener('keydown', (e) => {
 
   setInterval(verificarNovas, 4000);
 })();
+
+// Confirmação antes de ações que não se desfazem (apagar canal, tarefa, anular entrega…)
+document.addEventListener('submit', (e) => {
+  const mensagem = e.target.dataset?.confirmar;
+  if (mensagem && !confirm(mensagem)) e.preventDefault();
+});
+
+// "Selecionar todos" (ex.: alunos de um grupo novo)
+document.addEventListener('change', (e) => {
+  if (!e.target.matches('[data-selecionar-todos]')) return;
+  e.target.closest('form').querySelectorAll('[data-selecionar]').forEach((c) => (c.checked = e.target.checked));
+});
+
+// Ficheiro de uma tarefa (enunciado ou trabalho do aluno): lido no browser e enviado em base64 num
+// campo escondido, com o nome original noutro. O servidor volta a verificar o tipo e o tamanho.
+document.querySelectorAll('[data-ficheiro-tarefa]').forEach((campo) => {
+  const entrada = campo.querySelector('[data-ficheiro-entrada]');
+  const dados = campo.querySelector('[data-ficheiro-dados]');
+  const original = campo.querySelector('[data-ficheiro-original]');
+  const rotulo = campo.querySelector('[data-ficheiro-nome]');
+  const textoInicial = rotulo.textContent;
+  const form = campo.closest('form');
+  const TAMANHO_MAXIMO = 4 * 1024 * 1024;
+  let aLer = false;
+
+  entrada.addEventListener('change', () => {
+    dados.value = original.value = '';
+    rotulo.textContent = textoInicial;
+    const ficheiro = entrada.files[0];
+    if (!ficheiro) return;
+    if (ficheiro.size > TAMANHO_MAXIMO) {
+      alert('O ficheiro é demasiado grande (máx. 4 MB).');
+      entrada.value = '';
+      return;
+    }
+    aLer = true;
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      dados.value = leitor.result;
+      original.value = ficheiro.name;
+      rotulo.textContent = ficheiro.name;
+      aLer = false;
+    };
+    leitor.onerror = () => {
+      alert('Não foi possível ler o ficheiro.');
+      entrada.value = '';
+      aLer = false;
+    };
+    leitor.readAsDataURL(ficheiro);
+  });
+
+  form?.addEventListener('submit', (e) => {
+    if (aLer) {
+      e.preventDefault();
+      alert('Aguarde um momento: o ficheiro ainda está a ser preparado.');
+    }
+  });
+});

@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.5
+# Sistema de Gestão Escolar — versão 1.6
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
@@ -11,7 +11,7 @@ O projeto tem duas aplicações:
 | Aplicação | Para quê | Comando | Endereço |
 | --- | --- | --- | --- |
 | **Gestão Escolar** | Faltas, sumários, avaliação, horários, justificativos… (e o painel da plataforma) | `npm start` | http://localhost:3000/epmontijo (cada escola em `/<código>`; plataforma em `/plataforma`) |
-| **Conversas** | Canais por turma e mensagens privadas, com o aspeto do Microsoft Teams | `npm run conversas` | http://localhost:3100/epmontijo (cada escola em `/<código>`) |
+| **Conversas** | Canais e grupos por turma, tarefas e mensagens privadas, com o aspeto do Microsoft Teams | `npm run conversas` | http://localhost:3100/epmontijo (cada escola em `/<código>`) |
 
 ## Como executar
 
@@ -208,6 +208,23 @@ Pode correr ao mesmo tempo que a Gestão Escolar (portas diferentes: 3000 e 3100
 do `src/db.js` (ajuste `TEAMS_PORT` se a 3100 estiver ocupada).
 **Arranque sempre a Gestão Escolar pelo menos uma vez antes** (é ela que cria/atualiza as tabelas;
 o Conversas só as usa, para as duas aplicações nunca tentarem alterar a base de dados ao mesmo tempo).
+
+**Canais e grupos**: em Equipas, o botão ⋯ de cada turma (só para os professores que a lecionam) abre "Novo canal ou
+grupo". Um **canal** é para a turma toda — de uma disciplina que o professor dá nessa turma, ou com nome livre (ex.:
+"Geral") — e pode ficar logo com todos os alunos da turma. Um **grupo** tem só os alunos que o professor escolher (ex.:
+um grupo de trabalho); os outros alunos não o veem. Em "Gerir canal/grupo" adicionam-se/removem-se alunos e apaga-se.
+
+**Tarefas** (como as do Teams, botão "Tarefas" na barra da esquerda e separador "Tarefas" em cada canal —
+[teams/tarefas.js](teams/tarefas.js)):
+
+| Quem | O que faz |
+|------|-----------|
+| Professor | cria a tarefa num canal ou grupo (título, instruções, ficheiro com o enunciado, data limite, pontos); fica atribuída a todos os alunos desse canal/grupo e aparece um aviso no canal; vê quem entregou, descarrega os trabalhos e **devolve com nota e comentário** |
+| Aluno | vê as tarefas "Por entregar" (ou "Em atraso"), "Entregues" e "Devolvidas", com um número vermelho no botão; escreve a resposta e/ou junta um ficheiro e entrega; pode anular e entregar outra vez até ser devolvida; vê a nota e o comentário |
+
+Ficheiros aceites: PDF, Word, Excel, PowerPoint, imagem, ZIP e TXT, até 4 MB; o servidor confirma pelo conteúdo que o
+ficheiro é do tipo que diz ser, e descarrega-os sempre como anexo. Ficam em `data/tarefas/<código>/`
+([teams/ficheiros.js](teams/ficheiros.js)).
 
 **Aspeto**: imita o mais possível o Microsoft Teams (com o nome e o logótipo da Conversas) — barra de título com a
 pesquisa de pessoas ao centro e o avatar com a bolinha de presença, faixa de aplicações à esquerda com ícone e nome
@@ -412,7 +429,9 @@ scripts/build-mac.sh  Gera o GestaoEscolar.app (npm run build:mac)
 teams/                App separada "Conversas" (npm run conversas) — visual e servidor próprios,
                       mesma base de dados (usa src/db.js e src/lib/util.js da Gestão Escolar)
   app.js              Arranque, login/logout (só professor/aluno), sessão própria, escola pelo domínio do email
-  rotas.js            Turmas, canais, membros e mensagens
+  rotas.js            Turmas, canais e grupos, membros e mensagens
+  tarefas.js          Tarefas: criar, entregar, devolver com nota
+  ficheiros.js        Ficheiros das tarefas (enunciados e trabalhos)
   privadas.js         Conversas privadas (Chat)
   vistas.js           HTML e componentes (barra de título, faixa, lista, publicações e balões)
   publico/            CSS (aspeto do Teams), JavaScript do browser e ícone, próprios desta app
@@ -458,7 +477,7 @@ Em cada escola, as tabelas (vistas) são:
 `ocorrencias` (ocorrências disciplinares: aluno, gravidade, descrição, data, quem registou) ·
 `reunioes_turma` (data, hora, local, assunto e a **ata**, com quem a escreveu e quando; o delegado e o subdelegado estão
 em `turmas.delegado_id`/`subdelegado_id`) ·
-`canais`, `canal_membros`, `canal_mensagens` (usadas pela app **Conversas**, não pela Gestão Escolar) ·
+`canais` (canais e grupos: `tipo`), `canal_membros`, `canal_mensagens`, `tarefas`, `tarefa_entregas` (usadas pela app **Conversas**, não pela Gestão Escolar) ·
 `recuperacoes_password` (pedidos de recuperação: só o hash do código da ligação, validade e se já foi usado) ·
 `sessoes` (logins ativos — por isso reiniciar o servidor não obriga a entrar de novo) ·
 `logs_auditoria` (quem criou, editou ou apagou turmas, professores, funcionários, disciplinas e alunos, e quando).

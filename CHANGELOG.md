@@ -3,6 +3,22 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.6.0] — 2026-11-15
+
+### Novo
+- **Conversas — canais e grupos**: os professores criam, nas turmas que lecionam, canais para a turma toda (de uma
+  disciplina ou com nome livre, com todos os alunos de uma vez) e **grupos** só com os alunos que escolherem. Também
+  podem adicionar todos os alunos da turma a um canal e apagar canais/grupos.
+- **Conversas — tarefas** (como as do Teams): o professor cria uma tarefa num canal ou grupo (instruções, enunciado,
+  data limite, pontos), vê quem entregou, descarrega os trabalhos e devolve com nota e comentário. O aluno entrega
+  texto e/ou ficheiro, pode anular e voltar a entregar até ser devolvida, e vê a nota. Botão "Tarefas" na barra da
+  esquerda (com o número de tarefas por entregar) e separador "Tarefas" em cada canal.
+
+### Alterado
+- Tabelas novas `tarefas` e `tarefa_entregas` e coluna `canais.tipo` (canal ou grupo), criadas sozinhas no arranque
+  da Gestão Escolar também em bases de dados que já existiam. Os ficheiros ficam em `data/tarefas/<código>/` e vão no
+  servidor completo da escola.
+
 ## [1.5.0] — 2026-11-15
 
 ### Novo

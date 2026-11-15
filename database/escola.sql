@@ -100,17 +100,19 @@ CREATE TABLE IF NOT EXISTS alunos (
   CONSTRAINT fk_aluno_turma      FOREIGN KEY (turma_id)      REFERENCES turmas(id)       ON DELETE SET NULL
 ) ENGINE = InnoDB;
 
--- Canais de conversa (um por turma, criados por um professor que a lecione).
--- Os alunos só veem os canais aos quais foram adicionados; qualquer professor que lecione a
+-- Canais e grupos de conversa de uma turma, criados por um professor que a lecione (ver teams/rotas.js).
+-- Os alunos só veem os canais/grupos aos quais foram adicionados; qualquer professor que lecione a
 -- turma pode ver o canal, adicionar alunos e escrever.
--- disciplina_id: o canal passou a representar uma disciplina da turma (em vez de nome livre),
--- escolhida de entre as que o professor leciona nessa turma — ver teams/rotas.js.
--- NULL só acontece em canais antigos, de antes desta mudança.
+-- tipo = 'canal': para a turma (normalmente com todos os alunos); tipo = 'grupo': só alguns alunos
+-- escolhidos pelo professor (ex.: um grupo de trabalho).
+-- disciplina_id: canal de uma disciplina que o professor leciona na turma (um por disciplina);
+-- NULL = canal ou grupo com nome livre (ex.: "Geral", "Grupo 1 — PAP").
 CREATE TABLE IF NOT EXISTS canais (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   turma_id      INT UNSIGNED NOT NULL,
   disciplina_id INT UNSIGNED,
   nome          VARCHAR(80) NOT NULL,
+  tipo          ENUM('canal','grupo') NOT NULL DEFAULT 'canal',
   criado_por    INT UNSIGNED,
   criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_canal_disciplina (turma_id, disciplina_id),
@@ -148,6 +150,44 @@ CREATE TABLE IF NOT EXISTS canal_leituras (
   PRIMARY KEY (canal_id, utilizador_id),
   CONSTRAINT fk_leitura_canal      FOREIGN KEY (canal_id)      REFERENCES canais(id)      ON DELETE CASCADE,
   CONSTRAINT fk_leitura_utilizador FOREIGN KEY (utilizador_id) REFERENCES utilizadores(id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+-- Tarefas (como as do Teams): o professor cria-as num canal ou grupo e ficam atribuídas a todos os
+-- alunos desse canal/grupo. ficheiro = enunciado opcional (nome em disco, em data/tarefas/<escola>/);
+-- ficheiro_nome = o nome original, para o descarregar. pontos = nota máxima (NULL = sem nota).
+CREATE TABLE IF NOT EXISTS tarefas (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  canal_id       INT UNSIGNED NOT NULL,
+  professor_id   INT UNSIGNED,
+  titulo         VARCHAR(150) NOT NULL,
+  instrucoes     TEXT,
+  ficheiro       VARCHAR(80),
+  ficheiro_nome  VARCHAR(150),
+  data_limite    DATETIME,
+  pontos         SMALLINT UNSIGNED,
+  criado_em      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_tarefas_canal (canal_id),
+  CONSTRAINT fk_tarefa_canal     FOREIGN KEY (canal_id)     REFERENCES canais(id)      ON DELETE CASCADE,
+  CONSTRAINT fk_tarefa_professor FOREIGN KEY (professor_id) REFERENCES professores(id) ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+-- Trabalho de cada aluno numa tarefa (uma linha por aluno, criada quando entrega ou é avaliado).
+-- entregue_em NULL = ainda não entregou (ou anulou a entrega); devolvida_em = o professor já
+-- avaliou e devolveu (com nota e/ou comentário); depois disso o aluno já não altera a entrega.
+CREATE TABLE IF NOT EXISTS tarefa_entregas (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tarefa_id      INT UNSIGNED NOT NULL,
+  aluno_id       INT UNSIGNED NOT NULL,
+  texto          TEXT,
+  ficheiro       VARCHAR(80),
+  ficheiro_nome  VARCHAR(150),
+  entregue_em    DATETIME,
+  nota           DECIMAL(6,1),
+  comentario     VARCHAR(1000),
+  devolvida_em   DATETIME,
+  UNIQUE KEY uq_entrega (tarefa_id, aluno_id),
+  CONSTRAINT fk_entrega_tarefa FOREIGN KEY (tarefa_id) REFERENCES tarefas(id) ON DELETE CASCADE,
+  CONSTRAINT fk_entrega_aluno  FOREIGN KEY (aluno_id)  REFERENCES alunos(id)  ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
 -- Mensagens privadas (1 para 1). utilizador_a_id é sempre o menor dos dois ids, para o par ter

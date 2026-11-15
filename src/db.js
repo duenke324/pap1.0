@@ -43,8 +43,12 @@ const TABELAS_ESCOLA = [...fs.readFileSync(FICHEIRO_ESQUEMA, 'utf8').matchAll(/C
 // Justificativos de faltas enviados pelos encarregados de educação (PDF ou imagem)
 const PASTA_JUSTIFICATIVOS = path.join(PASTA_DADOS, 'justificativos');
 
+// Ficheiros das tarefas da Conversas (enunciados dos professores e trabalhos entregues pelos alunos)
+const PASTA_TAREFAS = path.join(PASTA_DADOS, 'tarefas');
+
 fs.mkdirSync(PASTA_FOTOS, { recursive: true });
 fs.mkdirSync(PASTA_JUSTIFICATIVOS, { recursive: true });
+fs.mkdirSync(PASTA_TAREFAS, { recursive: true });
 
 // Os ficheiros de cada escola (fotografias, justificativos) ficam numa subpasta com o código da escola
 // (data/fotos/epmontijo/…), para nunca se misturarem
@@ -57,6 +61,7 @@ function pastaDaEscola(base) {
 }
 const pastaFotos = () => pastaDaEscola(PASTA_FOTOS);
 const pastaJustificativos = () => pastaDaEscola(PASTA_JUSTIFICATIVOS);
+const pastaTarefas = () => pastaDaEscola(PASTA_TAREFAS);
 
 // ---------- Ligações ----------
 // Um conjunto de ligações ("pool") por escola, criado na primeira vez que é preciso. Todas as ligações
@@ -178,6 +183,7 @@ async function prepararBaseDeDados() {
       await migrar(ligacao, bd);
     }
     await converterParaVariasEscolas(ligacao, bd, primeira);
+    await acrescentarNovidades(ligacao, bd);
     await criarVistas(ligacao, bd);
 
     const [escolas] = await ligacao.query('SELECT * FROM escolas ORDER BY id');
@@ -201,6 +207,8 @@ async function converterParaVariasEscolas(ligacao, bd, primeira) {
 
   for (const t of TABELAS_ESCOLA) {
     const tabela = `tb_${t}`;
+    // (tabela nova, que ainda não existe nesta base de dados: é criada já convertida em acrescentarNovidades)
+    if (!(await tipo(tabela))) continue;
     // 2. coluna escola_id: as linhas que já existiam são da primeira escola
     const [colunas] = await ligacao.query(
       `SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = 'escola_id'`,
@@ -242,6 +250,27 @@ async function converterParaVariasEscolas(ligacao, bd, primeira) {
     }
     console.log(`Base de dados "${bd}" convertida para várias escolas (${convertidas} tabelas; os dados existentes ficaram na escola "${primeira.codigo}").`);
   }
+}
+
+// Tabelas e colunas que apareceram depois da conversão para várias escolas (versão 1.6 em diante).
+// Uma tabela nova de escola.sql é criada logo como tb_<nome>, com o escola_id, e as chaves
+// estrangeiras apontam para as tabelas tb_… (as vistas não podem ter chaves estrangeiras).
+async function acrescentarNovidades(ligacao, bd) {
+  const existe = async (nome) =>
+    (await ligacao.query('SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?', [bd, nome]))[0].length > 0;
+  const esquema = fs.readFileSync(FICHEIRO_ESQUEMA, 'utf8').replace(/\r\n/g, '\n');
+  for (const t of TABELAS_ESCOLA) {
+    if (await existe(`tb_${t}`)) continue;
+    const m = new RegExp(`CREATE TABLE IF NOT EXISTS ${t} \\(([\\s\\S]*?)\\n\\) ENGINE = InnoDB;`).exec(esquema);
+    if (!m) throw new Error(`Não encontrei a tabela "${t}" em database/escola.sql.`);
+    const corpo = m[1].replace(/REFERENCES (\w+)\(/g, (todo, alvo) => (TABELAS_ESCOLA.includes(alvo) ? `REFERENCES tb_${alvo}(` : todo));
+    await ligacao.query(
+      `CREATE TABLE \`tb_${t}\` (escola_id INT UNSIGNED NOT NULL DEFAULT 0, ${corpo}, INDEX idx_escola (escola_id)) ENGINE = InnoDB`
+    );
+    console.log(`Tabela nova na base de dados: tb_${t}`);
+  }
+  // Colunas novas em tabelas que já existiam
+  await ligacao.query("ALTER TABLE tb_canais ADD COLUMN IF NOT EXISTS tipo ENUM('canal','grupo') NOT NULL DEFAULT 'canal' AFTER nome");
 }
 
 // Função escola_atual(), uma vista por tabela (com o nome antigo) e o gatilho que preenche o escola_id.
@@ -482,6 +511,8 @@ module.exports = {
   PASTA_DADOS,
   PASTA_FOTOS,
   PASTA_JUSTIFICATIVOS,
+  PASTA_TAREFAS,
   pastaFotos,
   pastaJustificativos,
+  pastaTarefas,
 };

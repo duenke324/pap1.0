@@ -10,7 +10,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { pastaBase } = require('./recursos');
-const { plataforma, TABELAS_ESCOLA, PASTA_FOTOS, PASTA_JUSTIFICATIVOS } = require('../db');
+const { plataforma, TABELAS_ESCOLA, PASTA_FOTOS, PASTA_JUSTIFICATIVOS, PASTA_TAREFAS } = require('../db');
 const { criarZip } = require('./zip');
 const { ficheiroFotoEscola } = require('./foto-escola');
 
@@ -232,7 +232,7 @@ async function pacoteServidor(escola) {
   if (process.platform === 'win32') juntar('node/node.exe', process.execPath);
 
   // Os ficheiros desta escola (só os dela: estão na subpasta com o código da escola)
-  for (const base of [PASTA_FOTOS, PASTA_JUSTIFICATIVOS]) {
+  for (const base of [PASTA_FOTOS, PASTA_JUSTIFICATIVOS, PASTA_TAREFAS]) {
     const relBase = path.relative(raiz, base);
     for (const r of listarFicheiros(base, escola.codigo)) juntar(path.join(relBase, r), path.join(base, r));
   }

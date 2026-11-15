@@ -29,6 +29,10 @@ const ICONES = {
   nova: '<path d="M12 5v14M5 12h14"/>',
   pesquisar: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
   mais: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+  tarefas: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M8.5 11l2 2 4-4M8.5 16.5h7"/>',
+  grupo: '<circle cx="8" cy="9" r="2.6"/><circle cx="16" cy="9" r="2.6"/><path d="M3.5 18c.4-2.6 2.2-4 4.5-4s4.1 1.4 4.5 4M11.5 18c.4-2.6 2.2-4 4.5-4s4.1 1.4 4.5 4"/>',
+  anexo: '<path d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.1-8.1a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3"/>',
+  voltar: '<path d="M15 18l-6-6 6-6"/>',
 };
 
 function icone(nome, classe = 'icone') {
@@ -115,7 +119,8 @@ const informacaoLogin = () => `
     <h2>Conversas</h2>
     <p>A Conversas é a aplicação de mensagens da escola, para professores e alunos. Permite:</p>
     <ul>
-      <li>Conversar nos canais de cada disciplina da turma;</li>
+      <li>Conversar nos canais e grupos da turma;</li>
+      <li>Receber e entregar as tarefas dos professores;</li>
       <li>Trocar mensagens privadas com os professores.</li>
     </ul>
   </div>
@@ -167,18 +172,18 @@ function arvoreHtml(estrutura, canalAtivoId) {
     .map(
       ({ turma, canais, podeGerir }) => `
     <div class="turma-grupo">
-      <div class="turma-cabecalho">${azulejoEquipa(turma.nome)}<span class="turma-nome" title="${h(turma.nome)}">${h(turma.nome)}</span>${podeGerir ? `<a href="/turma/${turma.id}" class="turma-gerir" title="Gerir canais de ${h(turma.nome)}" aria-label="Gerir canais de ${h(turma.nome)}">${icone('mais')}</a>` : ''}</div>
+      <div class="turma-cabecalho">${azulejoEquipa(turma.nome)}<span class="turma-nome" title="${h(turma.nome)}">${h(turma.nome)}</span>${podeGerir ? `<a href="/turma/${turma.id}" class="turma-gerir" title="Novo canal ou grupo em ${h(turma.nome)}" aria-label="Novo canal ou grupo em ${h(turma.nome)}">${icone('mais')}</a>` : ''}</div>
       ${
         canais.length
           ? canais
               .map(
                 (c) => `<a href="/turma/${turma.id}/canal/${c.id}" class="canal-link${c.id === canalAtivoId ? ' ativo' : ''}"${c.id === canalAtivoId ? ' aria-current="page"' : ''} title="${h(c.nome)}">
-                  <span class="hash">#</span><span>${h(c.nome)}</span>
+                  ${c.tipo === 'grupo' ? `<span class="hash" title="Grupo">${icone('grupo', 'icone icone-grupo')}</span>` : '<span class="hash">#</span>'}<span>${h(c.nome)}</span>
                   ${c.nao_lidas ? `<span class="badge-nao-lidas">${c.nao_lidas > 99 ? '99+' : c.nao_lidas}</span>` : ''}
                 </a>`
               )
               .join('')
-          : `<p class="turma-vazia">${podeGerir ? 'Ainda sem canais — crie um.' : 'Sem canais ainda.'}</p>`
+          : `<p class="turma-vazia">${podeGerir ? 'Ainda sem canais — crie um com o botão ⋯.' : 'Sem canais ainda.'}</p>`
       }
     </div>`
     )
@@ -214,13 +219,19 @@ function pagina(
     cabecalhoAvatar = '',
     cabecalhoExtra = '',
     separador = '',
+    separadores = null,
+    lista = '',
   },
   conteudo
 ) {
   const u = req.utilizador;
   const equipasAtivo = secaoAtiva === 'equipas';
+  const tarefasAtivo = secaoAtiva === 'tarefas';
+  const chatAtivo = !equipasAtivo && !tarefasAtivo;
   const papel = u.papel === 'professor' ? 'Professor' : 'Aluno';
-  const listaHtml = equipasAtivo
+  const listaHtml = tarefasAtivo
+    ? lista
+    : equipasAtivo
     ? `<div class="lista-cabecalho-linha"><h2 class="lista-cabecalho">Equipas</h2></div>
        <nav class="arvore" aria-label="Turmas e canais">${arvoreHtml(arvore, canalAtivoId)}</nav>`
     : `<div class="lista-cabecalho-linha">
@@ -251,8 +262,11 @@ function pagina(
   </header>
   <div class="app-corpo">
     <nav class="rail" aria-label="Secções">
-      <a href="/mensagens" class="rail-botao${!equipasAtivo ? ' ativo' : ''}"${!equipasAtivo ? ' aria-current="page"' : ''}>${icone('mensagens')}<span>Chat</span></a>
+      <a href="/mensagens" class="rail-botao${chatAtivo ? ' ativo' : ''}"${chatAtivo ? ' aria-current="page"' : ''}>${icone('mensagens')}<span>Chat</span></a>
       <a href="/" class="rail-botao${equipasAtivo ? ' ativo' : ''}"${equipasAtivo ? ' aria-current="page"' : ''}>${icone('equipas')}<span>Equipas</span></a>
+      <a href="/tarefas" class="rail-botao${tarefasAtivo ? ' ativo' : ''}"${tarefasAtivo ? ' aria-current="page"' : ''}>${icone('tarefas')}<span>Tarefas</span>${
+        req.tarefasPorEntregar ? `<span class="rail-badge" title="${req.tarefasPorEntregar} tarefa(s) por entregar">${req.tarefasPorEntregar > 99 ? '99+' : req.tarefasPorEntregar}</span>` : ''
+      }</a>
     </nav>
     <aside class="lista-canais" id="lateral">${listaHtml}</aside>
     <main class="conteudo">
@@ -265,7 +279,15 @@ function pagina(
           </div>
           <div class="topo-canal-extra">${cabecalhoExtra}</div>
         </div>
-        ${nomeSeparador ? `<nav class="separadores" aria-label="Separadores"><span class="separador ativo" aria-current="page">${h(nomeSeparador)}</span></nav>` : ''}
+        ${
+          separadores
+            ? `<nav class="separadores" aria-label="Separadores">${separadores
+                .map(([nome, href, ativo]) => (ativo ? `<span class="separador ativo" aria-current="page">${h(nome)}</span>` : `<a class="separador" href="${href}">${h(nome)}</a>`))
+                .join('')}</nav>`
+            : nomeSeparador
+              ? `<nav class="separadores" aria-label="Separadores"><span class="separador ativo" aria-current="page">${h(nomeSeparador)}</span></nav>`
+              : ''
+        }
       </header>
       ${mensagensFlash(req.lerFlash())}
       ${conteudo}
@@ -335,4 +357,4 @@ function ecraVazioDecorado(mensagem, extra = '') {
   </div></div>`;
 }
 
-module.exports = { documento, paginaLogin, paginaEntrada, pagina, icone, avatarHtml, mensagemHtml, vazio, ecraVazioDecorado, mensagensFlash };
+module.exports = { documento, paginaLogin, paginaEntrada, pagina, icone, avatarHtml, azulejoEquipa, mensagemHtml, vazio, ecraVazioDecorado, mensagensFlash };

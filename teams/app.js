@@ -80,6 +80,10 @@ async function antesDaRota(req, res) {
   }
   if (req.utilizador?.papel === 'aluno') {
     req.aluno = await um('SELECT id, nome, turma_id FROM alunos WHERE utilizador_id = ?', req.utilizador.id);
+    // Número vermelho no botão "Tarefas" (só nas páginas, não nos pedidos de mensagens novas)
+    if (req.aluno && req.method === 'GET' && !(req.headers.accept || '').includes('application/json') && !req.caminho.endsWith('/ficheiro')) {
+      req.tarefasPorEntregar = await contarPorEntregar(req.aluno.id);
+    }
   } else if (req.utilizador?.papel === 'professor') {
     req.professor = await um('SELECT id, nome FROM professores WHERE utilizador_id = ?', req.utilizador.id);
   }
@@ -170,6 +174,7 @@ get('/offline.html', (req, res) => {
 
 require('./rotas');
 require('./privadas');
+const { contarPorEntregar } = require('./tarefas');
 
 async function iniciar() {
   // Não cria nem migra o esquema (isso é feito pela Gestão Escolar, para as duas apps não

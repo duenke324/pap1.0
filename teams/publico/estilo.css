@@ -543,3 +543,115 @@ button, input, textarea, select { font: inherit; }
 /* Nome da escola por baixo de "Bem-vindo à Conversas" (no endereço de uma escola) */
 .entrada-painel h1:has(+ .entrada-escola) { margin-bottom: .3rem; }
 .entrada-escola { margin: 0 0 1.5rem; text-align: center; font-size: 1.6rem; font-weight: 300; line-height: 1.25; text-shadow: 0 1px 10px rgba(0, 0, 0, .25); }
+
+/* ---------- Canais, grupos e tarefas ---------- */
+.icone-grupo { width: 15px; height: 15px; vertical-align: -2px; }
+.distintivo-grupo {
+  display: inline-block; margin-left: .3rem; padding: .05rem .45rem; border-radius: 10px; vertical-align: middle;
+  background: var(--acento-fundo); color: var(--acento); font-size: .7rem; font-weight: 600;
+}
+.rail-badge {
+  position: absolute; top: .25rem; right: .75rem; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px;
+  background: var(--perigo); color: #fff; font-size: .64rem; font-weight: 700; display: grid; place-items: center;
+}
+a.separador { text-decoration: none; }
+a.separador:hover { color: var(--tinta); }
+.botao-perigo { background: var(--perigo); border-color: var(--perigo); color: #fff; }
+.botao-texto.perigo { color: var(--perigo); }
+.pequeno { font-size: .78rem; }
+
+/* Formulários (criar canal/grupo, tarefa, entrega, avaliação) */
+.form-criar, .form-tarefa, .form-avaliar { display: flex; flex-direction: column; gap: .8rem; }
+.form-criar label, .form-tarefa label, .form-avaliar label { display: flex; flex-direction: column; gap: .3rem; font-size: .85rem; font-weight: 600; }
+.form-criar label.caixa, .escolher-alunos label.caixa { flex-direction: row; align-items: center; gap: .5rem; font-weight: 400; }
+.form-criar :is(input:not([type=checkbox]), select, textarea),
+.form-tarefa :is(input:not([type=file]), select, textarea),
+.form-avaliar :is(input, textarea) {
+  width: 100%; min-height: 34px; padding: .4rem .6rem; border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  background: var(--campo); color: var(--tinta); font-weight: 400;
+}
+.form-criar :is(input, select, textarea):focus, .form-tarefa :is(input, select, textarea):focus, .form-avaliar :is(input, textarea):focus {
+  outline: none; box-shadow: inset 0 -2px 0 var(--acento);
+}
+.form-tarefa textarea, .form-avaliar textarea { resize: vertical; }
+.linha-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .8rem; }
+.linha-botoes { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.campo-ficheiro { display: flex; flex-direction: column; gap: .35rem; align-items: flex-start; font-size: .85rem; }
+.campo-rotulo { font-weight: 600; }
+.campo-rotulo small { font-weight: 400; }
+.botao-ficheiro { position: relative; overflow: hidden; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; }
+.botao-ficheiro span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.botao-ficheiro input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.botao-ficheiro:focus-within { outline: 2px solid var(--acento); outline-offset: 2px; }
+.botao .icone, .botao-ficheiro .icone { width: 16px; height: 16px; }
+.nota-campo { display: flex; align-items: center; gap: .4rem; font-weight: 400; }
+.nota-campo input { max-width: 90px; }
+
+/* Página "Novo canal ou grupo" */
+.criar-pagina { padding: 1.25rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; align-items: start; overflow-y: auto; }
+.cartao-criar, .cartao-detalhe { background: var(--superficie); border-radius: var(--raio-cartao); box-shadow: var(--sombra-cartao); padding: 1.1rem 1.2rem; }
+.cartao-criar h2 { display: flex; align-items: center; gap: .45rem; font-size: 1.05rem; margin-bottom: .3rem; }
+.cartao-criar h2 .icone { width: 20px; height: 20px; }
+.cartao-criar > p { margin-bottom: .9rem; font-size: .85rem; }
+.escolher-alunos { border: 1px solid var(--linha); border-radius: var(--raio); padding: .5rem .7rem; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: .3rem; }
+.escolher-alunos legend { font-size: .85rem; font-weight: 600; padding: 0 .3rem; }
+.escolher-alunos .selecionar-todos { padding-bottom: .3rem; border-bottom: 1px solid var(--linha); font-weight: 600; }
+
+/* Lista e detalhe de tarefas */
+.pagina-tarefas { flex: 1; overflow-y: auto; padding: 1.1rem 1.25rem 2rem; display: flex; flex-direction: column; gap: 1rem; max-width: 980px; width: 100%; }
+.tarefas-topo { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.tarefas-topo .botao { display: inline-flex; align-items: center; gap: .35rem; }
+.seccao-tarefas h2, .cartao-detalhe h2 { font-size: .95rem; margin-bottom: .55rem; display: flex; align-items: center; gap: .5rem; }
+.cartao-detalhe h2:not(:first-child) { margin-top: 1rem; }
+.contagem { font-size: .75rem; font-weight: 600; color: var(--tinta-suave); background: var(--superficie-2); border-radius: 10px; padding: .05rem .5rem; }
+.lista-tarefas { display: flex; flex-direction: column; gap: .5rem; }
+.cartao-tarefa {
+  display: flex; align-items: center; gap: .9rem; padding: .8rem 1rem; border-radius: var(--raio-cartao);
+  background: var(--superficie); box-shadow: var(--sombra-cartao); color: var(--tinta); text-decoration: none;
+}
+.cartao-tarefa:hover { box-shadow: var(--sombra-flutuante); text-decoration: none; }
+.tarefa-icone { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; background: var(--acento-fundo); color: var(--acento); }
+.tarefa-icone .icone { width: 22px; height: 22px; }
+.tarefa-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.tarefa-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tarefa-origem, .tarefa-limite { font-size: .78rem; color: var(--tinta-suave); }
+.tarefa-lado { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; font-size: .8rem; }
+.tarefa-nota { font-weight: 700; font-size: .9rem; }
+.estado-tarefa { display: inline-block; padding: .1rem .55rem; border-radius: 10px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+.estado-atribuida { background: var(--superficie-2); color: var(--tinta-suave); }
+.estado-atraso { background: var(--perigo-fundo); color: var(--perigo); }
+.estado-entregue { background: var(--aviso-fundo); color: var(--aviso); }
+.estado-devolvida { background: var(--ok-fundo); color: var(--ok); }
+.voltar { display: inline-flex; align-items: center; gap: .2rem; font-size: .85rem; align-self: flex-start; }
+.voltar .icone { width: 16px; height: 16px; }
+.detalhe-linha { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; font-size: .85rem; color: var(--tinta-suave); margin-bottom: .6rem; }
+.detalhe-linha strong { color: var(--tinta); margin-right: .25rem; }
+.detalhe-titulo { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.detalhe-titulo h2 { margin: 0; }
+.texto-livre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; }
+.anexo {
+  display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; padding: .4rem .7rem; border: 1px solid var(--linha-forte);
+  border-radius: var(--raio); background: var(--superficie); font-size: .85rem;
+}
+.anexo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.anexo .icone { width: 16px; height: 16px; flex: none; }
+.anexo-atual { font-size: .85rem; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.aviso-entregue { padding: .5rem .8rem; border-radius: var(--raio); background: var(--aviso-fundo); color: var(--aviso); font-size: .85rem; margin-bottom: .8rem; }
+.avaliacao { padding: .8rem 1rem; border-radius: var(--raio-cartao); background: var(--ok-fundo); margin-bottom: .9rem; display: flex; flex-direction: column; gap: .3rem; }
+.avaliacao-nota { display: flex; align-items: baseline; gap: .4rem; }
+.avaliacao-nota strong { font-size: 1.6rem; color: var(--ok); }
+.cartao-detalhe h3 { font-size: .85rem; margin: .8rem 0 .3rem; }
+.lista-entregas { display: flex; flex-direction: column; gap: .6rem; }
+.entrega { border: 1px solid var(--linha); border-radius: var(--raio-cartao); padding: .7rem .8rem; display: flex; flex-direction: column; gap: .5rem; }
+.entrega.por-avaliar { border-color: var(--aviso); }
+.entrega-topo { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.entrega-nome { flex: 1; min-width: 150px; display: flex; flex-direction: column; }
+.entrega-nome small { font-size: .75rem; }
+.entrega-texto { background: var(--fundo); padding: .5rem .7rem; border-radius: var(--raio); }
+.entrega-avaliar summary { cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--acento); }
+.entrega-avaliar .form-avaliar { margin-top: .6rem; }
+@media (max-width: 640px) {
+  .criar-pagina, .pagina-tarefas { padding: .8rem; }
+  .cartao-tarefa { flex-wrap: wrap; }
+  .tarefa-lado { flex-direction: row; align-items: center; width: 100%; justify-content: flex-start; padding-left: calc(40px + .9rem); }
+}
