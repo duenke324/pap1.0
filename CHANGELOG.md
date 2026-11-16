@@ -3,6 +3,14 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.7.0] — 2026-11-16
+
+### Novo
+- **Logótipo da escola nas atas**: cada ata de reunião de turma tem no topo a foto/logótipo da escola (ou o logótipo da
+  aplicação, se a escola não tiver foto), o nome da escola, a turma e a data — também ao imprimir ou exportar em PDF.
+- **Consentimento antes de gravar a ata**: o botão do microfone só fica ativo depois de o diretor de turma confirmar
+  que os presentes foram informados de que a reunião vai ser gravada e transcrita.
+
 ## [1.6.0] — 2026-11-15
 
 ### Novo

@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.6
+# Sistema de Gestão Escolar — versão 1.7
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
@@ -285,6 +285,10 @@ curso, turma, diretor de turma e encarregado de educação); as secções estão
     `https://` ou em `localhost` (num endereço `http://192.168…` da rede o browser bloqueia o microfone).
   - No Chrome e no Edge o áudio é transcrito pelos serviços da Google e da Microsoft; a aplicação **não guarda o
     áudio** nem a transcrição em bruto — só o texto final da ata. Sem microfone, a transcrição pode ser escrita à mão.
+  - Antes de gravar, o diretor de turma tem de confirmar que **os presentes foram informados** de que a reunião vai ser
+    gravada e transcrita (o botão do microfone só fica ativo com essa caixa marcada).
+  - Cada ata tem no topo o **logótipo e o nome da escola** (a foto escolhida no painel da plataforma, ou o logótipo da
+    aplicação se a escola não tiver foto), com a turma e a data — também na versão impressa / PDF.
 - Ficha do aluno: dados pessoais, todas as faltas (pode anular faltas que registou e que ainda não foram justificadas),
   as **ocorrências disciplinares** (leve, grave ou muito grave — qualquer professor da turma regista; cada um só
   apaga as que registou) e a pauta

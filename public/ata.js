@@ -66,6 +66,17 @@
     return;
   }
 
+  // Só se grava depois de confirmar que os presentes foram avisados (dados de alunos menores: RGPD)
+  const consentimento = form.querySelector('[data-ditado-consentimento]');
+  const atualizarConsentimento = () => {
+    if (aGravar || !consentimento) return;
+    botao.disabled = !consentimento.checked;
+    if (!consentimento.checked) estado.textContent = 'Antes de gravar, confirme que os presentes foram informados.';
+    else if (estado.textContent.startsWith('Antes de gravar')) estado.textContent = '';
+  };
+  consentimento?.addEventListener('change', atualizarConsentimento);
+  atualizarConsentimento();
+
   const tempo = () => {
     const s = Math.floor((Date.now() - inicio) / 1000);
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;

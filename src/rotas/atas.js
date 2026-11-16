@@ -3,7 +3,9 @@
 // Os outros professores da turma e o administrador só leem. O áudio nunca chega ao servidor: só texto.
 const { get, post } = require('../lib/servidor');
 const { um, executar } = require('../db');
-const { pagina, vazio, icone, botaoImprimir, estatico } = require('../vistas/layout');
+const { pagina, vazio, icone, botaoImprimir, estatico, LOGO } = require('../vistas/layout');
+const { escolaAtual } = require('../lib/contexto');
+const { urlFotoEscola } = require('../lib/foto-escola');
 const { h, hoje, formatarData, formatarDataLonga } = require('../lib/util');
 const { gerarAta } = require('../lib/ata');
 
@@ -40,9 +42,24 @@ function presentesDoFormulario(r, corpo) {
   return presentes;
 }
 
+// Cabeçalho do documento da ata: o logótipo da escola (a foto escolhida no painel da plataforma, ou o
+// logótipo da aplicação se a escola não tiver foto) e o nome da escola — também sai na versão impressa / PDF
+function cabecalhoEscola(r) {
+  const escola = escolaAtual();
+  const foto = urlFotoEscola(escola, 256);
+  return `<header class="ata-cabecalho">
+      ${foto ? `<img class="ata-logo" src="${h(foto)}" alt="Logótipo da ${h(escola.nome)}" width="64" height="64">` : `<span class="ata-logo ata-logo-app">${LOGO}</span>`}
+      <div>
+        <strong>${h(escola.nome)}</strong>
+        <span>Ata da reunião de turma · ${h(r.turma)} · ${h(formatarData(r.data))}</span>
+      </div>
+    </header>`;
+}
+
 function cartaoAtaGuardada(r) {
   const quando = r.ata_em ? `${formatarData(r.ata_em)} às ${r.ata_em.slice(11, 16)}` : '';
-  return `<section class="cartao">
+  return `<section class="cartao cartao-ata">
+    ${cabecalhoEscola(r)}
     <div class="cartao-topo">
       <h2>Ata</h2>
       <span class="texto-suave">Escrita por ${h(r.ata_por_nome || '—')}${quando ? ` · ${h(quando)}` : ''}</span>
@@ -63,6 +80,8 @@ function formularioAta(r, { transcricao = '', ata = '', marcados = { delegado: t
       <p class="texto-suave">Carregue em <strong>Começar a gravar</strong> no início da reunião e deixe o computador perto de quem fala.
         O que for dito vai aparecendo escrito na caixa em baixo; pode corrigir o texto à mão a qualquer momento.
         Diga «parágrafo» para mudar de parágrafo.</p>
+      <label class="linha-check consentimento"><input type="checkbox" data-ditado-consentimento>
+        <span>Os presentes foram informados de que a reunião vai ser gravada e transcrita, e concordaram.</span></label>
       <div class="ditado" data-ditado>
         <button type="button" class="botao" data-ditado-botao>${icone('microfone')}<span>Começar a gravar</span></button>
         <span class="ditado-estado" data-ditado-estado aria-live="polite"></span>

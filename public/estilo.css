@@ -852,3 +852,16 @@ a.etiqueta:focus-visible {
   /* Os filetes e as tramas têm de sair na impressão */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Ata: confirmação de que os presentes foram avisados da gravação */
+.consentimento { display: flex; margin-bottom: .8rem; }
+
+/* Ata: cabeçalho do documento com o logótipo da escola (sai também na impressão / PDF) */
+.ata-cabecalho { display: flex; align-items: center; gap: 1rem; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 2px solid var(--tinta); }
+.ata-cabecalho > div { display: flex; flex-direction: column; gap: .15rem; }
+.ata-cabecalho strong { font: 700 1.25rem/1.2 var(--letra-titulos); }
+.ata-cabecalho span { color: var(--tinta-suave); font-size: .9rem; }
+.ata-logo { flex: none; width: 64px; height: 64px; border-radius: 10px; object-fit: cover; }
+.ata-logo-app { display: grid; place-items: center; background: #000; color: #fff; }
+.ata-logo-app svg { width: 40px; height: 40px; }
+@media print { .cartao-ata { border: 0; box-shadow: none; padding: 0; } }
