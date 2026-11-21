@@ -4,6 +4,7 @@ const { todos, um, executar, transacao } = require('../db');
 const { pagina, vazio, grelhaHorario, avatar, botaoImprimir } = require('../vistas/layout');
 const { etiquetaFalta } = require('./aluno');
 const { pautaDoAluno } = require('./avaliacao');
+const { situacaoPorModulo, verificarAvisosFaltas, etiquetaModulo } = require('../lib/avisos-faltas');
 const {
   h,
   hoje,
@@ -74,6 +75,37 @@ async function avisosDeFaltas(professorId) {
     })
     .filter((l) => l.percentagem >= LIMITE_FALTAS * 0.7) // avisa a partir de 70% do limite (7% de faltas)
     .sort((x, y) => y.percentagem - x.percentagem);
+}
+
+// Módulos em que alunos das turmas que dirige já chegaram a metade ou ao limite de faltas (10% das horas)
+async function cartaoModulosDoDiretor(professorId) {
+  const alunos = await todos('SELECT a.id FROM alunos a JOIN turmas t ON t.id = a.turma_id WHERE t.diretor_id = ?', professorId);
+  const situacao = await situacaoPorModulo(alunos.map((a) => a.id));
+  if (!situacao.length) return '';
+  const porAluno = new Map();
+  for (const s of situacao) {
+    if (!porAluno.has(s.aluno_id)) porAluno.set(s.aluno_id, { ...s, modulos: [] });
+    porAluno.get(s.aluno_id).modulos.push(s);
+  }
+  const noLimite = situacao.filter((s) => s.nivel === 'limite').length;
+  return `<section class="cartao">
+    <div class="cartao-topo"><h2>Faltas por módulo</h2>
+      <span class="texto-suave">${porAluno.size} aluno(s) · ${noLimite} módulo(s) no limite</span></div>
+    <p class="texto-suave">Alunos das turmas que dirige que já chegaram a metade ou ao limite de faltas de um módulo
+      (${LIMITE_FALTAS * 100}% das horas do módulo). Em cada um destes momentos, o aluno, o encarregado e o diretor de turma
+      recebem um email automático. Em cada etiqueta: faltas / limite, em horas.</p>
+    <div class="tabela-scroll"><table class="tabela">
+      <thead><tr><th>Aluno</th><th>Módulos</th></tr></thead>
+      <tbody>${[...porAluno.values()]
+        .map(
+          (a) => `<tr>
+        <td><a class="aluno-linha" href="/professor/alunos/${a.aluno_id}"><span>${h(a.aluno)}<small>${h(a.turma || '')}</small></span></a></td>
+        <td><div class="lista-etiquetas">${a.modulos.map(etiquetaModulo).join('')}</div></td>
+      </tr>`
+        )
+        .join('')}</tbody>
+    </table></div>
+  </section>`;
 }
 
 // Uma linha por aluno, com uma etiqueta por disciplina (antes era uma linha por aluno e disciplina, e a
@@ -254,7 +286,7 @@ get('/professor', async (req, res) => res.redirecionar('/professor/turmas'));
 get('/professor/turmas', async (req, res) => {
   if (!req.professor) return semFicha(req, res);
   const cartaoNovas = cartaoNovidades(await novidadesRecentes(req.professor.id));
-  const cartaoAvisos = cartaoAvisosDeFaltas(await avisosDeFaltas(req.professor.id));
+  const cartaoAvisos = cartaoAvisosDeFaltas(await avisosDeFaltas(req.professor.id)) + (await cartaoModulosDoDiretor(req.professor.id));
   const turmas = await turmasDoProfessor(req.professor.id);
   if (!turmas.length) {
     return res.html(
@@ -767,6 +799,7 @@ post('/professor/aula', async (req, res) => {
   );
 
   let criadas = 0;
+  const comFaltaNova = new Set();
   let anuladas = 0;
   await transacao(async (tx) => {
     await tx.executar(
@@ -799,11 +832,16 @@ post('/professor/aula', async (req, res) => {
         req.utilizador.id
       );
       criadas++;
+      if (tipo === 'presenca') comFaltaNova.add(Number(alunoId));
     }
   });
 
+  // Chegou alguém a metade ou ao limite de faltas do módulo? Avisa por email (só uma vez por nível)
+  const avisados = await verificarAvisosFaltas([...comFaltaNova], moduloId);
+
   const partes = ['sumário'];
   if (criadas) partes.push(`${criadas} falta(s) registada(s)`);
+  if (avisados) partes.push(`${avisados} aluno(s) avisado(s) por email por chegar a metade ou ao limite de faltas do módulo`);
   if (anuladas) partes.push(`${anuladas} falta(s) anulada(s)`);
   req.flash('sucesso', `Aula guardada: ${partes.join(', ')}.`);
   res.redirecionar(voltar);

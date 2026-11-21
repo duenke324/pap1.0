@@ -3,6 +3,23 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.8.0] — 2026-11-21
+
+### Novo
+- **Aviso de excesso de faltas por módulo**: quando um aluno chega a metade e ao limite de faltas de um módulo (10% das
+  horas do módulo), o aluno, o encarregado de educação e o diretor de turma recebem um email automático (cada aviso só
+  uma vez). Cartão "Faltas por módulo" no painel do aluno, do encarregado e do diretor de turma.
+- **Cópias de segurança automáticas**: uma cópia da base de dados por dia em `data/copias/`, ficam as últimas 7. Lista,
+  descarga e "Fazer uma cópia agora" no painel da plataforma (Conta); `npm run copia` e `npm run restaurar`.
+- **Segurança no login**: 5 palavras-passe erradas seguidas bloqueiam a conta 15 minutos (Gestão Escolar, Conversas e
+  plataforma). A direção ("Segurança da conta") e o gestor ("Conta") podem ligar um **código de entrada por email**.
+- **Testes automáticos** (`npm test`): permissões, escolas separadas, tarefas da Conversas, avisos de faltas, login e
+  cópias de segurança — numa base de dados de teste, sem tocar nos dados verdadeiros.
+
+### Alterado
+- Tabelas novas `avisos_faltas` e `tentativas_login`, colunas `utilizadores.email_codigo` e `gestores.email` (criadas
+  sozinhas no arranque).
+
 ## [1.7.0] — 2026-11-16
 
 ### Novo
@@ -60,7 +77,7 @@ Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
   dados ficam na primeira escola. As fotografias e os justificativos passaram para uma subpasta com o código da escola.
 - `npm run seed` recria só os dados da primeira escola (as outras escolas, a lista de escolas e o gestor ficam).
 
- — 2026-11-13
+## [1.3.0] — 2026-11-13
 
 ### Novo
 - **Tudo instalável como app (PWA)**: a Gestão Escolar, a Conversas e o painel da plataforma podem ser

@@ -36,6 +36,7 @@ const MENUS = {
     { href: '/admin/justificativos', chave: 'justificativos', texto: 'Justificativos' },
     { href: '/admin/funcionarios', chave: 'funcionarios', texto: 'Funcionários' },
     { href: '/admin/auditoria', chave: 'auditoria', texto: 'Auditoria' },
+    { href: '/admin/seguranca', chave: 'seguranca', texto: 'Segurança da conta' },
   ],
   funcionario: [
     { href: '/funcionario', chave: 'inicio', texto: 'Painel' },
@@ -104,6 +105,7 @@ const ICONE_MENU = {
   justificativos: 'ficheiro',
   funcionarios: 'pessoas',
   auditoria: 'lista',
+  seguranca: 'cartao',
   aula: 'quadro',
   avaliacao: 'estrela',
   testes: 'lapis',

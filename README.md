@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.7
+# Sistema de Gestão Escolar — versão 1.8
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
@@ -25,6 +25,9 @@ npm start          # inicia em http://localhost:3000
 npm run dev        # reinicia sozinho quando se altera o código
 npm run seed       # APAGA os dados da primeira escola e recria os de demonstração (as outras escolas ficam)
 npm run atualizar-bd  # atualiza a base de dados sem apagar dados
+npm test           # corre os testes automáticos (precisa do MySQL ligado; usa uma base de dados de teste)
+npm run copia      # faz já uma cópia de segurança da base de dados (data/copias/)
+npm run restaurar  # lista as cópias; "npm run restaurar -- <ficheiro>" restaura uma
 ```
 
 Na primeira execução é criada automaticamente no MySQL a base de dados **`gestao_escolar`**, com todas as escolas
@@ -86,6 +89,49 @@ Como funciona por dentro:
   (ou a da variável de ambiente `PLATAFORMA_PASSWORD`), que **tem de ser trocada no primeiro acesso**.
 - Código: [src/lib/contexto.js](src/lib/contexto.js) (a escola de cada pedido), [src/lib/escolas.js](src/lib/escolas.js)
   (escolha da escola, arranque, criar escola) e [src/rotas/plataforma.js](src/rotas/plataforma.js) (o painel).
+
+### Cópias de segurança automáticas
+
+A Gestão Escolar faz sozinha **uma cópia de segurança por dia** de toda a base de dados (todas as escolas e a
+plataforma): no arranque, se ainda não houver cópia desse dia, e depois verifica de hora a hora. As cópias ficam em
+`data/copias/copia_AAAA-MM-DD_HHMM.sql` e guardam-se só as **últimas 7** (as mais antigas são apagadas).
+
+- No **painel da plataforma → Conta** aparece a lista das cópias, com **Descarregar** e **Fazer uma cópia agora**.
+- **Restaurar**: parar a Gestão Escolar e a Conversas e correr `npm run restaurar -- copia_….sql` (pede para escrever
+  SIM). O ficheiro também pode ser importado no phpMyAdmin.
+- A cópia é feita só com o `mysql2` (não precisa do `mysqldump`). Leva a estrutura e os dados das tabelas; as vistas,
+  a função `escola_atual()` e os gatilhos são recriados pela aplicação. As sessões e os pedidos de recuperação de
+  palavra-passe vão sem dados (são códigos de acesso).
+- `COPIAS_GUARDADAS` (por omissão 7) muda quantas ficam; `COPIAS_AUTOMATICAS=0` desliga as cópias automáticas.
+  Código: [src/lib/copias.js](src/lib/copias.js) e [src/restaurar-copia.js](src/restaurar-copia.js).
+
+### Segurança no login
+
+- **Bloqueio**: ao fim de **5 palavras-passe erradas seguidas** numa conta, essa conta fica bloqueada **15 minutos**
+  (mesmo com a palavra-passe certa). Vale para a Gestão Escolar, a Conversas e o painel da plataforma, e também
+  para utilizadores que não existem (para não se poder descobrir quais existem). Nas duas últimas tentativas a
+  página avisa quantas faltam.
+- **Código por email (direção e gestor)**: a direção (menu **Segurança da conta**) e o gestor da plataforma (página
+  **Conta**) podem indicar um email. Depois de o confirmarem com um código enviado para lá, cada entrada pede, além da
+  palavra-passe, um **código de 6 algarismos** enviado para esse email (válido 10 minutos, 5 tentativas). Assim, quem
+  descobrir a palavra-passe não consegue entrar. Sem SMTP configurado, o código aparece na consola do servidor.
+- Código: [src/lib/seguranca-login.js](src/lib/seguranca-login.js).
+
+### Testes automáticos
+
+`npm test` corre os testes da pasta [test/](test/) com o *test runner* do Node (sem bibliotecas extra). Antes de
+começar, cria uma base de dados só para os testes (`gestao_escolar_teste`) e uma pasta temporária para os
+ficheiros, e arranca a Gestão Escolar (porta 3091) e a Conversas (porta 3191); no fim apaga tudo. **Os dados
+verdadeiros nunca são tocados.** O MySQL tem de estar ligado.
+
+| Ficheiro | O que verifica |
+| --- | --- |
+| `permissoes.test.js` | sem sessão não se vê nada; o aluno e o professor não entram na administração; palavra-passe errada; pedidos de outro site (CSRF) |
+| `escolas.test.js` | uma escola não vê, não altera e não apaga os dados de outra, e as contas de uma não entram na outra |
+| `tarefas.test.js` | só os alunos do grupo entregam; o professor devolve com nota; depois de devolvida não se muda; o aluno não devolve |
+| `faltas.test.js` | limite de faltas por módulo; avisos à metade e ao limite, só uma vez cada; o cartão no painel do aluno |
+| `login.test.js` | bloqueio depois de 5 tentativas; código por email da direção e do gestor |
+| `copias.test.js` | conteúdo da cópia, ficam só 7, não se descarrega fora da pasta, restaurar devolve os dados |
 
 ### Recuperação de palavra-passe (email)
 
@@ -254,6 +300,8 @@ canal, "Chat" numa conversa). Nos canais as mensagens são **publicações em ca
 ### Painel do Aluno
 No topo de cada página aparece a **ficha de identificação** (fotografia, processo, nome, situação, ano letivo,
 curso, turma, diretor de turma e encarregado de educação); as secções estão no menu lateral.
+- **Faltas por módulo**: quando chega a metade ou ao limite de faltas de um módulo (10% das horas do módulo),
+  aparece em cima um cartão com esses módulos (faltas / limite) — e recebe um email (ver "Aviso de excesso de faltas")
 - Informações: calendário do ano letivo (início e fim dos períodos, com o período atual assinalado),
   interrupções letivas, avisos da escola, aulas de hoje, próximas avaliações e a **próxima reunião de turma**
   — para o delegado e o subdelegado aparece em destaque, com a indicação de que foram convocados
@@ -271,7 +319,14 @@ curso, turma, diretor de turma e encarregado de educação); as secções estão
 - As minhas turmas: separadores para filtrar a turma, pesquisa de alunos, contagem de faltas
 - **Diretor de turma**: ao abrir "As minhas turmas", um cartão **"Novidades nas suas turmas"** com as ocorrências
   graves e muito graves e as novas faltas por justificar dos últimos 7 dias, e um cartão **"Faltas a acompanhar"**
-  com uma linha por aluno e uma etiqueta por disciplina em que está perto (≥ 7%) ou acima (≥ 10%) do limite de faltas
+  com uma linha por aluno e uma etiqueta por disciplina em que está perto (≥ 7%) ou acima (≥ 10%) do limite de faltas,
+  e um cartão **"Faltas por módulo"** com os alunos que já chegaram a metade ou ao limite de faltas de um módulo
+- **Aviso de excesso de faltas**: num curso profissional o aluno pode faltar a 10% das horas de cada módulo. Cada
+  falta de presença conta como uma hora do módulo da lição desse dia (o módulo escolhido no sumário). Quando, ao
+  guardar uma aula, um aluno chega a **metade** das faltas permitidas num módulo e quando chega ao **limite**, a
+  aplicação envia sozinha um **email ao aluno, ao encarregado de educação e ao diretor de turma** (cada aviso só sai
+  uma vez; quem salta logo para o limite recebe só o do limite). Contam as faltas justificadas e as injustificadas.
+  Módulos sem horas definidas não têm limite nem avisos. Código: [src/lib/avisos-faltas.js](src/lib/avisos-faltas.js)
 - **Reuniões de turma**: o diretor de turma marca (data, hora, local, assunto) e cancela as reuniões da turma;
   os outros professores da turma veem-nas. As que já passaram ficam esbatidas e deixam de poder ser canceladas.
 - **Ata da reunião (ditada ao microfone)**: a partir do dia da reunião aparece «Escrever ata». O diretor de turma
@@ -305,7 +360,8 @@ curso, turma, diretor de turma e encarregado de educação); as secções estão
 
 ### Painel do Encarregado de Educação
 - Painel: um cartão por educando (assiduidade, total de faltas, faltas por justificar e pedidos à espera de
-  validação), o contacto do diretor de turma e os avisos da escola
+  validação), o contacto do diretor de turma e os avisos da escola; se o educando chegou a metade ou ao limite de
+  faltas de um módulo, aparece o cartão **"Faltas por módulo"** (e o encarregado recebe um email nesse momento)
 - Faltas: lista das faltas do educando; seleciona as faltas, indica o motivo e **anexa o justificativo**
   (PDF, JPG ou PNG, até 3 MB — por exemplo, uma fotografia do atestado médico)
 - Justificativos: histórico dos pedidos enviados, com o estado (**pendente de validação**, aceite ou recusado)
@@ -368,6 +424,7 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
 - **Auditoria**: histórico de quem criou, editou ou apagou turmas, professores, funcionários, disciplinas e alunos —
   com destaque para mudanças de diretor de turma, de delegado/subdelegado, de curso de uma turma e de turma de um aluno.
   Mostra os 200 registos mais recentes, com filtro por tipo.
+- **Segurança da conta**: indicar e confirmar um email para o **código de entrada** (ver "Segurança no login")
 
 ### Aspeto
 Cada parte tem a sua cara, para nunca se confundirem:
@@ -421,6 +478,10 @@ src/
   lib/escolas.js        Escolhe a escola de cada pedido, prepara as bases de dados no arranque e cria escolas
   rotas/recuperacao.js  Recuperação de palavra-passe (pedido e ligação enviada por email)
   lib/email.js          Envio de email por SMTP (ou para a consola, se o SMTP não estiver configurado)
+  lib/avisos-faltas.js  Faltas por módulo: limite (10% das horas), avisos por email à metade e ao limite, cartões
+  lib/copias.js         Cópias de segurança diárias da base de dados (data/copias/, ficam as últimas 7) e restauro
+  lib/seguranca-login.js Bloqueio depois de várias tentativas erradas e código de entrada por email
+  restaurar-copia.js    npm run copia / npm run restaurar
 database/escola.sql   Esquema de uma escola (a aplicação converte-o para tb_… + vistas, ver src/db.js)
 database/plataforma.sql Tabelas da plataforma (escolas e gestor), na mesma base de dados
 public/               CSS (estilo.css: base e entrada; painel.css: painéis das escolas; plataforma.css: painel
@@ -429,6 +490,8 @@ public/               CSS (estilo.css: base e entrada; painel.css: painéis das 
 public/vendor/        Bibliotecas de terceiros incluídas localmente (Chart.js, para os gráficos de assiduidade)
 data/fotos/           Fotografias dos alunos (a BD guarda o nome do ficheiro)
 data/justificativos/  Justificativos enviados pelos encarregados (a BD guarda o nome do ficheiro)
+data/copias/          Cópias de segurança da base de dados (uma por dia, ficam as últimas 7)
+test/                 Testes automáticos (npm test): permissões, escolas separadas, tarefas, faltas, login, cópias
 scripts/build-mac.sh  Gera o GestaoEscolar.app (npm run build:mac)
 teams/                App separada "Conversas" (npm run conversas) — visual e servidor próprios,
                       mesma base de dados (usa src/db.js e src/lib/util.js da Gestão Escolar)
@@ -448,9 +511,10 @@ Tudo fica numa só base de dados, `gestao_escolar`, com as escolas separadas lá
 | No phpMyAdmin | O que é |
 |---------------|---------|
 | `escolas` | uma linha por escola: o `id` é o `escola_id` dessa escola em todas as outras tabelas ([database/plataforma.sql](database/plataforma.sql)) |
-| `gestores` | a conta do gestor da plataforma |
-| `tb_alunos`, `tb_turmas`, … (30) | os dados de **todas** as escolas; a primeira coluna, `escola_id`, diz de que escola é cada linha |
-| `alunos`, `turmas`, … (30 vistas) | o mesmo que `tb_…`, mas só com as linhas da escola de quem está ligado |
+| `gestores` | a conta do gestor da plataforma (com o `email` do código de entrada) |
+| `tentativas_login` | palavras-passe erradas seguidas por conta e até quando a conta está bloqueada |
+| `tb_alunos`, `tb_turmas`, … (33) | os dados de **todas** as escolas; a primeira coluna, `escola_id`, diz de que escola é cada linha |
+| `alunos`, `turmas`, … (33 vistas) | o mesmo que `tb_…`, mas só com as linhas da escola de quem está ligado |
 
 - Cada ligação da aplicação à base de dados começa com `SET @escola_id = <id da escola>`; as vistas filtram por
   `escola_id = escola_atual()` (uma função que devolve esse valor). Assim, as consultas da aplicação continuam a ser
@@ -469,7 +533,7 @@ Tudo fica numa só base de dados, `gestao_escolar`, com as escolas separadas lá
 
 Em cada escola, as tabelas (vistas) são:
 
-`utilizadores` (login e papel) · `turmas` · `disciplinas` · `professores` · `alunos` ·
+`utilizadores` (login e papel; na direção, `email_codigo` é o email do código de entrada) · `turmas` · `disciplinas` · `professores` · `alunos` ·
 `professor_disciplinas` · `tempos` (tempos letivos do dia) ·
 `horario` (cada linha é um tempo letivo semanal: turma, disciplina, professor, dia, horas, sala, ativo) ·
 `faltas` (aluno, aula do horário, data, tipo, justificação, quem registou e quem justificou) · `testes` ·
@@ -477,6 +541,7 @@ Em cada escola, as tabelas (vistas) são:
 `justificativos` (motivo, ficheiro, estado, quem enviou e quem decidiu) e `justificativo_faltas` (as faltas de cada pedido) ·
 `modulos` (módulos de cada disciplina) · `licoes` (aulas dadas: aula do horário, data, módulo e sumário) ·
 `notas` (classificação de cada aluno em cada módulo: nota 0–20, NC ou EF) ·
+`avisos_faltas` (avisos de faltas já enviados: aluno, módulo, nível metade/limite) ·
 `calendario` (períodos e interrupções letivas) · `avisos` (para todos ou para uma turma) ·
 `ocorrencias` (ocorrências disciplinares: aluno, gravidade, descrição, data, quem registou) ·
 `reunioes_turma` (data, hora, local, assunto e a **ata**, com quem a escreveu e quando; o delegado e o subdelegado estão
@@ -499,6 +564,10 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - Cada escola só vê as suas linhas (vistas por escola, ver "Base de dados"): uma sessão de uma escola não serve noutra
 - Todo o texto é escapado antes de ir para o HTML (proteção contra XSS)
 - Verificação da origem dos pedidos POST (proteção básica contra CSRF)
+- 5 palavras-passe erradas seguidas bloqueiam a conta 15 minutos; a direção e o gestor podem ligar um **código de
+  entrada por email** (ver "Segurança no login")
+- Cópias de segurança diárias da base de dados (ver "Cópias de segurança automáticas")
+- Testes automáticos das permissões e da separação entre escolas (`npm test`)
 - Fotografias validadas (tipo e assinatura do ficheiro) e servidas apenas a utilizadores autenticados
 - Justificativos: só PDF, JPG e PNG até 3 MB, confirmados pelos primeiros bytes do ficheiro (não pelo nome nem pelo
   tipo que o browser indica) e guardados com um nome aleatório. O ficheiro só é servido à administração, ao
@@ -523,8 +592,10 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - Fora do primeiro acesso forçado e da recuperação por email, o próprio utilizador não tem um ecrã para mudar a
   palavra-passe (só o gestor da plataforma tem, para a sua conta)
 - Sem HTTPS — para uso real deve ficar atrás de um servidor com HTTPS (ex.: nginx, Caddy)
-- O encarregado de educação só é avisado por email da resposta aos justificativos (e só se tiver email na ficha);
-  não há aviso quando é marcada uma falta nova
+- O encarregado de educação é avisado por email da resposta aos justificativos e quando o educando chega a metade
+  ou ao limite de faltas de um módulo (só se tiver email na ficha); não há aviso a cada falta nova
+- As cópias de segurança ficam no mesmo computador do servidor: para estarem mesmo seguras, devem ser copiadas de
+  vez em quando para outro sítio (disco externo, nuvem) — o botão "Descarregar" do painel da plataforma ajuda
 - Apagar um aluno não apaga a conta do encarregado; essa conta fica sem educandos até ser associada a outro aluno
 - Uma base de dados criada antes do papel Encarregado não tem as contas de demonstração `EE2450`/`EE2310`: crie a
   conta na ficha do aluno, ou use `npm run seed`

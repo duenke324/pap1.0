@@ -894,3 +894,102 @@ post('/admin/faltas/:id/injustificar', async (req, res) => {
   req.flash(r.changes ? 'sucesso' : 'erro', r.changes ? 'Justificação retirada.' : 'Falta não encontrada.');
   res.redirecionar(destinoSeguro(req.corpo.voltar));
 });
+
+// ---------- Segurança da conta da direção: código de entrada por email ----------
+// Com um email confirmado, cada login da direção pede também um código enviado para esse email
+// (ver lib/seguranca-login.js). O email só fica guardado depois de se escrever o código enviado para
+// lá, para um engano a escrevê-lo não deixar a direção sem conseguir entrar.
+const {
+  criarCodigo,
+  verificarCodigo,
+  mascararEmail,
+  emailValido,
+  textoEmailCodigo,
+  MINUTOS_CODIGO,
+  MAX_FALHAS,
+  MINUTOS_BLOQUEIO,
+} = require('../lib/seguranca-login');
+const { enviarEmail } = require('../lib/email');
+const { escolaAtual } = require('../lib/contexto');
+
+async function paginaSeguranca(req, res, { erro = '' } = {}, estado = 200) {
+  const conta = await um('SELECT email_codigo FROM utilizadores WHERE id = ?', req.utilizador.id);
+  const pendente = req.sessao.dados.confirmarEmail;
+  const conteudo = `
+    <section class="cartao">
+      <h2>Código de entrada por email</h2>
+      <p>${
+        conta.email_codigo
+          ? `<span class="etiqueta etiqueta-ok">Ligado</span> Cada vez que a direção entra, é pedido um código enviado para <strong>${h(conta.email_codigo)}</strong>.`
+          : `<span class="etiqueta etiqueta-aviso">Desligado</span> Indique um email para, além da palavra-passe, ser pedido um código em cada entrada. Assim, quem descobrir a palavra-passe não consegue entrar.`
+      }</p>
+      ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
+      ${
+        pendente
+          ? `<form method="post" action="/admin/seguranca/confirmar" class="formulario">
+              <p>Enviámos um código para <strong>${h(pendente.email)}</strong> (válido ${MINUTOS_CODIGO} minutos). Escreva-o para confirmar o email.</p>
+              <label>Código <input name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required autofocus></label>
+              <div class="acoes"><button class="botao">Confirmar</button>
+                <button class="botao botao-secundario" name="cancelar" value="1" formnovalidate>Cancelar</button></div>
+            </form>`
+          : `<form method="post" action="/admin/seguranca" class="formulario">
+              <label>${conta.email_codigo ? 'Mudar para outro email' : 'Email da direção'}
+                <input name="email" type="email" maxlength="120" required placeholder="direcao@exemplo.pt"></label>
+              <div class="acoes"><button class="botao">Enviar código de confirmação</button></div>
+            </form>
+            ${
+              conta.email_codigo
+                ? `<form method="post" action="/admin/seguranca/desligar" data-confirmar="Desligar o código de entrada? A conta fica protegida só pela palavra-passe.">
+                    <button class="botao botao-perigo">Desligar o código de entrada</button></form>`
+                : ''
+            }`
+      }
+    </section>
+    <section class="cartao">
+      <h2>Tentativas erradas</h2>
+      <p class="texto-suave">Em todas as contas da escola, ao fim de ${MAX_FALHAS} palavras-passe erradas seguidas a conta fica bloqueada
+        durante ${MINUTOS_BLOQUEIO} minutos. Depois volta a funcionar sozinha.</p>
+    </section>`;
+  res.html(pagina(req, { titulo: 'Segurança da conta', ativo: 'seguranca' }, conteudo), estado);
+}
+
+get('/admin/seguranca', (req, res) => paginaSeguranca(req, res));
+
+post('/admin/seguranca', async (req, res) => {
+  const email = String(req.corpo.email || '').trim().toLowerCase();
+  if (!emailValido(email)) return paginaSeguranca(req, res, { erro: 'Escreva um email válido.' }, 400);
+  const { codigo, pendente } = criarCodigo({ email });
+  req.sessao.dados.confirmarEmail = pendente;
+  await enviarEmail({
+    para: email,
+    assunto: `${escolaAtual().nome} — código de confirmação: ${codigo}`,
+    texto: textoEmailCodigo(codigo, { nome: req.utilizador.nome, para: 'confirmar', escola: escolaAtual().nome }),
+  });
+  res.redirecionar('/admin/seguranca');
+});
+
+post('/admin/seguranca/confirmar', async (req, res) => {
+  const pendente = req.sessao.dados.confirmarEmail;
+  if (!pendente || req.corpo.cancelar) {
+    delete req.sessao.dados.confirmarEmail;
+    return res.redirecionar('/admin/seguranca');
+  }
+  const resultado = verificarCodigo(pendente, req.corpo.codigo);
+  if (resultado === 'errado') return paginaSeguranca(req, res, { erro: 'Código errado. Confirme e tente outra vez.' }, 400);
+  delete req.sessao.dados.confirmarEmail;
+  if (resultado === 'expirado') {
+    req.flash('erro', 'O código expirou ou foi escrito errado demasiadas vezes. Peça outro.');
+    return res.redirecionar('/admin/seguranca');
+  }
+  await executar('UPDATE utilizadores SET email_codigo = ? WHERE id = ?', pendente.email, req.utilizador.id);
+  await registarLog(req, 'editar', 'utilizador', req.utilizador.id, `Código de entrada por email ligado (${mascararEmail(pendente.email)})`);
+  req.flash('sucesso', 'Email confirmado. A partir de agora, ao entrar, é pedido um código enviado para este email.');
+  res.redirecionar('/admin/seguranca');
+});
+
+post('/admin/seguranca/desligar', async (req, res) => {
+  await executar('UPDATE utilizadores SET email_codigo = NULL WHERE id = ?', req.utilizador.id);
+  await registarLog(req, 'editar', 'utilizador', req.utilizador.id, 'Código de entrada por email desligado');
+  req.flash('sucesso', 'Código de entrada desligado.');
+  res.redirecionar('/admin/seguranca');
+});

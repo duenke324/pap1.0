@@ -3,6 +3,7 @@ const { get } = require('../lib/servidor');
 const { todos, um } = require('../db');
 const { pagina, vazio, grelhaHorario, botaoImprimir } = require('../vistas/layout');
 const { pautaDoAluno } = require('./avaliacao');
+const { situacaoPorModulo, cartaoFaltasModulos } = require('../lib/avisos-faltas');
 const {
   h,
   hoje,
@@ -215,10 +216,13 @@ get('/aluno', async (req, res) => {
       )
     : null;
 
+  const faltasModulos = cartaoFaltasModulos(await situacaoPorModulo([aluno.id]));
+
   const conteudo = `
     <div class="grelha-informacoes">
       <aside>${cartaoCalendario(anoLetivo, calendario)}</aside>
       <div>
+        ${faltasModulos}
         <section class="cartao">
           <div class="cartao-topo"><h2>Aulas de hoje</h2><a href="/aluno/horario">Ver horário</a></div>
           ${

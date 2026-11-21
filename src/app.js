@@ -11,6 +11,21 @@ const { correrNoContexto, escolaAtual, contextoAtual } = require('./lib/contexto
 const { resolverContextoGestao, contextoDaEscola, prepararTudo } = require('./lib/escolas');
 const { manifesto, nomeCurto, enviarManifesto } = require('./lib/pwa');
 const { ficheiroFotoEscola, urlFotoEscola } = require('./lib/foto-escola');
+const { agendarCopias } = require('./lib/copias');
+const { enviarEmail } = require('./lib/email');
+const {
+  chaveLogin,
+  minutosBloqueado,
+  registarFalha,
+  limparFalhas,
+  mensagemFalha,
+  mensagemBloqueio,
+  criarCodigo,
+  verificarCodigo,
+  mascararEmail,
+  textoEmailCodigo,
+  MINUTOS_CODIGO,
+} = require('./lib/seguranca-login');
 
 const PORTA = Number(process.env.PORT) || 3000;
 const PASTA_PUBLICA = path.join(pastaBase(), 'public');
@@ -52,9 +67,9 @@ async function antesDaRota(req, res) {
   // Painel da plataforma: conta própria (o gestor), fora de qualquer escola
   if (/^\/plataforma(\/|$)/.test(req.caminho)) {
     const gestorId = req.sessao.dados.gestorId;
-    if (gestorId) req.gestor = await plataforma.um('SELECT id, username, nome, deve_redefinir_password FROM gestores WHERE id = ?', gestorId);
+    if (gestorId) req.gestor = await plataforma.um('SELECT id, username, nome, email, deve_redefinir_password FROM gestores WHERE id = ?', gestorId);
     // (o manifesto do PWA tem de abrir sem sessão: o browser pede-o sem cookies)
-    if (!req.gestor && !['/plataforma/login', '/plataforma/manifest.webmanifest'].includes(req.caminho)) {
+    if (!req.gestor && !['/plataforma/login', '/plataforma/login/codigo', '/plataforma/manifest.webmanifest'].includes(req.caminho)) {
       res.redirecionar('/plataforma/login');
       return false;
     }
@@ -71,7 +86,7 @@ async function antesDaRota(req, res) {
 
   const ficheiroPwa = ['/manifest.webmanifest', '/sw.js', '/offline.html'].includes(req.caminho) || req.caminho.startsWith('/foto-escola/');
   // (a recuperação de palavra-passe tem de funcionar sem sessão: é para quem não consegue entrar)
-  const publico = req.caminho === '/login' || ficheiroPwa || /^\/recuperar-password(\/|$)/.test(req.caminho);
+  const publico = req.caminho === '/login' || req.caminho === '/login/codigo' || ficheiroPwa || /^\/recuperar-password(\/|$)/.test(req.caminho);
   if (!publico && !req.utilizador) {
     res.redirecionar('/login');
     return false;
@@ -169,11 +184,71 @@ get('/login', async (req, res) => {
 post('/login', async (req, res) => {
   const username = String(req.corpo.username || '').trim();
   const password = String(req.corpo.password || '');
-  const utilizador = await um('SELECT * FROM utilizadores WHERE username = ?', username);
+  // Conta bloqueada por várias palavras-passe erradas (ver lib/seguranca-login.js)
+  const chave = chaveLogin(escolaAtual().id, username);
+  const espera = await minutosBloqueado(chave);
+  if (espera) return res.html(await paginaLogin(req, { username, erro: mensagemBloqueio(espera) }), 429);
 
+  const utilizador = await um('SELECT * FROM utilizadores WHERE username = ?', username);
   if (!utilizador || !verificarPassword(password, utilizador.password_hash)) {
-    return res.html(await paginaLogin(req, { username, erro: 'Utilizador ou palavra-passe incorretos.' }), 401);
+    return res.html(await paginaLogin(req, { username, erro: mensagemFalha(await registarFalha(chave)) }), 401);
   }
+  await limparFalhas(chave);
+
+  // Direção com email confirmado: falta o código enviado por email
+  if (utilizador.papel === 'admin' && utilizador.email_codigo) {
+    const { codigo, pendente } = criarCodigo({ utilizadorId: utilizador.id, email: utilizador.email_codigo });
+    (await renovarSessao(req)).dados.codigoLogin = pendente;
+    await enviarEmail({
+      para: utilizador.email_codigo,
+      assunto: `${escolaAtual().nome} — código para entrar: ${codigo}`,
+      texto: textoEmailCodigo(codigo, { nome: utilizador.nome, escola: escolaAtual().nome }),
+    });
+    return res.redirecionar('/login/codigo');
+  }
+  (await renovarSessao(req)).dados.utilizadorId = utilizador.id;
+  res.redirecionar(PAGINA_INICIAL[utilizador.papel]);
+});
+
+// Segundo passo do login da direção: o código de 6 algarismos enviado por email
+function paginaCodigo(req, { erro = '' } = {}) {
+  const pendente = req.sessao.dados.codigoLogin;
+  return paginaEntrada('Código de entrada', {
+    tituloPainel: 'Confirme que é você',
+    painel: `
+      <p class="entrada-texto">Enviámos um código de 6 algarismos para <strong>${h(mascararEmail(pendente.email))}</strong>.
+        Escreva-o para entrar. É válido durante ${MINUTOS_CODIGO} minutos.</p>
+      ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
+      <form method="post" action="/login/codigo" class="entrada-form">
+        <label>Código
+          <input name="codigo" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus>
+        </label>
+        <button class="botao botao-bloco">Entrar</button>
+      </form>
+      <hr class="entrada-linha">
+      <p class="entrada-texto">Não recebeu? Veja na pasta de spam, ou <a class="entrada-ligacao" href="/login">volte a entrar</a> para receber outro.</p>`,
+    informacao: informacaoLogin(),
+  });
+}
+
+get('/login/codigo', (req, res) => {
+  if (req.utilizador) return res.redirecionar(PAGINA_INICIAL[req.utilizador.papel]);
+  if (!req.sessao.dados.codigoLogin) return res.redirecionar('/login');
+  res.html(paginaCodigo(req));
+});
+
+post('/login/codigo', async (req, res) => {
+  const pendente = req.sessao.dados.codigoLogin;
+  if (!pendente) return res.redirecionar('/login');
+  const resultado = verificarCodigo(pendente, req.corpo.codigo);
+  if (resultado === 'errado') return res.html(paginaCodigo(req, { erro: 'Código errado. Confirme e tente outra vez.' }), 401);
+  if (resultado === 'expirado') {
+    delete req.sessao.dados.codigoLogin;
+    req.flash('erro', 'O código expirou ou foi escrito errado demasiadas vezes. Entre outra vez para receber um código novo.');
+    return res.redirecionar('/login');
+  }
+  const utilizador = await um('SELECT id, papel FROM utilizadores WHERE id = ?', pendente.utilizadorId);
+  if (!utilizador) return res.redirecionar('/login');
   (await renovarSessao(req)).dados.utilizadorId = utilizador.id;
   res.redirecionar(PAGINA_INICIAL[utilizador.papel]);
 });
@@ -355,6 +430,8 @@ async function iniciar() {
     console.log(`  MySQL: base de dados "${CONFIG.database}" (escolas separadas pelo escola_id)`);
     for (const e of escolas) console.log(`  ${e.ativa ? '' : '[inativa] '}${e.nome} → http://localhost:${PORTA}/${e.codigo}  (escola_id ${e.id})`);
     console.log(`  Painel da plataforma → http://localhost:${PORTA}/plataforma`);
+    // Cópia de segurança da base de dados, uma vez por dia (data/copias/, ficam as últimas 7)
+    agendarCopias();
   });
 }
 

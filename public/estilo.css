@@ -865,3 +865,9 @@ a.etiqueta:focus-visible {
 .ata-logo-app { display: grid; place-items: center; background: #000; color: #fff; }
 .ata-logo-app svg { width: 40px; height: 40px; }
 @media print { .cartao-ata { border: 0; box-shadow: none; padding: 0; } }
+
+/* Faltas por módulo (avisos de metade / limite) no painel do aluno e do encarregado */
+.cartao-faltas-modulos { border-left: 4px solid var(--aviso, #b7791f); }
+.cartao-faltas-modulos.com-limite { border-left-color: var(--perigo, #c53030); }
+.cartao-faltas-modulos .lista-simples li { justify-content: space-between; align-items: center; }
+.cartao-faltas-modulos .lista-simples li > span:first-child { display: flex; flex-direction: column; }

@@ -32,7 +32,8 @@ const CONFIG = {
 // trazer os dados para a base de dados única. Não são apagadas.
 const BD_PLATAFORMA_ANTIGA = process.env.DB_PLATAFORMA || (process.env.DB_NAME ? `${process.env.DB_NAME}_plataforma` : 'gestao_plataforma');
 
-const PASTA_DADOS = path.join(pastaBase(), 'data');
+// (PASTA_DADOS pode ser mudada por variável de ambiente: os testes automáticos usam uma pasta temporária)
+const PASTA_DADOS = process.env.PASTA_DADOS || path.join(pastaBase(), 'data');
 const PASTA_FOTOS = path.join(PASTA_DADOS, 'fotos');
 const FICHEIRO_ESQUEMA = path.join(pastaBase(), 'database', 'escola.sql');
 const FICHEIRO_ESQUEMA_PLATAFORMA = path.join(pastaBase(), 'database', 'plataforma.sql');
@@ -271,6 +272,7 @@ async function acrescentarNovidades(ligacao, bd) {
   }
   // Colunas novas em tabelas que já existiam
   await ligacao.query("ALTER TABLE tb_canais ADD COLUMN IF NOT EXISTS tipo ENUM('canal','grupo') NOT NULL DEFAULT 'canal' AFTER nome");
+  await ligacao.query('ALTER TABLE tb_utilizadores ADD COLUMN IF NOT EXISTS email_codigo VARCHAR(120) AFTER nome');
 }
 
 // Função escola_atual(), uma vista por tabela (com o nome antigo) e o gatilho que preenche o escola_id.
@@ -506,6 +508,8 @@ module.exports = {
   prepararBaseDeDados,
   nomeBdValido,
   fecharLigacoes,
+  ligacaoDeAdministracao,
+  criarVistas,
   CONFIG,
   TABELAS_ESCOLA,
   PASTA_DADOS,

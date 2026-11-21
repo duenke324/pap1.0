@@ -45,3 +45,16 @@ CREATE TABLE IF NOT EXISTS gestores (
   nome                    VARCHAR(120) NOT NULL,
   deve_redefinir_password TINYINT(1)   NOT NULL DEFAULT 0
 ) ENGINE = InnoDB;
+
+-- Email do gestor, para o código de entrada (ver src/lib/seguranca-login.js). Só fica preenchido depois
+-- de confirmado com um código enviado para lá.
+ALTER TABLE gestores ADD COLUMN IF NOT EXISTS email VARCHAR(120) AFTER nome;
+
+-- Palavras-passe erradas seguidas, por conta (chave = "<escola_id>:<utilizador>", "plataforma:<utilizador>"…).
+-- Ao fim de 5, a conta fica bloqueada 15 minutos (bloqueado_ate). Ver src/lib/seguranca-login.js.
+CREATE TABLE IF NOT EXISTS tentativas_login (
+  chave         VARCHAR(200) PRIMARY KEY,
+  falhas        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  bloqueado_ate DATETIME,
+  atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE = InnoDB;

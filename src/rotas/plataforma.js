@@ -9,6 +9,7 @@
 // Inclui também as duas páginas públicas de escolha da escola:
 //   /escolas          lista das escolas (aparece quando há mais do que uma e o browser ainda não escolheu)
 //   /<codigo>/…       endereços de cada escola (/epmontijo/login); /escola/<codigo> continua a levar para lá
+const fs = require('node:fs');
 const { get, post, renovarSessao, terminarSessao, acrescentarCookie } = require('../lib/servidor');
 const { plataforma, escolasAtivas, escolaPorCodigo } = require('../db');
 const { documento, paginaEntrada, mensagensFlash, icone, LOGO } = require('../vistas/layout');
@@ -26,6 +27,9 @@ const { pdfPalavrasPasse } = require('../lib/pdf');
 const { APP_URL } = require('../lib/email');
 const { instaladorAtalho, pacoteServidor } = require('../lib/instaladores');
 const { urlFotoEscola, guardarFotoEscola, removerFotoEscola } = require('../lib/foto-escola');
+const { listarCopias, caminhoCopia, fazerCopia, COPIAS_GUARDADAS } = require('../lib/copias');
+const seguranca = require('../lib/seguranca-login');
+const { enviarEmail } = require('../lib/email');
 
 // Endereço de entrada da escola, completo (ex.: http://localhost:3000/epmontijo)
 const ligacaoDaEscolaPara = (escola) => `${APP_URL}/${escola.codigo}`;
@@ -134,7 +138,7 @@ function paginaPlataforma(req, titulo, conteudo, { ativo = 'escolas' } = {}) {
 }
 
 // ---------- Entrar e sair ----------
-function paginaLoginPlataforma(req, { username = '', erro = '' } = {}) {
+function paginaLoginPlataforma(req, { username = '', erro = '', codigo = null } = {}) {
   return documento(
     'Entrar · Plataforma',
     `<main class="pf-entrada">
@@ -144,7 +148,18 @@ function paginaLoginPlataforma(req, { username = '', erro = '' } = {}) {
         <p class="pf-suave">Área reservada ao gestor da plataforma, para criar e gerir as escolas.</p>
         ${mensagensFlash(req.lerFlash())}
         ${erro ? `<div class="alerta alerta-erro" role="alert">${h(erro)}</div>` : ''}
-        <form method="post" action="/plataforma/login" class="pf-form">
+        ${
+          codigo
+            ? `<form method="post" action="/plataforma/login/codigo" class="pf-form">
+                <p class="pf-suave">Enviámos um código de 6 algarismos para <strong>${h(seguranca.mascararEmail(codigo.email))}</strong>
+                  (válido ${seguranca.MINUTOS_CODIGO} minutos).</p>
+                <label>Código <input name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required autofocus></label>
+                <button class="pf-botao pf-botao-bloco">Entrar</button>
+                <a class="pf-suave pf-pequeno" href="/plataforma/login?novo=1">Não recebeu? Entrar outra vez</a>
+              </form>`
+            : ''
+        }
+        <form method="post" action="/plataforma/login" class="pf-form"${codigo ? ' hidden' : ''}>
           <label>Utilizador
             <input name="username" value="${h(username)}" autocomplete="username" required autofocus>
           </label>
@@ -163,14 +178,44 @@ function paginaLoginPlataforma(req, { username = '', erro = '' } = {}) {
 
 get('/plataforma/login', (req, res) => {
   if (req.gestor) return res.redirecionar('/plataforma');
-  res.html(paginaLoginPlataforma(req));
+  if (req.query.novo) delete req.sessao.dados.codigoGestor;
+  res.html(paginaLoginPlataforma(req, { codigo: req.sessao.dados.codigoGestor }));
+});
+
+// Segundo passo, quando o gestor tem email confirmado: o código enviado por email
+post('/plataforma/login/codigo', async (req, res) => {
+  const pendente = req.sessao.dados.codigoGestor;
+  if (!pendente) return res.redirecionar('/plataforma/login');
+  const resultado = seguranca.verificarCodigo(pendente, req.corpo.codigo);
+  if (resultado === 'errado') return res.html(paginaLoginPlataforma(req, { codigo: pendente, erro: 'Código errado. Confirme e tente outra vez.' }), 401);
+  delete req.sessao.dados.codigoGestor;
+  if (resultado === 'expirado') {
+    req.flash('erro', 'O código expirou ou foi escrito errado demasiadas vezes. Entre outra vez para receber um código novo.');
+    return res.redirecionar('/plataforma/login');
+  }
+  (await renovarSessao(req)).dados.gestorId = pendente.gestorId;
+  res.redirecionar('/plataforma');
 });
 
 post('/plataforma/login', async (req, res) => {
   const username = String(req.corpo.username || '').trim();
+  const chave = seguranca.chaveLogin('plataforma', username);
+  const espera = await seguranca.minutosBloqueado(chave);
+  if (espera) return res.html(paginaLoginPlataforma(req, { username, erro: seguranca.mensagemBloqueio(espera) }), 429);
   const gestor = await plataforma.um('SELECT * FROM gestores WHERE username = ?', username);
   if (!gestor || !verificarPassword(String(req.corpo.password || ''), gestor.password_hash)) {
-    return res.html(paginaLoginPlataforma(req, { username, erro: 'Utilizador ou palavra-passe incorretos.' }), 401);
+    return res.html(paginaLoginPlataforma(req, { username, erro: seguranca.mensagemFalha(await seguranca.registarFalha(chave)) }), 401);
+  }
+  await seguranca.limparFalhas(chave);
+  if (gestor.email) {
+    const { codigo, pendente } = seguranca.criarCodigo({ gestorId: gestor.id, email: gestor.email });
+    (await renovarSessao(req)).dados.codigoGestor = pendente;
+    await enviarEmail({
+      para: gestor.email,
+      assunto: `Plataforma — código para entrar: ${codigo}`,
+      texto: seguranca.textoEmailCodigo(codigo, { nome: gestor.nome, escola: 'a plataforma das escolas' }),
+    });
+    return res.redirecionar('/plataforma/login');
   }
   (await renovarSessao(req)).dados.gestorId = gestor.id;
   res.redirecionar('/plataforma');
@@ -384,8 +429,126 @@ get('/plataforma/conta', (req, res) => {
         <p class="pf-suave">Utilizador <code>${h(req.gestor.username)}</code> · gestor da plataforma</p>
       </div>
     </section>
-    <div class="pf-estreito-esq">${cartaoPassword(false)}</div>`;
+    <div class="pf-estreito-esq">${cartaoPassword(false)}${cartaoCodigoEmail(req)}${cartaoCopias()}</div>`;
   res.html(paginaPlataforma(req, 'Conta', conteudo, { ativo: 'conta' }));
+});
+
+// ---------- Código de entrada por email (ver src/lib/seguranca-login.js) ----------
+// O email só fica guardado depois de confirmado com um código enviado para lá.
+function cartaoCodigoEmail(req) {
+  const pendente = req.sessao.dados.confirmarEmailGestor;
+  const email = req.gestor.email;
+  return `<section class="pf-cartao">
+    <h2>${iconePf('chave')} Código de entrada por email</h2>
+    <p class="pf-suave">${
+      email
+        ? `Ligado: ao entrar, além da palavra-passe é pedido um código enviado para <strong>${h(email)}</strong>.`
+        : 'Desligado. Com um email confirmado, cada entrada pede também um código enviado para lá.'
+    } Em todas as contas, ${seguranca.MAX_FALHAS} palavras-passe erradas seguidas bloqueiam a conta durante ${seguranca.MINUTOS_BLOQUEIO} minutos.</p>
+    ${
+      pendente
+        ? `<form method="post" action="/plataforma/conta/email/confirmar" class="pf-form">
+            <p class="pf-suave">Enviámos um código para <strong>${h(pendente.email)}</strong>. Escreva-o para confirmar.</p>
+            <label>Código <input name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required></label>
+            <button class="pf-botao">Confirmar</button>
+            <button class="pf-botao pf-botao-sec" name="cancelar" value="1" formnovalidate>Cancelar</button>
+          </form>`
+        : `<form method="post" action="/plataforma/conta/email" class="pf-form">
+            <label>${email ? 'Mudar para outro email' : 'Email'} <input name="email" type="email" maxlength="120" required></label>
+            <button class="pf-botao pf-botao-sec">Enviar código de confirmação</button>
+          </form>
+          ${email ? '<form method="post" action="/plataforma/conta/email/desligar" class="pf-form"><button class="pf-botao pf-botao-sec">Desligar o código de entrada</button></form>' : ''}`
+    }
+  </section>`;
+}
+
+post('/plataforma/conta/email', async (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  const email = String(req.corpo.email || '').trim().toLowerCase();
+  if (!seguranca.emailValido(email)) {
+    req.flash('erro', 'Escreva um email válido.');
+    return res.redirecionar('/plataforma/conta');
+  }
+  const { codigo, pendente } = seguranca.criarCodigo({ email });
+  req.sessao.dados.confirmarEmailGestor = pendente;
+  await enviarEmail({
+    para: email,
+    assunto: `Plataforma — código de confirmação: ${codigo}`,
+    texto: seguranca.textoEmailCodigo(codigo, { nome: req.gestor.nome, para: 'confirmar', escola: 'a plataforma das escolas' }),
+  });
+  res.redirecionar('/plataforma/conta');
+});
+
+post('/plataforma/conta/email/confirmar', async (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  const pendente = req.sessao.dados.confirmarEmailGestor;
+  if (!pendente || req.corpo.cancelar) {
+    delete req.sessao.dados.confirmarEmailGestor;
+    return res.redirecionar('/plataforma/conta');
+  }
+  const resultado = seguranca.verificarCodigo(pendente, req.corpo.codigo);
+  if (resultado === 'errado') {
+    req.flash('erro', 'Código errado. Confirme e tente outra vez.');
+    return res.redirecionar('/plataforma/conta');
+  }
+  delete req.sessao.dados.confirmarEmailGestor;
+  if (resultado === 'expirado') {
+    req.flash('erro', 'O código expirou ou foi escrito errado demasiadas vezes. Peça outro.');
+  } else {
+    await plataforma.executar('UPDATE gestores SET email = ? WHERE id = ?', pendente.email, req.gestor.id);
+    req.flash('sucesso', 'Email confirmado. A partir de agora, ao entrar, é pedido um código enviado para este email.');
+  }
+  res.redirecionar('/plataforma/conta');
+});
+
+post('/plataforma/conta/email/desligar', async (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  await plataforma.executar('UPDATE gestores SET email = NULL WHERE id = ?', req.gestor.id);
+  req.flash('sucesso', 'Código de entrada desligado.');
+  res.redirecionar('/plataforma/conta');
+});
+
+// ---------- Cópias de segurança da base de dados (ver src/lib/copias.js) ----------
+function cartaoCopias() {
+  const copias = listarCopias();
+  const tamanho = (b) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB`);
+  return `<section class="pf-cartao">
+    <h2>${iconePf('descarregar')} Cópias de segurança</h2>
+    <p class="pf-suave pf-pequeno">Todos os dias a aplicação guarda sozinha uma cópia da base de dados (todas as escolas) em
+      <code>data/copias/</code>. Ficam as últimas ${COPIAS_GUARDADAS}. Para restaurar: pare os servidores e use
+      <code>npm run restaurar -- &lt;ficheiro&gt;</code>.</p>
+    ${
+      copias.length
+        ? `<div class="pf-tabela-scroll"><table class="pf-tabela">
+            <thead><tr><th>Cópia</th><th>Tamanho</th><th></th></tr></thead>
+            <tbody>${copias
+              .map(
+                (c) => `<tr><td>${h(c.criada_em.toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' }))} <small class="pf-suave">${h(c.nome)}</small></td><td>${tamanho(c.tamanho)}</td>
+                  <td><a href="/plataforma/copias/${encodeURIComponent(c.nome)}" download>Descarregar</a></td></tr>`
+              )
+              .join('')}</tbody></table></div>`
+        : '<p class="pf-vazio">Ainda não há cópias.</p>'
+    }
+    <form method="post" action="/plataforma/copias" class="pf-form"><button class="pf-botao pf-botao-sec">Fazer uma cópia agora</button></form>
+  </section>`;
+}
+
+post('/plataforma/copias', async (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  try {
+    const nome = await fazerCopia();
+    req.flash('sucesso', `Cópia de segurança feita: ${nome}.`);
+  } catch (erro) {
+    req.flash('erro', `Não foi possível fazer a cópia: ${erro.message}`);
+  }
+  res.redirecionar('/plataforma/conta');
+});
+
+get('/plataforma/copias/:nome', (req, res) => {
+  if (exigirPasswordPropria(req, res)) return;
+  const ficheiro = caminhoCopia(req.params.nome);
+  if (!ficheiro) return res.redirecionar('/plataforma/conta');
+  enviarDescarga(res, { nome: req.params.nome, dados: fs.readFileSync(ficheiro) }, 'application/sql; charset=utf-8');
 });
 
 // Enquanto a palavra-passe inicial não for trocada, só se pode trocá-la

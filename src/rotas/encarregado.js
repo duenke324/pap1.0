@@ -4,6 +4,7 @@ const { get, post } = require('../lib/servidor');
 const { todos, transacao } = require('../db');
 const { pagina, vazio, avatar, botaoImprimir } = require('../vistas/layout');
 const { faltasDoAluno, etiquetaFalta } = require('./aluno');
+const { situacaoPorModulo, cartaoFaltasModulos } = require('../lib/avisos-faltas');
 const {
   guardarFicheiroJustificativo,
   apagarFicheiroJustificativo,
@@ -68,9 +69,14 @@ get('/encarregado', async (req, res) => {
     turmas.length ? turmas : [0]
   );
   const pct = (x) => String(x).replace('.', ',');
+  const situacao = await situacaoPorModulo(educandos.map((e) => e.id));
 
   const cartoes = educandos
     .map((e) => {
+      const modulos = cartaoFaltasModulos(
+        situacao.filter((s) => s.aluno_id === e.id),
+        { paraEncarregado: true, nome: e.nome }
+      );
       const base = aulasDadas(e.aulas, e.faltas_presenca);
       const assiduidade = base ? Math.round((1 - e.faltas_presenca / base) * 1000) / 10 : null;
       const abaixo = assiduidade !== null && assiduidade < (1 - LIMITE_FALTAS) * 100;
@@ -89,7 +95,7 @@ get('/encarregado', async (req, res) => {
         </div>
         <p class="legenda">Diretor(a) de turma: ${h(e.diretor || '—')}${e.diretor_email ? ` · <a href="mailto:${h(e.diretor_email)}">${h(e.diretor_email)}</a>` : ''}.
           ${abaixo ? `A assiduidade está abaixo de ${(1 - LIMITE_FALTAS) * 100}%: fale com o diretor de turma.` : ''}</p>
-      </section>`;
+      </section>${modulos}`;
     })
     .join('');
 

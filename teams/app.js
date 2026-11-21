@@ -6,6 +6,7 @@ const { get, post, criarServidor, renovarSessao, terminarSessao, guardarSessao, 
 const { manifesto, enviarManifesto } = require('../src/lib/pwa');
 const { um, plataforma, escolaPorDominio, CONFIG } = require('../src/db');
 const { verificarPassword, h } = require('../src/lib/util');
+const seguranca = require('../src/lib/seguranca-login');
 const { correrNoContexto, contextoAtual, escolaAtual } = require('../src/lib/contexto');
 const {
   escolaDoPedido,
@@ -109,6 +110,10 @@ post('/login', async (req, res) => {
 
 async function entrarNaEscola(req, res, escola, email) {
   const password = String(req.corpo.password || '');
+  // Várias palavras-passe erradas seguidas bloqueiam a conta 15 minutos (ver src/lib/seguranca-login.js)
+  const chave = seguranca.chaveLogin('conversas', escola.id, email);
+  const espera = await seguranca.minutosBloqueado(chave);
+  if (espera) return res.html(paginaLogin({ email, erro: seguranca.mensagemBloqueio(espera) }), 429);
   // O email vive em professores/alunos/funcionarios, não em utilizadores — por isso o JOIN em vez de um WHERE
   // direto. O JOIN a funcionarios é necessário mesmo esta app não lhes dando acesso: sem ele, uma conta de
   // funcionário nunca é encontrada e cai sempre no erro genérico de "credenciais incorretas" (401) em vez do
@@ -126,8 +131,10 @@ async function entrarNaEscola(req, res, escola, email) {
   );
 
   if (!utilizador || !verificarPassword(password, utilizador.password_hash)) {
-    return res.html(paginaLogin({ email, erro: 'Email ou palavra-passe incorretos.' }), 401);
+    const falha = await seguranca.registarFalha(chave);
+    return res.html(paginaLogin({ email, erro: seguranca.mensagemFalha(falha, 'Email ou palavra-passe incorretos.') }), 401);
   }
+  await seguranca.limparFalhas(chave);
   if (!['professor', 'aluno'].includes(utilizador.papel)) {
     return res.html(paginaLogin({ email, erro: 'Esta conta não tem acesso a Conversas.' }), 403);
   }

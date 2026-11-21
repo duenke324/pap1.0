@@ -13,12 +13,15 @@ USE gestao_escolar;
 -- Contas de acesso (alunos, professores e administradores)
 -- deve_redefinir_password: fica a 1 sempre que o administrador cria a conta ou define uma
 -- palavra-passe nova; a própria pessoa tem de a substituir no primeiro acesso seguinte.
+-- email_codigo: só para a direção (papel admin): email confirmado para onde vai o código de entrada
+-- (ver src/lib/seguranca-login.js). Os outros papéis têm o email na sua ficha (alunos, professores…).
 CREATE TABLE IF NOT EXISTS utilizadores (
   id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   username                VARCHAR(50)  NOT NULL UNIQUE,
   password_hash           VARCHAR(200) NOT NULL,
   papel                   ENUM('aluno', 'professor', 'admin', 'funcionario', 'encarregado') NOT NULL,
   nome                    VARCHAR(120) NOT NULL,
+  email_codigo            VARCHAR(120),
   deve_redefinir_password TINYINT(1)   NOT NULL DEFAULT 0,
   criado_em               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE = InnoDB;
@@ -395,6 +398,21 @@ CREATE TABLE IF NOT EXISTS notas (
   CONSTRAINT fk_nota_aluno   FOREIGN KEY (aluno_id)    REFERENCES alunos(id)       ON DELETE CASCADE,
   CONSTRAINT fk_nota_modulo  FOREIGN KEY (modulo_id)   REFERENCES modulos(id),
   CONSTRAINT fk_nota_lancou  FOREIGN KEY (lancada_por) REFERENCES utilizadores(id) ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+-- Avisos de excesso de faltas já enviados (ver src/lib/avisos-faltas.js): quando um aluno chega a
+-- metade e ao limite de faltas (10% das horas) de um módulo, avisa-se por email o aluno, o encarregado
+-- e o diretor de turma. Uma linha por aluno, módulo e nível, para cada aviso só sair uma vez.
+CREATE TABLE IF NOT EXISTS avisos_faltas (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  aluno_id   INT UNSIGNED NOT NULL,
+  modulo_id  INT UNSIGNED NOT NULL,
+  nivel      ENUM('metade', 'limite') NOT NULL,
+  faltas     SMALLINT UNSIGNED NOT NULL,
+  enviado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_aviso_faltas (aluno_id, modulo_id, nivel),
+  CONSTRAINT fk_aviso_faltas_aluno  FOREIGN KEY (aluno_id)  REFERENCES alunos(id)  ON DELETE CASCADE,
+  CONSTRAINT fk_aviso_faltas_modulo FOREIGN KEY (modulo_id) REFERENCES modulos(id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 
 -- Calendário escolar: períodos letivos e interrupções (Natal, Carnaval, Páscoa…) de cada ano letivo
