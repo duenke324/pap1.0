@@ -5,6 +5,9 @@ const { pastaBase } = require('../lib/recursos');
 const { escolaAtual } = require('../lib/contexto');
 const { h, iniciais, DIAS_CURTOS, anoLetivoAtual, CARGOS_FUNCIONARIO } = require('../lib/util');
 
+// Última entrada do menu de todos os papéis: mudar a palavra-passe (src/rotas/conta.js)
+const CONTA = { href: '/conta', chave: 'conta', texto: 'A minha conta' };
+
 const MENUS = {
   aluno: [
     { href: '/aluno', chave: 'inicio', texto: 'Informações' },
@@ -15,6 +18,7 @@ const MENUS = {
     { href: '/aluno/sumarios', chave: 'sumarios', texto: 'Sumários' },
     { href: '/aluno/testes', chave: 'testes', texto: 'Testes' },
     { href: '/aluno/horario', chave: 'horario', texto: 'Horário' },
+    CONTA,
   ],
   professor: [
     { href: '/professor/turmas', chave: 'turmas', texto: 'As minhas turmas' },
@@ -23,6 +27,7 @@ const MENUS = {
     { href: '/professor/avaliacao', chave: 'avaliacao', texto: 'Avaliação' },
     { href: '/professor/testes', chave: 'testes', texto: 'Testes e avaliações' },
     { href: '/professor/horario', chave: 'horario', texto: 'Horário' },
+    CONTA,
   ],
   admin: [
     { href: '/admin', chave: 'inicio', texto: 'Painel' },
@@ -37,15 +42,18 @@ const MENUS = {
     { href: '/admin/funcionarios', chave: 'funcionarios', texto: 'Funcionários' },
     { href: '/admin/auditoria', chave: 'auditoria', texto: 'Auditoria' },
     { href: '/admin/seguranca', chave: 'seguranca', texto: 'Segurança da conta' },
+    CONTA,
   ],
   funcionario: [
     { href: '/funcionario', chave: 'inicio', texto: 'Painel' },
     { href: '/funcionario/dados', chave: 'dados', texto: 'Dados pessoais' },
+    CONTA,
   ],
   encarregado: [
     { href: '/encarregado', chave: 'inicio', texto: 'Painel' },
     { href: '/encarregado/faltas', chave: 'faltas', texto: 'Faltas' },
     { href: '/encarregado/justificativos', chave: 'justificativos', texto: 'Justificativos' },
+    CONTA,
   ],
 };
 
@@ -88,6 +96,7 @@ const ICONES = {
   cartao: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M5.8 16c.4-1.4 1.5-2.2 2.7-2.2s2.3.8 2.7 2.2M14 10h4M14 13h3"/>',
   texto: '<path d="M5 6h14M5 10h14M5 14h9M5 18h6"/>',
   lista: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/>',
+  chave: '<circle cx="8" cy="14" r="4"/><path d="m11 11 8-8M16 6l2 2M14 8l2 2"/>',
   maleta: '<rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M9 7V5h6v2M3.5 12h17"/>',
 };
 
@@ -106,6 +115,7 @@ const ICONE_MENU = {
   funcionarios: 'pessoas',
   auditoria: 'lista',
   seguranca: 'cartao',
+  conta: 'chave',
   aula: 'quadro',
   avaliacao: 'estrela',
   testes: 'lapis',

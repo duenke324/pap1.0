@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.8
+# Sistema de Gestão Escolar — versão 1.9
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 
@@ -115,6 +115,11 @@ plataforma): no arranque, se ainda não houver cópia desse dia, e depois verifi
   **Conta**) podem indicar um email. Depois de o confirmarem com um código enviado para lá, cada entrada pede, além da
   palavra-passe, um **código de 6 algarismos** enviado para esse email (válido 10 minutos, 5 tentativas). Assim, quem
   descobrir a palavra-passe não consegue entrar. Sem SMTP configurado, o código aparece na consola do servidor.
+- **Mudar a palavra-passe**: em todos os perfis (aluno, professor, encarregado, funcionário e direção), a última
+  entrada do menu, **A minha conta**, permite mudar a palavra-passe escrevendo primeiro a atual (pelo menos 6
+  caracteres, diferente da atual). A palavra-passe atual errada conta como uma tentativa errada: ao fim de 5 a conta
+  fica bloqueada e a sessão termina. Depois de mudar, as sessões abertas noutros computadores (e na Conversas)
+  terminam. Fica registado na auditoria. Código: [src/rotas/conta.js](src/rotas/conta.js).
 - Código: [src/lib/seguranca-login.js](src/lib/seguranca-login.js).
 
 ### Testes automáticos
@@ -131,6 +136,7 @@ verdadeiros nunca são tocados.** O MySQL tem de estar ligado.
 | `tarefas.test.js` | só os alunos do grupo entregam; o professor devolve com nota; depois de devolvida não se muda; o aluno não devolve |
 | `faltas.test.js` | limite de faltas por módulo; avisos à metade e ao limite, só uma vez cada; o cartão no painel do aluno |
 | `login.test.js` | bloqueio depois de 5 tentativas; código por email da direção e do gestor |
+| `conta.test.js` | mudar a palavra-passe: atual errada, confirmação diferente, outras sessões terminam, bloqueio |
 | `copias.test.js` | conteúdo da cópia, ficam só 7, não se descarrega fora da pasta, restaurar devolve os dados |
 
 ### Recuperação de palavra-passe (email)
@@ -477,6 +483,7 @@ src/
   lib/contexto.js       A escola (e a base de dados) do pedido atual
   lib/escolas.js        Escolhe a escola de cada pedido, prepara as bases de dados no arranque e cria escolas
   rotas/recuperacao.js  Recuperação de palavra-passe (pedido e ligação enviada por email)
+  rotas/conta.js        "A minha conta": cada utilizador muda a sua palavra-passe
   lib/email.js          Envio de email por SMTP (ou para a consola, se o SMTP não estiver configurado)
   lib/avisos-faltas.js  Faltas por módulo: limite (10% das horas), avisos por email à metade e ao limite, cartões
   lib/copias.js         Cópias de segurança diárias da base de dados (data/copias/, ficam as últimas 7) e restauro
@@ -589,8 +596,6 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 - A recuperação de palavra-passe só envia emails a sério com um servidor SMTP configurado (ver "Recuperação de
   palavra-passe"); sem ele, a ligação aparece só na consola do servidor. O administrador não tem email na ficha,
   por isso não pode usar a recuperação
-- Fora do primeiro acesso forçado e da recuperação por email, o próprio utilizador não tem um ecrã para mudar a
-  palavra-passe (só o gestor da plataforma tem, para a sua conta)
 - Sem HTTPS — para uso real deve ficar atrás de um servidor com HTTPS (ex.: nginx, Caddy)
 - O encarregado de educação é avisado por email da resposta aos justificativos e quando o educando chega a metade
   ou ao limite de faltas de um módulo (só se tiver email na ficha); não há aviso a cada falta nova
@@ -604,9 +609,8 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 
 ## Ideias para próximas versões
 
-Aviso ao encarregado de educação quando é marcada uma falta nova · ecrã para cada utilizador mudar a sua
-palavra-passe · ícones da aplicação instalável com o logótipo atual · ecrã para editar os tempos letivos.
+Aviso ao encarregado de educação quando é marcada uma falta nova · ícones da aplicação instalável com o logótipo atual · ecrã para editar os tempos letivos.
 
-Já feito, de ideias anteriores: exportar as faltas para Excel (CSV), avisar o encarregado por email da resposta aos
+Já feito, de ideias anteriores: ecrã para cada utilizador mudar a sua palavra-passe ("A minha conta"), exportar as faltas para Excel (CSV), avisar o encarregado por email da resposta aos
 justificativos, recuperar a palavra-passe por email, e o botão "Imprimir / Exportar PDF" no horário, nas faltas e nas
 pautas (usa a função de impressão do browser — no diálogo de impressão, escolher "Guardar como PDF").

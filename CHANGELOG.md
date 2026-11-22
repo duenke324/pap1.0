@@ -3,6 +3,14 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.9.0] — 2026-11-21
+
+### Novo
+- **A minha conta**: em todos os perfis, uma página para mudar a palavra-passe (escrevendo a atual). Depois de mudar,
+  as sessões abertas noutros computadores e na Conversas terminam; a palavra-passe atual errada conta para o bloqueio
+  de 5 tentativas. Fica registado na auditoria.
+- Testes automáticos novos (`conta.test.js`): 28 no total.
+
 ## [1.8.0] — 2026-11-21
 
 ### Novo

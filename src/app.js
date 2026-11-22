@@ -393,6 +393,7 @@ require('./rotas/encarregado');
 require('./rotas/encarregados');
 require('./rotas/justificativos');
 require('./rotas/recuperacao');
+require('./rotas/conta');
 require('./rotas/plataforma');
 
 // ---------- Arranque ----------
