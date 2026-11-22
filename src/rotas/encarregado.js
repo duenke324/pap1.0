@@ -1,19 +1,12 @@
 // Painel do Encarregado de Educação: acompanha as faltas do(s) educando(s) e envia justificativos
 // (PDF ou imagem), que o diretor de turma ou a administração depois aceita ou recusa.
 const { get, post } = require('../lib/servidor');
-const { todos, transacao } = require('../db');
+const { todos, executar } = require('../db');
 const { pagina, vazio, avatar, botaoImprimir } = require('../vistas/layout');
 const { faltasDoAluno, etiquetaFalta } = require('./aluno');
 const { situacaoPorModulo, cartaoFaltasModulos } = require('../lib/avisos-faltas');
-const {
-  guardarFicheiroJustificativo,
-  apagarFicheiroJustificativo,
-  listarJustificativos,
-  listaJustificativos,
-} = require('../lib/justificativos');
+const { registarJustificativo, barraJustificar, listarJustificativos, listaJustificativos } = require('../lib/justificativos');
 const { h, formatarData, formatarDataLonga, comoLista, TIPOS_FALTA, LIMITE_FALTAS, aulasDadas } = require('../lib/util');
-
-const MOTIVOS_SUGERIDOS = ['Doença', 'Consulta médica', 'Motivo familiar', 'Falecimento de familiar', 'Transporte'];
 
 // ---------- Consultas ----------
 // Os educandos deste encarregado, com o resumo das faltas de cada um.
@@ -99,8 +92,24 @@ get('/encarregado', async (req, res) => {
     })
     .join('');
 
+  const ee = req.encarregado;
+  const cartaoEmail = `<section class="cartao no-imprimir">
+      <h2>Avisos de faltas por email</h2>
+      ${
+        ee.email
+          ? `<form method="post" action="/encarregado/avisos" class="filtros">
+              <label class="linha-check"><input type="checkbox" name="avisar" value="1"${ee.avisar_faltas ? ' checked' : ''}>
+                Receber um email em <strong>${h(ee.email)}</strong> sempre que for marcada uma falta nova</label>
+              <button class="botao botao-secundario">Guardar</button>
+            </form>
+            <p class="legenda">Os avisos quando o educando chega a metade ou ao limite de faltas de um módulo são sempre enviados.</p>`
+          : '<p class="texto-suave">Não tem email registado. Peça à secretaria para o acrescentar na ficha do aluno, para receber os avisos de faltas.</p>'
+      }
+    </section>`;
+
   const conteudo = `
     ${cartoes}
+    ${cartaoEmail}
     <section class="cartao">
       <h2>Avisos da escola</h2>
       ${
@@ -119,6 +128,15 @@ get('/encarregado', async (req, res) => {
     </section>`;
 
   res.html(pagina(req, { titulo: 'Painel', ativo: 'inicio', subtitulo: 'Acompanhamento do seu educando' }, conteudo));
+});
+
+// Ligar/desligar o email a cada falta nova (ver avisarFaltasNovas em lib/avisos-faltas.js)
+post('/encarregado/avisos', async (req, res) => {
+  if (!req.encarregado) return res.redirecionar('/encarregado');
+  const avisar = req.corpo.avisar === '1';
+  await executar('UPDATE encarregados SET avisar_faltas = ? WHERE id = ?', avisar ? 1 : 0, req.encarregado.id);
+  req.flash('sucesso', avisar ? 'Vai receber um email a cada falta nova.' : 'Deixa de receber um email a cada falta nova.');
+  res.redirecionar('/encarregado');
 });
 
 // ---------- Faltas do educando e envio do justificativo ----------
@@ -161,15 +179,7 @@ get('/encarregado/faltas', async (req, res) => {
       }
       ${
         haPorJustificar
-          ? `<div class="barra-justificar no-imprimir">
-              <datalist id="motivos">${MOTIVOS_SUGERIDOS.map((m) => `<option value="${h(m)}">`).join('')}</datalist>
-              <label class="crescer">Motivo da falta
-                <input name="motivo" list="motivos" maxlength="200" placeholder="Ex.: Doença" required></label>
-              <label>Justificativo <small class="texto-suave">(PDF, JPG ou PNG, máx. 3 MB)</small>
-                <input type="file" accept="application/pdf,image/jpeg,image/png" data-ficheiro-justificativo required></label>
-              <input type="hidden" name="ficheiro_dados" data-dados-justificativo>
-              <button class="botao">Enviar justificativo</button>
-            </div>
+          ? `${barraJustificar()}
             <p class="legenda">Selecione as faltas a que o documento diz respeito, indique o motivo e anexe o justificativo
               (por exemplo, uma fotografia do atestado médico). O pedido fica pendente até ser validado pelo diretor de turma ou pela secretaria.</p>`
           : faltas.length
@@ -192,52 +202,20 @@ post('/encarregado/justificativos', async (req, res) => {
     return res.redirecionar('/encarregado/faltas');
   }
   const voltar = `/encarregado/faltas?aluno=${educando.id}`;
-  const ids = [...new Set(comoLista(req.corpo.ids).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
-  const motivo = String(req.corpo.motivo || '').trim().slice(0, 200);
-
-  let erro = '';
-  if (!ids.length) erro = 'Selecione pelo menos uma falta.';
-  else if (!motivo) erro = 'Indique o motivo da falta.';
-  else if (!req.corpo.ficheiro_dados) erro = 'Anexe o justificativo (PDF ou imagem).';
-  if (erro) {
-    req.flash('erro', erro);
+  const r = await registarJustificativo({
+    alunoId: educando.id,
+    utilizadorId: req.utilizador.id,
+    faltas: await faltasDoAluno(educando.id),
+    ids: comoLista(req.corpo.ids),
+    motivo: req.corpo.motivo,
+    ficheiroDados: req.corpo.ficheiro_dados,
+  });
+  if (r.erro) {
+    req.flash('erro', r.erro);
     return res.redirecionar(voltar);
   }
 
-  // As faltas têm de ser deste educando, estar por justificar e não ter já um pedido pendente
-  const validas = (await faltasDoAluno(educando.id)).filter((f) => ids.includes(f.id) && !f.justificada && !f.pendente);
-  if (validas.length !== ids.length) {
-    req.flash('erro', 'Algumas das faltas escolhidas já foram justificadas ou já têm um justificativo à espera de validação.');
-    return res.redirecionar(voltar);
-  }
-
-  let ficheiro;
-  try {
-    ficheiro = guardarFicheiroJustificativo(String(req.corpo.ficheiro_dados));
-  } catch (e) {
-    req.flash('erro', e.message);
-    return res.redirecionar(voltar);
-  }
-
-  try {
-    await transacao(async (tx) => {
-      const j = await tx.executar(
-        'INSERT INTO justificativos (aluno_id, enviado_por, motivo, ficheiro) VALUES (?, ?, ?, ?)',
-        educando.id,
-        req.utilizador.id,
-        motivo,
-        ficheiro
-      );
-      for (const id of ids) {
-        await tx.executar('INSERT INTO justificativo_faltas (justificativo_id, falta_id) VALUES (?, ?)', j.lastInsertRowid, id);
-      }
-    });
-  } catch (e) {
-    apagarFicheiroJustificativo(ficheiro); // a BD não mudou: o ficheiro não pode ficar sem dono
-    throw e;
-  }
-
-  req.flash('sucesso', `Justificativo enviado para ${ids.length} falta(s). Fica pendente até ser validado pela escola.`);
+  req.flash('sucesso', `Justificativo enviado para ${r.quantas} falta(s). Fica pendente até ser validado pela escola.`);
   res.redirecionar('/encarregado/justificativos');
 });
 

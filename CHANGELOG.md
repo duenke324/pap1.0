@@ -3,6 +3,24 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.10.0] — 2026-11-22
+
+### Novo
+- **Conta do encarregado criada com o aluno menor**: ao criar um aluno menor de idade (ou sem data de nascimento), o
+  nome do encarregado é obrigatório e a conta dele (código `EE` + n.º de processo) é criada logo; o formulário tem também
+  o email e o contacto do encarregado.
+- **O aluno maior de idade justifica as suas faltas**: na página Faltas, como o encarregado (faltas, motivo e
+  documento); o diretor de turma ou a secretaria decidem e a resposta vai para o email do aluno.
+- **Email ao encarregado a cada falta nova**, ao guardar a aula (dia, aula, tipo e ligação para justificar). O
+  encarregado pode desligar no Painel.
+- **Manual do utilizador** (`docs/manual-utilizador.md`) e **guião da demonstração para o júri**
+  (`docs/guiao-demonstracao.md`).
+- Testes novos (`encarregados.test.js`): 32 no total.
+
+### Alterado
+- Coluna nova `encarregados.avisar_faltas` (criada sozinha no arranque).
+- O envio de justificativos passou para `src/lib/justificativos.js` (usado pelo encarregado e pelo aluno maior).
+
 ## [1.9.0] — 2026-11-21
 
 ### Novo

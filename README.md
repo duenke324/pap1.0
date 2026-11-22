@@ -1,6 +1,7 @@
-# Sistema de Gestão Escolar — versão 1.9
+# Sistema de Gestão Escolar — versão 1.10
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
+> **Manual do utilizador**: [docs/manual-utilizador.md](docs/manual-utilizador.md) · **Guião da demonstração para o júri**: [docs/guiao-demonstracao.md](docs/guiao-demonstracao.md).
 
 Plataforma web para consulta e gestão de informação escolar, com painéis para o
 **Aluno**, o **Professor**, o **Encarregado de educação**, o **Funcionário** e o **Administrador** (direção) de cada
@@ -137,6 +138,7 @@ verdadeiros nunca são tocados.** O MySQL tem de estar ligado.
 | `faltas.test.js` | limite de faltas por módulo; avisos à metade e ao limite, só uma vez cada; o cartão no painel do aluno |
 | `login.test.js` | bloqueio depois de 5 tentativas; código por email da direção e do gestor |
 | `conta.test.js` | mudar a palavra-passe: atual errada, confirmação diferente, outras sessões terminam, bloqueio |
+| `encarregados.test.js` | conta do encarregado criada com o aluno menor; email a cada falta nova (e desligar); o aluno maior justifica as suas faltas |
 | `copias.test.js` | conteúdo da cópia, ficam só 7, não se descarrega fora da pasta, restaurar devolve os dados |
 
 ### Recuperação de palavra-passe (email)
@@ -315,7 +317,9 @@ curso, turma, diretor de turma e encarregado de educação); as secções estão
   ao limite de 10%), faltas por justificar, módulos concluídos e média
 - Dados pessoais: consulta dos dados da ficha (as correções são feitas pela secretaria), incluindo se o aluno
   é delegado ou subdelegado de turma
-- Faltas: lista completa, resumo por disciplina, filtro por estado (justificadas / injustificadas)
+- Faltas: lista completa, resumo por disciplina, filtro por estado (justificadas / injustificadas). O **aluno maior de
+  idade** (18 anos ou mais) **justifica as suas faltas** aqui, como o encarregado (escolhe as faltas, motivo e documento) e
+  vê os pedidos que enviou; o aluno menor (ou sem data de nascimento na ficha) vê que é o encarregado quem justifica
 - Sumários: o que foi dado em cada aula (n.º da lição, módulo e professor), com as aulas a que faltou assinaladas
 - Avaliação: classificação de cada módulo por disciplina (0 a 20, NC ou EF), módulos concluídos e média
 - Testes e avaliações: próximas (com contagem de dias) e já realizadas
@@ -373,8 +377,11 @@ curso, turma, diretor de turma e encarregado de educação); as secções estão
 - Justificativos: histórico dos pedidos enviados, com o estado (**pendente de validação**, aceite ou recusado)
   e a resposta da escola. Um pedido recusado não fecha a falta: pode enviar outro documento
 - Um encarregado com vários educandos (irmãos) tem uma só conta e escolhe o educando num separador
+- **Email a cada falta nova**: quando o professor guarda uma aula com uma falta nova do educando, o encarregado recebe
+  um email (dia, aula, tipo de falta e a ligação para justificar). Pode desligar no Painel (cartão "Avisos de faltas por
+  email"); os avisos de metade e de limite de faltas de um módulo continuam. Só com email na ficha
 
-**Circuito da justificação**: o encarregado envia → a falta fica «Pendente de validação» (o aluno também vê) →
+**Circuito da justificação**: o encarregado (ou o próprio aluno, se for maior de idade) envia → a falta fica «Pendente de validação» (o aluno também vê) →
 o **diretor de turma** (menu «Justificativos» do professor) ou a **administração** abre o documento e aceita ou
 recusa. Ao aceitar, as faltas do pedido passam a justificadas com o motivo indicado; para recusar é obrigatório
 escrever o motivo, que o encarregado lê. Se o encarregado tiver email na ficha, **recebe um email com a decisão**
@@ -416,6 +423,10 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
   (o número de processo garante que nunca há dois iguais) e a palavra-passe é aleatória — aparecem os
   dois numa mensagem só uma vez, para copiar e dar ao aluno. Depois de criado, o email pode ser editado
   à mão na ficha, se for preciso corrigir.
+  **Aluno menor de idade** (ou sem data de nascimento): o nome do encarregado de educação é obrigatório e a **conta do
+  encarregado é criada logo** (código `EE` + n.º de processo, com o email e o contacto opcionais do formulário); o
+  código e a palavra-passe temporária do encarregado aparecem na mesma mensagem. O aluno maior de idade não precisa de
+  encarregado: justifica as suas faltas
 - Faltas: filtros (estado, turma, datas, aluno), justificar várias de uma vez com um motivo, retirar justificação,
   e **Exportar para Excel**: descarrega um ficheiro CSV com as faltas dos filtros escolhidos (separador `;` e
   acentos preparados para o Excel em português; até 20 000 linhas)
@@ -498,7 +509,8 @@ public/vendor/        Bibliotecas de terceiros incluídas localmente (Chart.js, 
 data/fotos/           Fotografias dos alunos (a BD guarda o nome do ficheiro)
 data/justificativos/  Justificativos enviados pelos encarregados (a BD guarda o nome do ficheiro)
 data/copias/          Cópias de segurança da base de dados (uma por dia, ficam as últimas 7)
-test/                 Testes automáticos (npm test): permissões, escolas separadas, tarefas, faltas, login, cópias
+docs/                 Manual do utilizador e guião da demonstração para o júri
+test/                 Testes automáticos (npm test): permissões, escolas separadas, tarefas, faltas, login, cópias, contas, encarregados
 scripts/build-mac.sh  Gera o GestaoEscolar.app (npm run build:mac)
 teams/                App separada "Conversas" (npm run conversas) — visual e servidor próprios,
                       mesma base de dados (usa src/db.js e src/lib/util.js da Gestão Escolar)
@@ -544,7 +556,7 @@ Em cada escola, as tabelas (vistas) são:
 `professor_disciplinas` · `tempos` (tempos letivos do dia) ·
 `horario` (cada linha é um tempo letivo semanal: turma, disciplina, professor, dia, horas, sala, ativo) ·
 `faltas` (aluno, aula do horário, data, tipo, justificação, quem registou e quem justificou) · `testes` ·
-`encarregados` (encarregados de educação com conta; a ligação ao educando está em `alunos.encarregado_id`) ·
+`encarregados` (com `avisar_faltas`: email a cada falta nova; encarregados de educação com conta; a ligação ao educando está em `alunos.encarregado_id`) ·
 `justificativos` (motivo, ficheiro, estado, quem enviou e quem decidiu) e `justificativo_faltas` (as faltas de cada pedido) ·
 `modulos` (módulos de cada disciplina) · `licoes` (aulas dadas: aula do horário, data, módulo e sumário) ·
 `notas` (classificação de cada aluno em cada módulo: nota 0–20, NC ou EF) ·
@@ -597,8 +609,9 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
   palavra-passe"); sem ele, a ligação aparece só na consola do servidor. O administrador não tem email na ficha,
   por isso não pode usar a recuperação
 - Sem HTTPS — para uso real deve ficar atrás de um servidor com HTTPS (ex.: nginx, Caddy)
-- O encarregado de educação é avisado por email da resposta aos justificativos e quando o educando chega a metade
-  ou ao limite de faltas de um módulo (só se tiver email na ficha); não há aviso a cada falta nova
+- O encarregado de educação só recebe emails (falta nova, metade/limite de faltas, resposta aos justificativos) se
+  tiver email na ficha; o email de cada falta nova é enviado ao guardar a aula (uma falta anulada e marcada outra vez
+  volta a gerar um email)
 - As cópias de segurança ficam no mesmo computador do servidor: para estarem mesmo seguras, devem ser copiadas de
   vez em quando para outro sítio (disco externo, nuvem) — o botão "Descarregar" do painel da plataforma ajuda
 - Apagar um aluno não apaga a conta do encarregado; essa conta fica sem educandos até ser associada a outro aluno
@@ -609,8 +622,8 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 
 ## Ideias para próximas versões
 
-Aviso ao encarregado de educação quando é marcada uma falta nova · ícones da aplicação instalável com o logótipo atual · ecrã para editar os tempos letivos.
+Estatísticas para a direção (faltas por turma e por mês, alunos em risco) · ícones da aplicação instalável com o logótipo atual · ecrã para editar os tempos letivos.
 
-Já feito, de ideias anteriores: ecrã para cada utilizador mudar a sua palavra-passe ("A minha conta"), exportar as faltas para Excel (CSV), avisar o encarregado por email da resposta aos
+Já feito, de ideias anteriores: aviso ao encarregado a cada falta nova, manual do utilizador e guião da demonstração, ecrã para cada utilizador mudar a sua palavra-passe ("A minha conta"), exportar as faltas para Excel (CSV), avisar o encarregado por email da resposta aos
 justificativos, recuperar a palavra-passe por email, e o botão "Imprimir / Exportar PDF" no horário, nas faltas e nas
 pautas (usa a função de impressão do browser — no diálogo de impressão, escolher "Guardar como PDF").

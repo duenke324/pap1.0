@@ -82,6 +82,13 @@ function idade(textoISO) {
   return anos;
 }
 
+// Maior de idade (18 anos ou mais). Sem data de nascimento conta como menor: a escola tem de indicar o
+// encarregado de educação, que é quem justifica as faltas.
+function maiorDeIdade(dataNascimento) {
+  const anos = idade(String(dataNascimento || ''));
+  return anos !== null && anos >= 18;
+}
+
 function diasAte(textoISO) {
   const [a, m, d] = textoISO.split('-').map(Number);
   const alvo = new Date(a, m - 1, d);
@@ -236,6 +243,7 @@ module.exports = {
   formatarData,
   formatarDataLonga,
   idade,
+  maiorDeIdade,
   diasAte,
   limitesAnoLetivo,
   anoLetivoAtual,

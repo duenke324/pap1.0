@@ -4,7 +4,7 @@ const { todos, um, executar, transacao } = require('../db');
 const { pagina, vazio, grelhaHorario, avatar, botaoImprimir } = require('../vistas/layout');
 const { etiquetaFalta } = require('./aluno');
 const { pautaDoAluno } = require('./avaliacao');
-const { situacaoPorModulo, verificarAvisosFaltas, etiquetaModulo } = require('../lib/avisos-faltas');
+const { situacaoPorModulo, verificarAvisosFaltas, avisarFaltasNovas, etiquetaModulo } = require('../lib/avisos-faltas');
 const {
   h,
   hoje,
@@ -800,6 +800,7 @@ post('/professor/aula', async (req, res) => {
 
   let criadas = 0;
   const comFaltaNova = new Set();
+  const novasPorAluno = new Map(); // alunoId → tipos de falta novos (para o email ao encarregado)
   let anuladas = 0;
   await transacao(async (tx) => {
     await tx.executar(
@@ -833,14 +834,18 @@ post('/professor/aula', async (req, res) => {
       );
       criadas++;
       if (tipo === 'presenca') comFaltaNova.add(Number(alunoId));
+      novasPorAluno.set(Number(alunoId), [...(novasPorAluno.get(Number(alunoId)) || []), tipo]);
     }
   });
 
+  // Email ao encarregado de cada aluno com falta nova (se tiver email e não tiver desligado os avisos)
+  const encarregadosAvisados = await avisarFaltasNovas(novasPorAluno, { horarioId: aula.id, data });
   // Chegou alguém a metade ou ao limite de faltas do módulo? Avisa por email (só uma vez por nível)
   const avisados = await verificarAvisosFaltas([...comFaltaNova], moduloId);
 
   const partes = ['sumário'];
   if (criadas) partes.push(`${criadas} falta(s) registada(s)`);
+  if (encarregadosAvisados) partes.push(`${encarregadosAvisados} encarregado(s) avisado(s) por email`);
   if (avisados) partes.push(`${avisados} aluno(s) avisado(s) por email por chegar a metade ou ao limite de faltas do módulo`);
   if (anuladas) partes.push(`${anuladas} falta(s) anulada(s)`);
   req.flash('sucesso', `Aula guardada: ${partes.join(', ')}.`);

@@ -40,11 +40,69 @@ function apagarFicheiroJustificativo(nome) {
   fs.rm(path.join(pastaJustificativos(), path.basename(nome)), { force: true }, () => {});
 }
 
+// Regista um pedido de justificação: usado pelo encarregado (aluno menor) e pelo próprio aluno maior de
+// idade. "faltas" são as faltas do aluno (faltasDoAluno); "ids" as escolhidas no formulário.
+// Devolve { erro } ou { quantas }.
+async function registarJustificativo({ alunoId, utilizadorId, faltas, ids, motivo, ficheiroDados }) {
+  ids = [...new Set(ids.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  motivo = String(motivo || '').trim().slice(0, 200);
+  if (!ids.length) return { erro: 'Selecione pelo menos uma falta.' };
+  if (!motivo) return { erro: 'Indique o motivo da falta.' };
+  if (!ficheiroDados) return { erro: 'Anexe o justificativo (PDF ou imagem).' };
+
+  // As faltas têm de ser deste aluno, estar por justificar e não ter já um pedido pendente
+  const validas = faltas.filter((f) => ids.includes(f.id) && !f.justificada && !f.pendente);
+  if (validas.length !== ids.length) {
+    return { erro: 'Algumas das faltas escolhidas já foram justificadas ou já têm um justificativo à espera de validação.' };
+  }
+
+  let ficheiro;
+  try {
+    ficheiro = guardarFicheiroJustificativo(String(ficheiroDados));
+  } catch (e) {
+    return { erro: e.message };
+  }
+  try {
+    await transacao(async (tx) => {
+      const j = await tx.executar(
+        'INSERT INTO justificativos (aluno_id, enviado_por, motivo, ficheiro) VALUES (?, ?, ?, ?)',
+        alunoId,
+        utilizadorId,
+        motivo,
+        ficheiro
+      );
+      for (const id of ids) {
+        await tx.executar('INSERT INTO justificativo_faltas (justificativo_id, falta_id) VALUES (?, ?)', j.lastInsertRowid, id);
+      }
+    });
+  } catch (e) {
+    apagarFicheiroJustificativo(ficheiro); // a BD não mudou: o ficheiro não pode ficar sem dono
+    throw e;
+  }
+  return { quantas: ids.length };
+}
+
+// Formulário para escolher as faltas por justificar e enviar o documento (encarregado e aluno maior)
+const MOTIVOS_SUGERIDOS = ['Doença', 'Consulta médica', 'Motivo familiar', 'Falecimento de familiar', 'Transporte'];
+
+function barraJustificar() {
+  return `<div class="barra-justificar no-imprimir">
+      <datalist id="motivos">${MOTIVOS_SUGERIDOS.map((m) => `<option value="${h(m)}">`).join('')}</datalist>
+      <label class="crescer">Motivo da falta
+        <input name="motivo" list="motivos" maxlength="200" placeholder="Ex.: Doença" required></label>
+      <label>Justificativo <small class="texto-suave">(PDF, JPG ou PNG, máx. 3 MB)</small>
+        <input type="file" accept="application/pdf,image/jpeg,image/png" data-ficheiro-justificativo required></label>
+      <input type="hidden" name="ficheiro_dados" data-dados-justificativo>
+      <button class="botao">Enviar justificativo</button>
+    </div>`;
+}
+
 // ---------- Consultas ----------
 // "onde" é sempre texto fixo escrito nas rotas (nunca vem do utilizador); os valores vão em params.
 async function listarJustificativos(onde, ...params) {
   const justificativos = await todos(
     `SELECT j.*, a.nome AS aluno, a.numero_processo, a.fotografia, a.encarregado_id,
+            a.email AS aluno_email, a.utilizador_id AS aluno_utilizador_id,
             t.nome AS turma, t.diretor_id,
             e.email AS encarregado_email, e.nome AS encarregado_nome,
             ue.nome AS enviado_por_nome, ud.nome AS decidido_por_nome
@@ -86,12 +144,14 @@ function podeVerJustificativo(req, j) {
   if (papel === 'admin') return true;
   if (papel === 'encarregado') return !!req.encarregado && j.encarregado_id === req.encarregado.id;
   if (papel === 'professor') return !!req.professor && j.diretor_id === req.professor.id;
+  // O aluno maior de idade vê os pedidos que ele próprio enviou
+  if (papel === 'aluno') return !!req.aluno && j.aluno_id === req.aluno.id && j.enviado_por === req.utilizador.id;
   return false;
 }
 
 // Só a administração e o diretor de turma decidem
 function podeDecidirJustificativo(req, j) {
-  return req.utilizador.papel !== 'encarregado' && podeVerJustificativo(req, j);
+  return ['admin', 'professor'].includes(req.utilizador.papel) && podeVerJustificativo(req, j);
 }
 
 // Aceitar: as faltas do pedido passam a justificadas, com o motivo indicado pelo encarregado.
@@ -130,16 +190,19 @@ async function decidirJustificativo(req, id, decisao, resposta) {
 
   // Só depois de a decisão estar guardada: avisa o encarregado por email (se tiver email na ficha).
   // enviarEmail nunca lança erro, por isso uma falha no envio não desfaz nem esconde a decisão.
-  if (resultado.ok && j.encarregado_email) {
+  // (se foi o próprio aluno, maior de idade, a enviar o pedido, a resposta vai para o email dele)
+  const peloAluno = j.enviado_por && j.enviado_por === j.aluno_utilizador_id;
+  const destino = peloAluno ? { email: j.aluno_email, nome: j.aluno, ver: '/aluno/faltas' } : { email: j.encarregado_email, nome: j.encarregado_nome, ver: '/encarregado/justificativos' };
+  if (resultado.ok && destino.email) {
     const aceite = decisao === 'aceitar';
     const faltas = j.faltas.map((f) => `  - ${formatarData(f.data)}, ${f.hora_inicio}, ${f.disciplina}`).join('\n');
     const enviado = await enviarEmail({
-      para: j.encarregado_email,
+      para: destino.email,
       assunto: `${escolaAtual().nome} — justificativo ${aceite ? 'aceite' : 'recusado'} (${j.aluno})`,
       texto: [
-        `Olá${j.encarregado_nome ? `, ${j.encarregado_nome}` : ''},`,
+        `Olá${destino.nome ? `, ${destino.nome}` : ''},`,
         ``,
-        `O justificativo que enviou em ${formatarData(j.criado_em)} para as faltas de ${j.aluno} foi ${aceite ? 'ACEITE' : 'RECUSADO'} por ${req.utilizador.nome}.`,
+        `O justificativo que enviou em ${formatarData(j.criado_em)} para ${peloAluno ? 'as suas faltas' : `as faltas de ${j.aluno}`} foi ${aceite ? 'ACEITE' : 'RECUSADO'} por ${req.utilizador.nome}.`,
         ``,
         `Motivo indicado: ${j.motivo}`,
         `Faltas:`,
@@ -149,10 +212,10 @@ async function decidirJustificativo(req, id, decisao, resposta) {
         ...(aceite && resposta ? [`Observação da escola: ${resposta}`] : []),
         ...(aceite ? [] : [`As faltas continuam por justificar. Pode enviar outro documento na aplicação.`]),
         ``,
-        `Ver os seus pedidos: ${ligacaoDaEscola('/encarregado/justificativos')}`,
+        `Ver os seus pedidos: ${ligacaoDaEscola(destino.ver)}`,
       ].join('\n'),
     });
-    if (enviado) resultado.mensagem += ' O encarregado foi avisado por email.';
+    if (enviado) resultado.mensagem += peloAluno ? ' O aluno foi avisado por email.' : ' O encarregado foi avisado por email.';
   }
   return resultado;
 }
@@ -216,6 +279,9 @@ module.exports = {
   TAMANHO_MAXIMO,
   guardarFicheiroJustificativo,
   apagarFicheiroJustificativo,
+  registarJustificativo,
+  barraJustificar,
+  MOTIVOS_SUGERIDOS,
   listarJustificativos,
   obterJustificativo,
   podeVerJustificativo,

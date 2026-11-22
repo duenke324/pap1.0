@@ -84,6 +84,28 @@ async function gerarCodigo(numeroProcesso) {
   throw new Error('Não foi possível gerar um código de acesso.');
 }
 
+// Cria a conta de acesso do encarregado e associa-a ao aluno (dentro de uma transação "tx").
+// Usado aqui (ficha do aluno) e ao criar um aluno menor de idade (admin.js). Devolve { codigo, password }.
+async function criarContaEncarregado(tx, aluno, { nome, email = '', contacto = '' }) {
+  const codigo = await gerarCodigo(aluno.numero_processo);
+  const password = gerarPasswordTemporaria();
+  const u = await tx.executar(
+    `INSERT INTO utilizadores (username, password_hash, papel, nome, deve_redefinir_password) VALUES (?, ?, 'encarregado', ?, 1)`,
+    codigo,
+    gerarHash(password),
+    nome
+  );
+  const e = await tx.executar(
+    'INSERT INTO encarregados (utilizador_id, nome, email, contacto) VALUES (?, ?, ?, ?)',
+    u.lastInsertRowid,
+    nome,
+    email || null,
+    contacto || null
+  );
+  await tx.executar('UPDATE alunos SET encarregado_id = ?, encarregado_nome = ? WHERE id = ?', e.lastInsertRowid, nome, aluno.id);
+  return { codigo, password };
+}
+
 post('/admin/alunos/:id/encarregado/criar', async (req, res) => {
   const aluno = await carregarAluno(req.params.id);
   if (!aluno) return res.redirecionar('/admin/alunos');
@@ -101,24 +123,7 @@ post('/admin/alunos/:id/encarregado/criar', async (req, res) => {
     return res.redirecionar(voltar);
   }
 
-  const codigo = await gerarCodigo(aluno.numero_processo);
-  const password = gerarPasswordTemporaria();
-  await transacao(async (tx) => {
-    const u = await tx.executar(
-      `INSERT INTO utilizadores (username, password_hash, papel, nome, deve_redefinir_password) VALUES (?, ?, 'encarregado', ?, 1)`,
-      codigo,
-      gerarHash(password),
-      nome
-    );
-    const e = await tx.executar(
-      'INSERT INTO encarregados (utilizador_id, nome, email, contacto) VALUES (?, ?, ?, ?)',
-      u.lastInsertRowid,
-      nome,
-      email || null,
-      contacto || null
-    );
-    await tx.executar('UPDATE alunos SET encarregado_id = ?, encarregado_nome = ? WHERE id = ?', e.lastInsertRowid, nome, aluno.id);
-  });
+  const { codigo, password } = await transacao((tx) => criarContaEncarregado(tx, aluno, { nome, email, contacto }));
 
   await registarLog(req, 'criar', 'encarregado', aluno.id, `Criou a conta do encarregado "${nome}" (código ${codigo}) para o aluno "${aluno.nome}".`);
   req.flash(
@@ -206,4 +211,4 @@ post('/admin/alunos/:id/encarregado/password', async (req, res) => {
   res.redirecionar(`/admin/alunos/${aluno.id}`);
 });
 
-module.exports = { cartaoEncarregado };
+module.exports = { cartaoEncarregado, criarContaEncarregado, EMAIL_VALIDO };

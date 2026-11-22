@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS encarregados (
   nome          VARCHAR(120) NOT NULL,
   email         VARCHAR(120),
   contacto      VARCHAR(20),
+  avisar_faltas TINYINT(1) NOT NULL DEFAULT 1, -- email a cada falta nova (o encarregado pode desligar)
   criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_encarregado_utilizador FOREIGN KEY (utilizador_id) REFERENCES utilizadores(id) ON DELETE CASCADE
 ) ENGINE = InnoDB;

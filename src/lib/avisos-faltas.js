@@ -9,7 +9,7 @@
 // Contam as faltas justificadas e as injustificadas: a regra dos 90% é sobre a assiduidade (as
 // justificadas dão direito a recuperar, mas não deixam de ser horas em falta).
 const { todos, um, executar } = require('../db');
-const { h, LIMITE_FALTAS } = require('./util');
+const { h, LIMITE_FALTAS, TIPOS_FALTA } = require('./util');
 const { enviarEmail, ligacaoDaEscola } = require('./email');
 const { escolaAtual } = require('./contexto');
 
@@ -154,6 +154,61 @@ async function enviarAviso(s, nivel) {
   for (const e of envios) await enviarEmail({ para: e.para, assunto, texto: e.texto });
 }
 
+// ---------- Aviso ao encarregado a cada falta nova ----------
+// Chamado depois de o professor guardar uma aula. "novas": Map alunoId → [tipos de falta novos nesta aula].
+// Envia um email ao encarregado de cada aluno (se tiver conta, email e não tiver desligado os avisos).
+// Nunca lança erro. Devolve o número de encarregados avisados.
+async function avisarFaltasNovas(novas, { horarioId, data }) {
+  if (!novas.size) return 0;
+  try {
+    const aula = await um(
+      `SELECT hr.hora_inicio, hr.hora_fim, d.nome AS disciplina, t.nome AS turma, p.nome AS diretor
+         FROM horario hr JOIN disciplinas d ON d.id = hr.disciplina_id JOIN turmas t ON t.id = hr.turma_id
+         LEFT JOIN professores p ON p.id = t.diretor_id
+        WHERE hr.id = ?`,
+      horarioId
+    );
+    const destinatarios = await todos(
+      `SELECT a.id, a.nome, e.nome AS encarregado, e.email
+         FROM alunos a JOIN encarregados e ON e.id = a.encarregado_id
+        WHERE a.id IN (?) AND e.email IS NOT NULL AND e.email <> '' AND e.avisar_faltas = 1`,
+      [...novas.keys()]
+    );
+    const dia = new Date(`${data}T12:00:00`).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    let avisados = 0;
+    for (const d of destinatarios) {
+      const tipos = novas.get(d.id).map((t) => TIPOS_FALTA[t] || t);
+      // (sem SMTP configurado o email aparece só na consola; conta-se na mesma, como nos outros avisos)
+      await enviarEmail({
+        para: d.email,
+        assunto: `${escolaAtual().nome} — falta registada: ${d.nome} (${aula.disciplina}, ${dia})`,
+        texto: [
+          `Olá${d.encarregado ? `, ${d.encarregado}` : ''},`,
+          ``,
+          `Foi registada uma falta a ${d.nome}:`,
+          ``,
+          `  Dia: ${dia}`,
+          `  Aula: ${aula.disciplina}, ${aula.hora_inicio}–${aula.hora_fim} (${aula.turma})`,
+          `  Tipo: ${tipos.join(' e ')}`,
+          ``,
+          `Se a falta tiver justificação, pode enviar o justificativo (PDF ou fotografia) na aplicação:`,
+          ligacaoDaEscola('/encarregado/faltas'),
+          ``,
+          `Dúvidas: fale com o diretor de turma${aula.diretor ? ` (${aula.diretor})` : ''}.`,
+          `Para deixar de receber um email a cada falta, desligue os avisos no Painel da aplicação.`,
+          ``,
+          `${escolaAtual().nome} — email enviado automaticamente pela aplicação da escola.`,
+        ].join('\n'),
+      });
+      avisados++;
+    }
+    return avisados;
+  } catch (erro) {
+    console.error('Falha nos avisos de faltas novas:', erro.message);
+    return 0;
+  }
+}
+
 // ---------- Componentes para os painéis ----------
 function etiquetaModulo(s) {
   return `<span class="etiqueta ${NIVEIS[s.nivel].classe}" title="${s.nivel === 'limite' ? 'Limite atingido' : 'Metade do limite'}">${h(s.disciplina)} · M${s.numero} · ${s.faltas}/${numero(s.limite)} h</span>`;
@@ -178,4 +233,13 @@ function cartaoFaltasModulos(situacao, { paraEncarregado = false, nome = '' } = 
   </section>`;
 }
 
-module.exports = { limiteDoModulo, nivelFaltas, situacaoPorModulo, verificarAvisosFaltas, cartaoFaltasModulos, etiquetaModulo, NIVEIS };
+module.exports = {
+  limiteDoModulo,
+  nivelFaltas,
+  situacaoPorModulo,
+  verificarAvisosFaltas,
+  avisarFaltasNovas,
+  cartaoFaltasModulos,
+  etiquetaModulo,
+  NIVEIS,
+};

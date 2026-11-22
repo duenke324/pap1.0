@@ -273,6 +273,7 @@ async function acrescentarNovidades(ligacao, bd) {
   // Colunas novas em tabelas que já existiam
   await ligacao.query("ALTER TABLE tb_canais ADD COLUMN IF NOT EXISTS tipo ENUM('canal','grupo') NOT NULL DEFAULT 'canal' AFTER nome");
   await ligacao.query('ALTER TABLE tb_utilizadores ADD COLUMN IF NOT EXISTS email_codigo VARCHAR(120) AFTER nome');
+  await ligacao.query('ALTER TABLE tb_encarregados ADD COLUMN IF NOT EXISTS avisar_faltas TINYINT(1) NOT NULL DEFAULT 1 AFTER contacto');
 }
 
 // Função escola_atual(), uma vista por tabela (com o nome antigo) e o gatilho que preenche o escola_id.

@@ -8,11 +8,12 @@ const { pagina, vazio, avatar, botaoImprimir } = require('../vistas/layout');
 const { etiquetaFalta } = require('./aluno');
 const { pautaDoAluno } = require('./avaliacao');
 const { registarLog } = require('../lib/auditoria');
-const { cartaoEncarregado } = require('./encarregados');
+const { cartaoEncarregado, criarContaEncarregado, EMAIL_VALIDO } = require('./encarregados');
 const {
   h,
   hoje,
   idade,
+  maiorDeIdade,
   gerarHash,
   dataValida,
   formatarData,
@@ -63,6 +64,9 @@ async function lerFormularioAluno(corpo, alunoId = null) {
     data_nascimento: String(corpo.data_nascimento || '').trim(),
     contacto: String(corpo.contacto || '').trim(),
     encarregado_nome: String(corpo.encarregado_nome || '').trim().replace(/\s+/g, ' '),
+    // (só ao criar: dados da conta do encarregado, criada sozinha quando o aluno é menor)
+    encarregado_email: alunoId ? '' : String(corpo.encarregado_email || '').trim().slice(0, 120),
+    encarregado_contacto: alunoId ? '' : String(corpo.encarregado_contacto || '').trim().slice(0, 20),
     email: alunoId ? String(corpo.email || '').trim() : '',
     turma_id: corpo.turma_id ? Number(corpo.turma_id) : null,
     password: alunoId ? String(corpo.password || '') : '',
@@ -93,6 +97,15 @@ async function lerFormularioAluno(corpo, alunoId = null) {
   }
   if (dados.contacto && !/^\+?[\d\s]{9,20}$/.test(dados.contacto)) erros.contacto = 'Contacto inválido (ex.: 912 345 678).';
   if (dados.encarregado_nome.length > 120) erros.encarregado_nome = 'Nome demasiado longo.';
+  // Aluno novo menor de idade (ou sem data de nascimento): o encarregado é obrigatório, porque é ele quem
+  // justifica as faltas — a conta dele é criada logo com a do aluno
+  if (!alunoId && !maiorDeIdade(dados.data_nascimento) && !dados.encarregado_nome && !erros.data_nascimento) {
+    erros.encarregado_nome = 'O aluno é menor (ou não tem data de nascimento): indique o encarregado de educação.';
+  }
+  if (dados.encarregado_email && !EMAIL_VALIDO.test(dados.encarregado_email)) erros.encarregado_email = 'O email não é válido.';
+  if (dados.encarregado_contacto && !/^\+?[\d\s]{9,20}$/.test(dados.encarregado_contacto)) {
+    erros.encarregado_contacto = 'Contacto inválido (ex.: 912 345 678).';
+  }
   if (alunoId && dados.email && !emailInstitucionalValido(dados.email)) erros.email = `O email tem de acabar em @${dominioEmail()}.`;
   if (dados.turma_id !== null && (!Number.isInteger(dados.turma_id) || !(await um('SELECT 1 FROM turmas WHERE id = ?', dados.turma_id)))) {
     erros.turma_id = 'Turma inválida.';
@@ -142,7 +155,21 @@ async function formularioAluno(req, { aluno = {}, erros = {}, acao, titulo }) {
         <label>Contacto
           <input type="tel" name="contacto" value="${h(aluno.contacto)}" placeholder="912 345 678"${cls('contacto')}>${erro('contacto')}</label>
         <label class="coluna-toda">Nome da mãe / Encarregado de educação
-          <input name="encarregado_nome" value="${h(aluno.encarregado_nome)}" maxlength="120"${cls('encarregado_nome')}>${erro('encarregado_nome')}</label>
+          <input name="encarregado_nome" value="${h(aluno.encarregado_nome)}" maxlength="120"${cls('encarregado_nome')}>${
+            erro('encarregado_nome') ||
+            (editar
+              ? ''
+              : '<small class="texto-suave">Obrigatório se o aluno for menor de idade (ou sem data de nascimento): é criada logo a conta do encarregado, que é quem justifica as faltas. Um aluno maior justifica as suas.</small>')
+          }</label>
+        ${
+          editar
+            ? ''
+            : `<label>Email do encarregado <small class="texto-suave">(opcional)</small>
+                <input type="email" name="encarregado_email" value="${h(aluno.encarregado_email)}" maxlength="120" placeholder="nome@exemplo.pt"${cls('encarregado_email')}>
+                ${erro('encarregado_email') || '<small class="texto-suave">Para os avisos de faltas e para recuperar a palavra-passe.</small>'}</label>
+              <label>Contacto do encarregado <small class="texto-suave">(opcional)</small>
+                <input type="tel" name="encarregado_contacto" value="${h(aluno.encarregado_contacto)}" placeholder="912 345 678"${cls('encarregado_contacto')}>${erro('encarregado_contacto')}</label>`
+        }
         ${
           editar
             ? `<label>Email institucional
@@ -469,6 +496,7 @@ post('/admin/alunos/novo', async (req, res) => {
 
   let alunoId;
   let avisoFoto = '';
+  let contaEncarregado = null;
   await transacao(async (tx) => {
     const u = await tx.executar(
       `INSERT INTO utilizadores (username, password_hash, papel, nome, deve_redefinir_password) VALUES (?, ?, 'aluno', ?, 1)`,
@@ -490,6 +518,14 @@ post('/admin/alunos/novo', async (req, res) => {
         emailGerado
       )).lastInsertRowid
     );
+    // Aluno menor (ou sem data de nascimento): cria já a conta do encarregado de educação
+    if (!maiorDeIdade(dados.data_nascimento)) {
+      contaEncarregado = await criarContaEncarregado(
+        tx,
+        { id: alunoId, numero_processo: dados.numero_processo },
+        { nome: dados.encarregado_nome, email: dados.encarregado_email, contacto: dados.encarregado_contacto }
+      );
+    }
   });
 
   if (dados.fotografia_dados) {
@@ -510,10 +546,22 @@ post('/admin/alunos/novo', async (req, res) => {
   }
 
   await registarLog(req, 'criar', 'aluno', alunoId, `Criou o aluno "${dados.nome}" (n.º processo ${dados.numero_processo}).`);
+  if (contaEncarregado) {
+    await registarLog(
+      req,
+      'criar',
+      'encarregado',
+      alunoId,
+      `Criou a conta do encarregado "${dados.encarregado_nome}" (código ${contaEncarregado.codigo}) para o aluno menor "${dados.nome}".`
+    );
+  }
   req.flash(
     avisoFoto ? 'aviso' : 'sucesso',
     `Aluno ${dados.nome} criado. N.º de processo: ${dados.numero_processo} · Email: ${emailGerado} · Palavra-passe temporária: ${passwordGerada}` +
-      ` (anote-a agora — não vai voltar a ser mostrada).${avisoFoto}`
+      (contaEncarregado
+        ? ` — Conta do encarregado (${dados.encarregado_nome}): código ${contaEncarregado.codigo} · palavra-passe temporária ${contaEncarregado.password}`
+        : ' — Aluno maior de idade: é ele quem justifica as suas faltas.') +
+      ` (anote as palavras-passe agora — não vão voltar a ser mostradas).${avisoFoto}`
   );
   res.redirecionar(`/admin/alunos/${alunoId}`);
 });

@@ -1,13 +1,16 @@
 // Painel do Aluno: informações, estatísticas, dados pessoais, faltas, sumários, avaliação, testes e horário
-const { get } = require('../lib/servidor');
+const { get, post } = require('../lib/servidor');
 const { todos, um } = require('../db');
 const { pagina, vazio, grelhaHorario, botaoImprimir } = require('../vistas/layout');
 const { pautaDoAluno } = require('./avaliacao');
 const { situacaoPorModulo, cartaoFaltasModulos } = require('../lib/avisos-faltas');
+const { registarJustificativo, barraJustificar, listarJustificativos, listaJustificativos } = require('../lib/justificativos');
 const {
   h,
   hoje,
   idade,
+  maiorDeIdade,
+  comoLista,
   formatarData,
   formatarDataLonga,
   anoLetivoAtual,
@@ -428,9 +431,60 @@ get('/aluno/faltas', async (req, res) => {
         <span class="contador">${filtradas.length} falta(s)</span>
       </form>
       ${tabelaFaltas(filtradas)}
-    </section>`;
+    </section>
+    ${await cartaoJustificar(req, todas)}`;
 
   res.html(pagina(req, { titulo: 'Faltas', ativo: 'faltas', subtitulo: 'Faltas registadas pelos professores', acoes: botaoImprimir() }, conteudo));
+});
+
+// Quem justifica as faltas: o encarregado de educação, se o aluno for menor; o próprio aluno, se for
+// maior de idade (18 anos ou mais). Sem data de nascimento na ficha, conta como menor.
+async function cartaoJustificar(req, faltas) {
+  if (!maiorDeIdade(req.aluno.data_nascimento)) {
+    return `<section class="cartao no-imprimir"><h2>Justificar faltas</h2>
+      <p class="texto-suave">Como ainda não tem 18 anos, as faltas são justificadas pelo seu encarregado de educação, na conta dele.</p></section>`;
+  }
+  const porJustificar = faltas.filter((f) => !f.justificada && !f.pendente);
+  const enviados = await listarJustificativos('j.aluno_id = ? AND j.enviado_por = ?', req.aluno.id, req.utilizador.id);
+  return `<form method="post" action="/aluno/justificativos" class="cartao" data-formulario-justificativo>
+      <div class="cartao-topo"><h2>Justificar faltas</h2><span class="contador">${porJustificar.length} por justificar</span></div>
+      <p class="texto-suave">Como é maior de idade, é o próprio aluno que justifica as suas faltas.</p>
+      ${
+        porJustificar.length
+          ? `<div class="tabela-scroll"><table class="tabela">
+              <thead><tr><th class="centro"><input type="checkbox" aria-label="Selecionar todas" data-selecionar-todos></th>
+                <th>Data</th><th>Tempo</th><th>Disciplina</th><th>Tipo</th></tr></thead>
+              <tbody>${porJustificar
+                .map(
+                  (f) => `<tr>
+                    <td class="centro"><input type="checkbox" name="ids" value="${f.id}" aria-label="Selecionar falta" data-selecionar></td>
+                    <td>${h(formatarDataLonga(f.data))}</td><td>${h(f.hora_inicio)}–${h(f.hora_fim)}</td>
+                    <td>${h(f.disciplina)}</td><td>${h(TIPOS_FALTA[f.tipo])}</td></tr>`
+                )
+                .join('')}</tbody></table></div>
+            ${barraJustificar()}
+            <p class="legenda">Selecione as faltas, indique o motivo e anexe o documento. O pedido fica pendente até ser validado pelo diretor de turma ou pela secretaria.</p>`
+          : '<p class="legenda">Não há faltas por justificar neste momento.</p>'
+      }
+    </form>
+    ${enviados.length ? `<section class="cartao"><h2>Justificativos enviados</h2>${listaJustificativos(enviados, { mostrarAluno: false }, '')}</section>` : ''}`;
+}
+
+post('/aluno/justificativos', async (req, res) => {
+  if (!req.aluno || !maiorDeIdade(req.aluno.data_nascimento)) {
+    req.flash('erro', 'As faltas de um aluno menor de idade são justificadas pelo encarregado de educação.');
+    return res.redirecionar('/aluno/faltas');
+  }
+  const r = await registarJustificativo({
+    alunoId: req.aluno.id,
+    utilizadorId: req.utilizador.id,
+    faltas: await faltasDoAluno(req.aluno.id),
+    ids: comoLista(req.corpo.ids),
+    motivo: req.corpo.motivo,
+    ficheiroDados: req.corpo.ficheiro_dados,
+  });
+  req.flash(r.erro ? 'erro' : 'sucesso', r.erro || `Justificativo enviado para ${r.quantas} falta(s). Fica pendente até ser validado pela escola.`);
+  res.redirecionar('/aluno/faltas');
 });
 
 // Sumários de todas as lições da turma (numeradas por disciplina), com as aulas em que o aluno faltou
