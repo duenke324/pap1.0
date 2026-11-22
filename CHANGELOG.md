@@ -3,6 +3,12 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.10.1] — 2026-11-22
+
+### Novo
+- **Manual de instalação em Word** (`docs/Manual-de-instalacao.docx`): requisitos, instalação passo a passo, primeiro
+  acesso, configuração, emails, rede e instaladores, cópias de segurança, atualização, testes e resolução de problemas.
+
 ## [1.10.0] — 2026-11-22
 
 ### Novo

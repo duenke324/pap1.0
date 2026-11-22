@@ -1,7 +1,7 @@
-# Sistema de Gestão Escolar — versão 1.10
+# Sistema de Gestão Escolar — versão 1.10.1
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
-> **Manual do utilizador**: [docs/manual-utilizador.md](docs/manual-utilizador.md) · **Guião da demonstração para o júri**: [docs/guiao-demonstracao.md](docs/guiao-demonstracao.md).
+> **Manual do utilizador**: [docs/manual-utilizador.md](docs/manual-utilizador.md) · **Guião da demonstração para o júri**: [docs/guiao-demonstracao.md](docs/guiao-demonstracao.md) · **Manual de instalação (Word)**: [docs/Manual-de-instalacao.docx](docs/Manual-de-instalacao.docx).
 
 Plataforma web para consulta e gestão de informação escolar, com painéis para o
 **Aluno**, o **Professor**, o **Encarregado de educação**, o **Funcionário** e o **Administrador** (direção) de cada
@@ -509,7 +509,7 @@ public/vendor/        Bibliotecas de terceiros incluídas localmente (Chart.js, 
 data/fotos/           Fotografias dos alunos (a BD guarda o nome do ficheiro)
 data/justificativos/  Justificativos enviados pelos encarregados (a BD guarda o nome do ficheiro)
 data/copias/          Cópias de segurança da base de dados (uma por dia, ficam as últimas 7)
-docs/                 Manual do utilizador e guião da demonstração para o júri
+docs/                 Manual do utilizador, guião da demonstração para o júri e manual de instalação (Word)
 test/                 Testes automáticos (npm test): permissões, escolas separadas, tarefas, faltas, login, cópias, contas, encarregados
 scripts/build-mac.sh  Gera o GestaoEscolar.app (npm run build:mac)
 teams/                App separada "Conversas" (npm run conversas) — visual e servidor próprios,
