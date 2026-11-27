@@ -1,4 +1,4 @@
-# Sistema de Gestão Escolar — versão 1.10.1
+# Sistema de Gestão Escolar — versão 1.11.0
 
 > O que mudou em cada versão está no [registo de alterações (CHANGELOG.md)](CHANGELOG.md).
 > **Manual do utilizador**: [docs/manual-utilizador.md](docs/manual-utilizador.md) · **Guião da demonstração para o júri**: [docs/guiao-demonstracao.md](docs/guiao-demonstracao.md) · **Manual de instalação (Word)**: [docs/Manual-de-instalacao.docx](docs/Manual-de-instalacao.docx).
@@ -140,6 +140,34 @@ verdadeiros nunca são tocados.** O MySQL tem de estar ligado.
 | `conta.test.js` | mudar a palavra-passe: atual errada, confirmação diferente, outras sessões terminam, bloqueio |
 | `encarregados.test.js` | conta do encarregado criada com o aluno menor; email a cada falta nova (e desligar); o aluno maior justifica as suas faltas |
 | `copias.test.js` | conteúdo da cópia, ficam só 7, não se descarrega fora da pasta, restaurar devolve os dados |
+| `notificacoes.test.js` | só endereços dos serviços de notificações conhecidos; o aluno ativa as notificações, o professor marca uma falta e um servidor local recebe a notificação, que o teste decifra e cuja assinatura VAPID confirma |
+| `secretaria.test.js` | leitura do CSV; alunos em risco e progresso dos módulos; importar alunos (linhas erradas ficam de fora); ficha em PDF (quem pode); biblioteca (empréstimo, exemplares, devolução, permissões) |
+
+### Notificações push (telemóvel e computador)
+
+Cada pessoa liga as notificações em **A minha conta → Ativar notificações neste aparelho** (o browser pede
+autorização). Chegam mesmo com a aplicação fechada e, ao tocar, abrem a página certa:
+
+| Quem | Recebe |
+| --- | --- |
+| Aluno | falta marcada, metade/limite de faltas de um módulo, avisos da escola, resposta ao justificativo, tarefa nova e tarefa avaliada (Conversas), empréstimo da biblioteca |
+| Encarregado | cada falta nova do educando, metade/limite de faltas de um módulo, avisos da escola, resposta ao justificativo |
+| Professor | (diretor de turma) metade/limite de faltas dos alunos e justificativos novos para validar |
+| Direção | justificativos novos |
+
+Como funciona ([src/lib/push.js](src/lib/push.js)), sem bibliotecas — só o `crypto` do Node:
+- o browser cria uma **subscrição** no serviço de notificações do fabricante (Google, Mozilla, Apple, Microsoft) e a
+  aplicação guarda-a em `notificacoes_push` (uma por aparelho);
+- cada mensagem é **encriptada** com as chaves do browser (RFC 8291, `aes128gcm`: ECDH + HKDF + AES-128-GCM) — o
+  serviço do fabricante entrega-a mas não a consegue ler — e o pedido é **assinado com VAPID** (RFC 8292, JWT ES256).
+  O par de chaves VAPID é criado na primeira vez e fica na tabela `push_chaves`;
+- só se enviam pedidos para os serviços conhecidos, em `https` (impede usar o servidor para chegar à rede interna);
+- uma subscrição que o serviço diz já não existir (404/410) é apagada; uma falha no envio nunca estraga a ação;
+- o service worker ([public/sw.js](public/sw.js)) mostra a notificação e abre a página ao tocar.
+
+Precisa de internet e de `https://` (ou `localhost`). No iPhone/iPad (iOS 16.4 ou mais recente) a app tem de estar
+instalada no ecrã principal. `PUSH_CONTACTO` (ex.: `mailto:informatica@escola.pt`) indica o contacto enviado aos
+serviços; por omissão é `secretaria@<domínio da escola>`.
 
 ### Recuperação de palavra-passe (email)
 
@@ -326,6 +354,10 @@ curso, turma, diretor de turma e encarregado de educação); as secções estão
 - Horário semanal da turma (o dia atual fica destacado)
 
 ### Painel do Professor
+- **Progresso dos módulos** ([src/rotas/modulos.js](src/rotas/modulos.js)): para cada turma e disciplina, as horas
+  dadas de cada módulo (cada lição conta uma hora do módulo escolhido no sumário) face às horas previstas, a última
+  lição e as notas lançadas. Estados: por começar, a decorrer, **a acabar — faltam notas** (80% das horas ou mais),
+  **horas ultrapassadas** e notas lançadas. Os que pedem atenção aparecem também em "As minhas turmas".
 - As minhas turmas: separadores para filtrar a turma, pesquisa de alunos, contagem de faltas
 - **Diretor de turma**: ao abrir "As minhas turmas", um cartão **"Novidades nas suas turmas"** com as ocorrências
   graves e muito graves e as novas faltas por justificar dos últimos 7 dias, e um cartão **"Faltas a acompanhar"**
@@ -391,8 +423,12 @@ escrever o motivo, que o encarregado lê. Se o encarregado tiver email na ficha,
 Área de consulta para o pessoal não-docente (informático, auxiliar escolar, RH, biblioteca, secretaria,
 centro de recursos, cozinha e portaria): um painel de boas-vindas com o cargo e os dados pessoais
 (nome, n.º de processo, cargo, email e contacto). Tal como no aluno, quem corrige os dados é a
-administração — não há aqui funcionalidades de negócio próprias de cada cargo (sem catálogo de
-biblioteca, folha de RH, etc.), só a conta e a área pessoal.
+administração. Dois cargos têm páginas próprias ([src/rotas/biblioteca.js](src/rotas/biblioteca.js)):
+- **Biblioteca** — **Catálogo** (título, autor, ISBN, cota e n.º de exemplares; um livro já emprestado não se apaga)
+  e **Empréstimos**: emprestar a um aluno ou professor pelo n.º de processo, com prazo (15 dias por omissão), registar
+  a devolução, ver os atrasados. Não deixa emprestar mais exemplares do que os que existem. O leitor recebe uma
+  notificação, e o aluno vê os livros por devolver em Informações.
+- **Secretaria** — **Fichas dos alunos**: procurar um aluno e descarregar a ficha de registo em PDF.
 
 ### Painel do Administrador (direção da escola)
 - Painel com estatísticas, turmas e faltas recentes por justificar
@@ -435,6 +471,21 @@ biblioteca, folha de RH, etc.), só a conta e a área pessoal.
 - **Conta do encarregado de educação** (na ficha do aluno): criar a conta (o código e a palavra-passe temporária
   aparecem uma só vez), associar uma conta que já existe a outro aluno (irmãos), **alterar o email e o contacto**,
   repor a palavra-passe e desassociar. Só a administração altera estes dados
+- **Alunos em risco** ([src/lib/risco.js](src/lib/risco.js)): uma lista dos alunos com vários sinais de alerta e o
+  motivo de cada um. Pontos: módulo no limite de faltas 3, a metade do limite 1, módulo NC/EF 2, nota negativa 1,
+  ocorrência muito grave 3, grave 2 (últimos 12 meses), 10 ou mais faltas por justificar 2 (5 a 9: 1). **Risco alto**
+  a partir de 5 pontos, **médio** de 2 a 4. Com gráficos de faltas por mês (justificadas / por justificar) e de
+  assiduidade por turma, filtro por turma e ano letivo. O Painel mostra quantos alunos estão em risco alto.
+- **Importar alunos de CSV** (Alunos → Importar de CSV, [src/rotas/importar.js](src/rotas/importar.js)): escolher o
+  ficheiro (Excel → Guardar como → CSV separado por pontos e vírgulas) ou colar o texto → **Verificar** mostra cada
+  linha certa ou com o erro (as regras do formulário, mais n.º de processo repetido no ficheiro e turma inexistente)
+  → **Importar** cria as linhas certas numa só transação, com a conta do encarregado dos menores. Os emails e as
+  palavras-passe temporárias aparecem uma vez, também num PDF para imprimir (gerado na hora, não fica guardado).
+  Colunas: `numero_processo`, `nome` (obrigatórias), `data_nascimento` (dd/mm/aaaa), `turma`, `contacto`,
+  `encarregado`, `encarregado_email`, `encarregado_contacto`. Há um modelo para descarregar.
+- **Ficha de registo em PDF** (ficha do aluno → "Ficha de registo (PDF)"): identificação, resumo (módulos
+  concluídos, horas, média, faltas), uma tabela por disciplina com a classificação de cada módulo e a linha para a
+  assinatura. Também a descarregam o próprio aluno (Avaliações) e a secretaria.
 - **Assiduidade (gráficos)**: no painel principal, um gráfico de assiduidade global e um gráfico por curso
   (biblioteca **Chart.js**, incluída localmente em `public/vendor/` — não depende de internet).
   Debaixo do gráfico por curso fica sempre uma lista com os mesmos números, para a informação não depender de JavaScript.
@@ -472,7 +523,7 @@ src/
   lib/ata.js          Monta o texto formal da ata da reunião (datas e horas por extenso)
   atualizar-bd.js     Atualiza a base de dados sem arrancar o servidor (npm run atualizar-bd)
   importar-escola.js  Instala os dados de uma escola (usado pelo instalar.cmd do servidor completo)
-  lib/pdf.js          Gerador de PDF simples, sem bibliotecas (lista de palavras-passe dos alunos)
+  lib/pdf.js          Gerador de PDF simples, sem bibliotecas (palavras-passe e ficha de registo do aluno)
   vistas/layout.js    Estrutura das páginas (entrada e painéis), menu lateral, avatar, grelha do horário
   rotas/aluno.js      Painel do aluno
   rotas/professor.js  Painel do professor (turmas, Dar aula, testes, horário, Novidades do DT)
@@ -499,6 +550,14 @@ src/
   lib/avisos-faltas.js  Faltas por módulo: limite (10% das horas), avisos por email à metade e ao limite, cartões
   lib/copias.js         Cópias de segurança diárias da base de dados (data/copias/, ficam as últimas 7) e restauro
   lib/seguranca-login.js Bloqueio depois de várias tentativas erradas e código de entrada por email
+  lib/risco.js          Alunos em risco (pontuação), faltas por mês e assiduidade por turma
+  lib/push.js           Notificações push (Web Push): subscrições, encriptação aes128gcm e assinatura VAPID
+  lib/ficha-aluno.js    Dados e envio da ficha de registo do aluno em PDF
+  rotas/risco.js        Alunos em risco e gráficos (direção)
+  rotas/notificacoes.js Ligar/desligar as notificações e a notificação de teste
+  rotas/modulos.js      Progresso dos módulos (professor)
+  rotas/importar.js     Importar alunos de um ficheiro CSV (direção)
+  rotas/biblioteca.js   Biblioteca (catálogo e empréstimos) e fichas dos alunos para a secretaria
   restaurar-copia.js    npm run copia / npm run restaurar
 database/escola.sql   Esquema de uma escola (a aplicação converte-o para tb_… + vistas, ver src/db.js)
 database/plataforma.sql Tabelas da plataforma (escolas e gestor), na mesma base de dados
@@ -510,7 +569,7 @@ data/fotos/           Fotografias dos alunos (a BD guarda o nome do ficheiro)
 data/justificativos/  Justificativos enviados pelos encarregados (a BD guarda o nome do ficheiro)
 data/copias/          Cópias de segurança da base de dados (uma por dia, ficam as últimas 7)
 docs/                 Manual do utilizador, guião da demonstração para o júri e manual de instalação (Word)
-test/                 Testes automáticos (npm test): permissões, escolas separadas, tarefas, faltas, login, cópias, contas, encarregados
+test/                 Testes automáticos (npm test): permissões, escolas separadas, tarefas, faltas, login, cópias, contas, encarregados, notificações, secretaria e biblioteca
 scripts/build-mac.sh  Gera o GestaoEscolar.app (npm run build:mac)
 teams/                App separada "Conversas" (npm run conversas) — visual e servidor próprios,
                       mesma base de dados (usa src/db.js e src/lib/util.js da Gestão Escolar)
@@ -622,8 +681,10 @@ As operações com vários passos (criar aluno + conta, guardar a folha de falta
 
 ## Ideias para próximas versões
 
-Estatísticas para a direção (faltas por turma e por mês, alunos em risco) · ícones da aplicação instalável com o logótipo atual · ecrã para editar os tempos letivos.
+Ícones da aplicação instalável com o logótipo atual · ecrã para editar os tempos letivos · aviso de livros atrasados
+por notificação (lembrete diário) · versão de demonstração online com HTTPS.
 
-Já feito, de ideias anteriores: aviso ao encarregado a cada falta nova, manual do utilizador e guião da demonstração, ecrã para cada utilizador mudar a sua palavra-passe ("A minha conta"), exportar as faltas para Excel (CSV), avisar o encarregado por email da resposta aos
+Já feito, de ideias anteriores: alunos em risco e estatísticas de faltas por turma e por mês, notificações push,
+progresso dos módulos, importar alunos de CSV, ficha do aluno em PDF, biblioteca, aviso ao encarregado a cada falta nova, manual do utilizador e guião da demonstração, ecrã para cada utilizador mudar a sua palavra-passe ("A minha conta"), exportar as faltas para Excel (CSV), avisar o encarregado por email da resposta aos
 justificativos, recuperar a palavra-passe por email, e o botão "Imprimir / Exportar PDF" no horário, nas faltas e nas
 pautas (usa a função de impressão do browser — no diálogo de impressão, escolher "Guardar como PDF").

@@ -871,3 +871,9 @@ a.etiqueta:focus-visible {
 .cartao-faltas-modulos.com-limite { border-left-color: var(--perigo, #c53030); }
 .cartao-faltas-modulos .lista-simples li { justify-content: space-between; align-items: center; }
 .cartao-faltas-modulos .lista-simples li > span:first-child { display: flex; flex-direction: column; }
+.sem-quebra { white-space: nowrap; }
+.celula-progresso { min-width: 180px; }
+.celula-progresso .barra-assiduidade { width: calc(100% - 4.5rem); }
+
+/* O atributo hidden ganha sempre (ex.: botões com display próprio que o JavaScript mostra ou esconde) */
+[hidden] { display: none !important; }

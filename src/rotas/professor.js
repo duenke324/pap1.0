@@ -4,7 +4,8 @@ const { todos, um, executar, transacao } = require('../db');
 const { pagina, vazio, grelhaHorario, avatar, botaoImprimir } = require('../vistas/layout');
 const { etiquetaFalta } = require('./aluno');
 const { pautaDoAluno } = require('./avaliacao');
-const { situacaoPorModulo, verificarAvisosFaltas, avisarFaltasNovas, etiquetaModulo } = require('../lib/avisos-faltas');
+const { progressoDoProfessor, cartaoAlertasModulos } = require('./modulos');
+const { situacaoPorModulo, verificarAvisosFaltas, avisarFaltasNovas, notificarFaltasNovas, etiquetaModulo } = require('../lib/avisos-faltas');
 const {
   h,
   hoje,
@@ -286,7 +287,10 @@ get('/professor', async (req, res) => res.redirecionar('/professor/turmas'));
 get('/professor/turmas', async (req, res) => {
   if (!req.professor) return semFicha(req, res);
   const cartaoNovas = cartaoNovidades(await novidadesRecentes(req.professor.id));
-  const cartaoAvisos = cartaoAvisosDeFaltas(await avisosDeFaltas(req.professor.id)) + (await cartaoModulosDoDiretor(req.professor.id));
+  const cartaoAvisos =
+    cartaoAvisosDeFaltas(await avisosDeFaltas(req.professor.id)) +
+    (await cartaoModulosDoDiretor(req.professor.id)) +
+    cartaoAlertasModulos(await progressoDoProfessor(req.professor.id));
   const turmas = await turmasDoProfessor(req.professor.id);
   if (!turmas.length) {
     return res.html(
@@ -840,6 +844,8 @@ post('/professor/aula', async (req, res) => {
 
   // Email ao encarregado de cada aluno com falta nova (se tiver email e não tiver desligado os avisos)
   const encarregadosAvisados = await avisarFaltasNovas(novasPorAluno, { horarioId: aula.id, data });
+  // Notificação no telemóvel do aluno e do encarregado (se as ligaram)
+  await notificarFaltasNovas(novasPorAluno, { horarioId: aula.id, data });
   // Chegou alguém a metade ou ao limite de faltas do módulo? Avisa por email (só uma vez por nível)
   const avisados = await verificarAvisosFaltas([...comFaltaNova], moduloId);
 

@@ -478,3 +478,48 @@ CREATE TABLE IF NOT EXISTS logs_auditoria (
   INDEX idx_logs_entidade (entidade, entidade_id),
   CONSTRAINT fk_log_utilizador FOREIGN KEY (utilizador_id) REFERENCES utilizadores(id) ON DELETE SET NULL
 ) ENGINE = InnoDB;
+
+-- Aparelhos com as notificações ligadas ("A minha conta" → Ativar notificações). Uma linha por browser:
+-- o endereço do serviço de notificações (endpoint) e as chaves do browser para encriptar as mensagens.
+-- Ver src/lib/push.js.
+CREATE TABLE IF NOT EXISTS notificacoes_push (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  utilizador_id INT UNSIGNED NOT NULL,
+  endpoint_hash CHAR(64) NOT NULL UNIQUE,
+  endpoint      VARCHAR(1000) NOT NULL,
+  p256dh        VARCHAR(120) NOT NULL,
+  auth          VARCHAR(40) NOT NULL,
+  criado_em     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_push_utilizador (utilizador_id),
+  CONSTRAINT fk_push_utilizador FOREIGN KEY (utilizador_id) REFERENCES utilizadores(id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+-- Biblioteca: o catálogo de livros (gerido pelo funcionário com o cargo "biblioteca")
+-- exemplares: quantos a escola tem; os disponíveis são exemplares − empréstimos por devolver.
+CREATE TABLE IF NOT EXISTS livros (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  titulo     VARCHAR(200) NOT NULL,
+  autor      VARCHAR(150),
+  isbn       VARCHAR(20),
+  cota       VARCHAR(30),
+  exemplares SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+  criado_em  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_livros_titulo (titulo)
+) ENGINE = InnoDB;
+
+-- Empréstimos da biblioteca a quem tem conta na escola (alunos e professores, pelo n.º de processo).
+-- devolvido_em NULL = ainda com o leitor; passado o prazo, fica "atrasado".
+CREATE TABLE IF NOT EXISTS emprestimos (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  livro_id      INT UNSIGNED NOT NULL,
+  utilizador_id INT UNSIGNED NOT NULL,
+  data          DATE NOT NULL,
+  prazo         DATE NOT NULL,
+  devolvido_em  DATE,
+  registado_por INT UNSIGNED,
+  INDEX idx_emprestimos_abertos (devolvido_em, prazo),
+  INDEX idx_emprestimos_leitor (utilizador_id),
+  CONSTRAINT fk_emprestimo_livro     FOREIGN KEY (livro_id)      REFERENCES livros(id),
+  CONSTRAINT fk_emprestimo_leitor    FOREIGN KEY (utilizador_id) REFERENCES utilizadores(id) ON DELETE CASCADE,
+  CONSTRAINT fk_emprestimo_registou  FOREIGN KEY (registado_por) REFERENCES utilizadores(id) ON DELETE SET NULL
+) ENGINE = InnoDB;

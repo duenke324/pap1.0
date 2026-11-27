@@ -97,10 +97,23 @@ suas."
 4. Noutra janela, entrar como a Beatriz, abrir **Tarefas**, escrever uma resposta e **Entregar**.
 5. Voltar ao professor e **devolver com nota**.
 
+## 8b. Novidades da versão 1.11 (3 min)
+
+1. **Direção → Alunos em risco**: mostrar a lista (motivos de cada aluno), filtrar por turma e os gráficos de faltas
+   por mês e assiduidade por turma. Abrir "Como se calcula?".
+2. **Alunos → Importar de CSV**: escolher um ficheiro com uma linha errada de propósito → **Verificar** → **Importar**
+   → abrir o PDF das palavras-passe.
+3. **Ficha do aluno → Ficha de registo (PDF)**.
+4. **Professor → Progresso dos módulos**.
+5. **Notificações**: com o browser em `localhost` e internet, entrar como aluno → A minha conta → Ativar → enviar uma
+   notificação de teste; depois o professor marca-lhe uma falta e a notificação aparece.
+6. **Funcionário 3004 (Biblioteca)**: registar um empréstimo ao aluno 2450 e mostrar o cartão "Livros da biblioteca"
+   no painel do aluno.
+
 ## 9. Segurança e qualidade (1 min)
 
-- Mostrar o resultado do `npm test`: permissões, escolas separadas, tarefas, faltas, login, cópias, contas e
-  encarregados, todos a passar.
+- Mostrar o resultado do `npm test` (41 testes): permissões, escolas separadas, tarefas, faltas, login, cópias,
+  contas, encarregados, notificações (a mensagem é decifrada no teste) e secretaria/biblioteca, todos a passar.
 - Referir:
   - palavras-passe guardadas cifradas (scrypt);
   - bloqueio de 15 minutos depois de 5 tentativas erradas;

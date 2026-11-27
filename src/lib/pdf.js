@@ -204,4 +204,123 @@ function pdfPalavrasPasse({ escola, enderecoEntrada, grupos, geradoEm }) {
   return montarPdf(paginas, `Palavras-passe — ${escola}`);
 }
 
-module.exports = { pdfPalavrasPasse };
+// ---------- Ficha de registo do aluno (certificado de módulos) ----------
+// d = { escola, geradoEm, aluno: {nome, numero_processo, data_nascimento, turma, curso, ano_letivo, diretor, encarregado},
+//       assiduidade: {faltas, justificadas, injustificadas},
+//       disciplinas: [{ nome, modulos: [{ numero, nome, horas, classificacao }], concluidos, media }],
+//       resumo: { concluidos, total, horasConcluidas, media } }
+function pdfFichaAluno(d) {
+  const M = 50;
+  const LARG = A4.largura - 2 * M;
+  const FUNDO = 80;
+  const cinza = [0.42, 0.42, 0.42];
+  const acento = [0.05, 0.36, 0.33];
+  const paginas = [];
+  let p;
+  let y;
+
+  const novaPagina = () => {
+    p = new Pagina();
+    paginas.push(p);
+    p.retangulo(0, A4.altura - 8, A4.largura, 8, acento);
+    p.texto(M, A4.altura - 40, cortar(d.escola, LARG, 10, true), { fonte: 'F2', tamanho: 10, cor: cinza });
+    y = A4.altura - 60;
+  };
+  // Garante espaço para "altura" pontos; senão passa para a página seguinte
+  const espaco = (altura) => {
+    if (y - altura < FUNDO) novaPagina();
+  };
+
+  novaPagina();
+  p.texto(M, y - 14, 'Ficha de registo do aluno', { fonte: 'F2', tamanho: 20 });
+  p.texto(M, y - 32, 'Percurso por módulos, classificações e assiduidade', { tamanho: 10, cor: cinza });
+  y -= 56;
+
+  // Identificação: duas colunas de pares rótulo/valor
+  const a = d.aluno;
+  const campos = [
+    ['Nome', a.nome],
+    ['N.º de processo', a.numero_processo],
+    ['Data de nascimento', a.data_nascimento],
+    ['Turma', a.turma],
+    ['Curso', a.curso],
+    ['Ano letivo', a.ano_letivo],
+    ['Diretor de turma', a.diretor],
+    ['Encarregado de educação', a.encarregado],
+  ];
+  p.retangulo(M, y - 4 * 30 - 10, LARG, 4 * 30 + 10, [0.96, 0.97, 0.97]);
+  campos.forEach(([rotulo, valor], i) => {
+    const x = M + 12 + (i % 2) * (LARG / 2);
+    const yy = y - 18 - Math.floor(i / 2) * 30;
+    p.texto(x, yy, rotulo.toUpperCase(), { fonte: 'F2', tamanho: 7, cor: cinza });
+    p.texto(x, yy - 12, cortar(valor || '—', LARG / 2 - 24, 10), { tamanho: 10 });
+  });
+  y -= 4 * 30 + 30;
+
+  // Resumo
+  const r = d.resumo;
+  const caixas = [
+    ['Módulos concluídos', `${r.concluidos} de ${r.total}`],
+    ['Horas concluídas', `${r.horasConcluidas} h`],
+    ['Média dos módulos', r.media || '—'],
+    ['Faltas de presença', `${d.assiduidade.faltas} (${d.assiduidade.injustificadas} injust.)`],
+  ];
+  const largCaixa = (LARG - 3 * 10) / 4;
+  caixas.forEach(([rotulo, valor], i) => {
+    const x = M + i * (largCaixa + 10);
+    p.retangulo(x, y - 44, largCaixa, 44, [0.93, 0.95, 0.95]);
+    p.texto(x + 8, y - 15, rotulo.toUpperCase(), { fonte: 'F2', tamanho: 6.5, cor: cinza });
+    p.texto(x + 8, y - 34, cortar(valor, largCaixa - 16, 13, true), { fonte: 'F2', tamanho: 13, cor: acento });
+  });
+  y -= 70;
+
+  // Uma tabela por disciplina
+  const col = { num: M + 8, nome: M + 48, horas: M + LARG - 150, classif: M + LARG - 70 };
+  for (const disc of d.disciplinas) {
+    espaco(40 + Math.min(disc.modulos.length, 3) * 18);
+    p.texto(M, y - 12, cortar(disc.nome, LARG - 180, 12, true), { fonte: 'F2', tamanho: 12 });
+    const resumoDisc = `${disc.concluidos}/${disc.modulos.length} concluído(s)${disc.media ? ` · média ${disc.media}` : ''}`;
+    p.texto(M + LARG - larguraTexto(resumoDisc, 9), y - 12, resumoDisc, { tamanho: 9, cor: cinza });
+    y -= 22;
+    p.retangulo(M, y - 16, LARG, 16, [0.93, 0.93, 0.93]);
+    p.texto(col.num, y - 11, 'MÓD.', { fonte: 'F2', tamanho: 7, cor: cinza });
+    p.texto(col.nome, y - 11, 'NOME DO MÓDULO', { fonte: 'F2', tamanho: 7, cor: cinza });
+    p.texto(col.horas, y - 11, 'HORAS', { fonte: 'F2', tamanho: 7, cor: cinza });
+    p.texto(col.classif, y - 11, 'CLASSIFICAÇÃO', { fonte: 'F2', tamanho: 7, cor: cinza });
+    y -= 16;
+    for (const m of disc.modulos) {
+      espaco(18);
+      p.linha(M, y - 18, M + LARG, y - 18, [0.88, 0.88, 0.88]);
+      p.texto(col.num, y - 12, `M${m.numero}`, { fonte: 'F2', tamanho: 9 });
+      p.texto(col.nome, y - 12, cortar(m.nome, col.horas - col.nome - 10, 9), { tamanho: 9 });
+      p.texto(col.horas, y - 12, m.horas ? `${m.horas} h` : '—', { tamanho: 9 });
+      const c = m.classificacao || '—';
+      const negativa = c === 'NC' || c === 'EF' || (Number(c) < 10 && c !== '—');
+      p.texto(col.classif, y - 12, c, { fonte: 'F2', tamanho: 9, cor: negativa ? [0.7, 0.15, 0.15] : [0.13, 0.13, 0.13] });
+      y -= 18;
+    }
+    y -= 16;
+  }
+  if (!d.disciplinas.length) {
+    p.texto(M, y - 12, 'Ainda não há módulos definidos para as disciplinas deste aluno.', { tamanho: 10, cor: cinza });
+    y -= 30;
+  }
+
+  // Legenda e assinatura
+  espaco(110);
+  p.texto(M, y - 10, 'Módulo concluído com classificação igual ou superior a 10 valores. NC = não concluído · EF = excluído por faltas.', { tamanho: 8, cor: cinza });
+  p.texto(M, y - 22, 'A média conta apenas os módulos concluídos.', { tamanho: 8, cor: cinza });
+  p.texto(M, y - 60, `Emitido em ${d.geradoEm}.`, { tamanho: 9 });
+  p.linha(M + LARG - 200, y - 80, M + LARG, y - 80, [0.4, 0.4, 0.4]);
+  p.texto(M + LARG - 200, y - 92, 'A Direção / Os Serviços Administrativos', { tamanho: 8, cor: cinza });
+
+  paginas.forEach((pg, i) => {
+    pg.linha(M, 45, M + LARG, 45, [0.85, 0.85, 0.85]);
+    pg.texto(M, 32, cortar(`${a.nome} · processo ${a.numero_processo}`, LARG - 100, 8), { tamanho: 8, cor: cinza });
+    const pag = `Página ${i + 1} de ${paginas.length}`;
+    pg.texto(M + LARG - larguraTexto(pag, 8), 32, pag, { tamanho: 8, cor: cinza });
+  });
+  return montarPdf(paginas, `Ficha de registo — ${a.nome}`);
+}
+
+module.exports = { pdfPalavrasPasse, pdfFichaAluno };

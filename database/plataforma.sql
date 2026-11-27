@@ -58,3 +58,11 @@ CREATE TABLE IF NOT EXISTS tentativas_login (
   bloqueado_ate DATETIME,
   atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE = InnoDB;
+
+-- Chaves VAPID das notificações push (ver src/lib/push.js): um só par para toda a instalação, criado
+-- sozinho na primeira vez. A privada assina os pedidos aos serviços de notificações; nunca sai do servidor.
+CREATE TABLE IF NOT EXISTS push_chaves (
+  id      TINYINT UNSIGNED PRIMARY KEY,
+  publica VARCHAR(120) NOT NULL,
+  privada TEXT NOT NULL
+) ENGINE = InnoDB;

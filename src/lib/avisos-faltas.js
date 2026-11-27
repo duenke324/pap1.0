@@ -12,6 +12,7 @@ const { todos, um, executar } = require('../db');
 const { h, LIMITE_FALTAS, TIPOS_FALTA } = require('./util');
 const { enviarEmail, ligacaoDaEscola } = require('./email');
 const { escolaAtual } = require('./contexto');
+const { notificar } = require('./push');
 
 const NIVEIS = {
   metade: { titulo: 'metade das faltas permitidas', classe: 'etiqueta-aviso' },
@@ -121,7 +122,8 @@ async function verificarAvisosFaltas(alunoIds, moduloId) {
 async function enviarAviso(s, nivel) {
   const pessoas = await um(
     `SELECT a.nome, a.email, e.nome AS encarregado, e.email AS encarregado_email,
-            p.nome AS diretor, p.email AS diretor_email
+            p.nome AS diretor, p.email AS diretor_email,
+            a.utilizador_id AS aluno_u, e.utilizador_id AS encarregado_u, p.utilizador_id AS diretor_u
        FROM alunos a
        LEFT JOIN encarregados e ON e.id = a.encarregado_id
        LEFT JOIN turmas t ON t.id = a.turma_id
@@ -152,6 +154,41 @@ async function enviarAviso(s, nivel) {
   }
   // Um email para cada pessoa (cada um vê só o seu endereço)
   for (const e of envios) await enviarEmail({ para: e.para, assunto, texto: e.texto });
+
+  // E uma notificação no telemóvel/computador de quem as ligou (cada um com a sua página)
+  const titulo = nivel === 'limite' ? 'Limite de faltas atingido' : 'Metade das faltas permitidas';
+  const corpo = `${pessoas.nome}: ${s.disciplina}, módulo ${s.numero} — ${s.faltas} de ${numero(s.limite)} h.`;
+  await notificar(pessoas.aluno_u, { titulo, corpo, url: '/aluno/faltas' });
+  await notificar(pessoas.encarregado_u, { titulo, corpo, url: '/encarregado/faltas' });
+  await notificar(pessoas.diretor_u, { titulo, corpo, url: `/professor/alunos/${s.aluno_id}` });
+}
+
+// Notificação push a cada falta nova: ao aluno e ao encarregado (só em quem ligou as notificações)
+async function notificarFaltasNovas(novas, { horarioId, data }) {
+  if (!novas.size) return 0;
+  try {
+    const aula = await um(
+      'SELECT hr.hora_inicio, d.nome AS disciplina FROM horario hr JOIN disciplinas d ON d.id = hr.disciplina_id WHERE hr.id = ?',
+      horarioId
+    );
+    const alunos = await todos(
+      `SELECT a.id, a.nome, a.utilizador_id, e.utilizador_id AS encarregado_u
+         FROM alunos a LEFT JOIN encarregados e ON e.id = a.encarregado_id WHERE a.id IN (?)`,
+      [...novas.keys()]
+    );
+    const dia = new Date(`${data}T12:00:00`).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
+    let enviadas = 0;
+    for (const a of alunos) {
+      const tipos = novas.get(a.id).map((t) => (TIPOS_FALTA[t] || t).toLowerCase()).join(' e ');
+      const corpo = `${aula.disciplina}, ${dia} às ${aula.hora_inicio} (falta de ${tipos}).`;
+      enviadas += await notificar(a.utilizador_id, { titulo: 'Falta registada', corpo, url: '/aluno/faltas' });
+      enviadas += await notificar(a.encarregado_u, { titulo: `Falta registada — ${a.nome}`, corpo, url: '/encarregado/faltas' });
+    }
+    return enviadas;
+  } catch (erro) {
+    console.error('Falha nas notificações de faltas novas:', erro.message);
+    return 0;
+  }
 }
 
 // ---------- Aviso ao encarregado a cada falta nova ----------
@@ -239,6 +276,7 @@ module.exports = {
   situacaoPorModulo,
   verificarAvisosFaltas,
   avisarFaltasNovas,
+  notificarFaltasNovas,
   cartaoFaltasModulos,
   etiquetaModulo,
   NIVEIS,

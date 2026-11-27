@@ -10,6 +10,7 @@ const { avatar, vazio } = require('../vistas/layout');
 const { h, formatarData, formatarDataLonga, TIPOS_FALTA } = require('./util');
 const { enviarEmail, ligacaoDaEscola } = require('./email');
 const { escolaAtual } = require('./contexto');
+const { notificar } = require('./push');
 
 const TAMANHO_MAXIMO = 3 * 1024 * 1024; // 3 MB (em base64 ocupa 4 MB, abaixo do limite de 6 MB do formulário)
 
@@ -79,6 +80,16 @@ async function registarJustificativo({ alunoId, utilizadorId, faltas, ids, motiv
     apagarFicheiroJustificativo(ficheiro); // a BD não mudou: o ficheiro não pode ficar sem dono
     throw e;
   }
+  // Notificação a quem valida: o diretor de turma do aluno e a direção (se ligaram as notificações)
+  const quem = await todos(
+    `SELECT a.nome, p.utilizador_id AS diretor_u FROM alunos a
+       LEFT JOIN turmas t ON t.id = a.turma_id LEFT JOIN professores p ON p.id = t.diretor_id WHERE a.id = ?`,
+    alunoId
+  );
+  const direcao = await todos("SELECT id FROM utilizadores WHERE papel = 'admin'");
+  const mensagem = { titulo: 'Justificativo novo para validar', corpo: `${quem[0]?.nome || 'Aluno'}: ${ids.length} falta(s) — ${motivo}.` };
+  await notificar(quem[0]?.diretor_u, { ...mensagem, url: '/professor/justificativos' });
+  await notificar(direcao.map((d) => d.id), { ...mensagem, url: '/admin/justificativos' });
   return { quantas: ids.length };
 }
 
@@ -192,6 +203,13 @@ async function decidirJustificativo(req, id, decisao, resposta) {
   // enviarEmail nunca lança erro, por isso uma falha no envio não desfaz nem esconde a decisão.
   // (se foi o próprio aluno, maior de idade, a enviar o pedido, a resposta vai para o email dele)
   const peloAluno = j.enviado_por && j.enviado_por === j.aluno_utilizador_id;
+  if (resultado.ok) {
+    await notificar(j.enviado_por, {
+      titulo: `Justificativo ${decisao === 'aceitar' ? 'aceite' : 'recusado'}`,
+      corpo: decisao === 'aceitar' ? `As faltas de ${j.aluno} ficaram justificadas.` : `${j.aluno}: ${resposta}`,
+      url: peloAluno ? '/aluno/faltas' : '/encarregado/justificativos',
+    });
+  }
   const destino = peloAluno ? { email: j.aluno_email, nome: j.aluno, ver: '/aluno/faltas' } : { email: j.encarregado_email, nome: j.encarregado_nome, ver: '/encarregado/justificativos' };
   if (resultado.ok && destino.email) {
     const aceite = decisao === 'aceitar';

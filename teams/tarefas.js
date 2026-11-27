@@ -13,6 +13,12 @@ const { h } = require('../src/lib/util');
 const { pagina, vazio, icone, avatarHtml, azulejoEquipa } = require('./vistas');
 const { canalAcessivel, arvoreDoUtilizador } = require('./rotas');
 const { guardarFicheiroTarefa, apagarFicheiroTarefa, enviarFicheiroTarefa, ACEITES } = require('./ficheiros');
+const { notificar } = require('../src/lib/push');
+const { escolaAtual } = require('../src/lib/contexto');
+
+// Endereço completo de uma página da Conversas (para abrir ao tocar na notificação)
+const CONVERSAS_URL = (process.env.CONVERSAS_URL || `http://localhost:${Number(process.env.TEAMS_PORT) || 3100}`).replace(/\/+$/, '');
+const ligacaoConversas = (caminho) => `${CONVERSAS_URL}/${encodeURIComponent(escolaAtual().codigo)}${caminho}`;
 
 // ---------- Datas ----------
 const doisDigitos = (n) => String(n).padStart(2, '0');
@@ -296,6 +302,13 @@ post('/tarefas', async (req, res) => {
     req.utilizador.id,
     `📋 Nova tarefa: ${titulo}${dataLimite ? ` — entrega até ${dataLegivel(dataLimite)}` : ''}. Veja e entregue em "Tarefas".`
   );
+  // Notificação aos alunos do canal/grupo (os que ligaram as notificações na Gestão Escolar)
+  const membros = await todos('SELECT a.utilizador_id FROM canal_membros cm JOIN alunos a ON a.id = cm.aluno_id WHERE cm.canal_id = ?', canal.id);
+  await notificar(membros.map((m) => m.utilizador_id), {
+    titulo: `Nova tarefa: ${titulo}`,
+    corpo: `${canal.nome}${dataLimite ? ` · entrega até ${dataLegivel(dataLimite)}` : ''}`,
+    url: ligacaoConversas(`/tarefas/${r.lastInsertRowid}`),
+  });
   req.flash('sucesso', `Tarefa "${titulo}" atribuída em "${canal.nome}".`);
   res.redirecionar(`/tarefas/${r.lastInsertRowid}`);
 });
@@ -505,6 +518,12 @@ post('/tarefas/:id/devolver/:alunoId', async (req, res) => {
     nota,
     comentario || null
   );
+  const contaAluno = await um('SELECT utilizador_id FROM alunos WHERE id = ?', aluno.id);
+  await notificar(contaAluno?.utilizador_id, {
+    titulo: `Tarefa avaliada: ${tarefa.titulo}`,
+    corpo: nota !== null ? `Nota: ${String(nota).replace('.', ',')} em ${tarefa.pontos}.` : 'O professor devolveu o seu trabalho.',
+    url: ligacaoConversas(`/tarefas/${tarefa.id}`),
+  });
   req.flash('sucesso', `Tarefa devolvida a ${aluno.nome}.`);
   res.redirecionar(voltar);
 });

@@ -205,3 +205,86 @@ document.addEventListener('click', async (e) => {
   }
   setTimeout(() => (botao.textContent = original), 1600);
 });
+
+// Notificações push ("A minha conta"): pede autorização, cria a subscrição no serviço de notificações
+// do browser e envia-a ao servidor. Os endereços vêm dos atributos data-* (já com o código da escola).
+document.querySelectorAll('[data-notificacoes]').forEach(async (cartao) => {
+  const ativar = cartao.querySelector('[data-ativar-notificacoes]');
+  const desativar = cartao.querySelector('[data-desativar-notificacoes]');
+  const estado = cartao.querySelector('[data-estado-notificacoes]');
+  const aviso = cartao.querySelector('[data-aviso-notificacoes]');
+  const mostrarAviso = (texto) => {
+    aviso.textContent = texto;
+    aviso.hidden = false;
+  };
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.isSecureContext) {
+    mostrarAviso('Este browser (ou este endereço) não permite notificações. Use o Chrome, Edge, Firefox ou Safari em https:// ou localhost.');
+    return;
+  }
+  const registo = await navigator.serviceWorker.ready;
+  const enviar = (url, dados) =>
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(dados) });
+  const atualizar = async () => {
+    const sub = await registo.pushManager.getSubscription();
+    ativar.hidden = !!sub;
+    desativar.hidden = !sub;
+    if (sub) estado.textContent = 'Ligadas neste aparelho.';
+  };
+  // A chave pública do servidor vem em base64url; o browser quer bytes
+  const bytes = (b64) => {
+    const texto = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (b64.length % 4)) % 4));
+    return Uint8Array.from(texto, (c) => c.charCodeAt(0));
+  };
+
+  ativar.addEventListener('click', async () => {
+    ativar.disabled = true;
+    try {
+      if ((await Notification.requestPermission()) !== 'granted') {
+        mostrarAviso('As notificações foram bloqueadas. Para as ligar, autorize-as nas definições do site no browser.');
+        return;
+      }
+      const { chave } = await (await fetch(cartao.dataset.chave)).json();
+      const sub = await registo.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(chave) });
+      const { keys } = sub.toJSON();
+      const r = await enviar(cartao.dataset.subscrever, { endpoint: sub.endpoint, p256dh: keys.p256dh, auth: keys.auth });
+      if (!r.ok) throw new Error();
+      location.reload(); // mostra o botão "Enviar uma notificação de teste"
+    } catch {
+      mostrarAviso('Não foi possível ativar as notificações neste aparelho.');
+    } finally {
+      ativar.disabled = false;
+    }
+  });
+
+  desativar.addEventListener('click', async () => {
+    const sub = await registo.pushManager.getSubscription();
+    if (sub) {
+      await enviar(cartao.dataset.cancelar, { endpoint: sub.endpoint }).catch(() => {});
+      await sub.unsubscribe();
+    }
+    location.reload();
+  });
+  atualizar();
+});
+
+// Importar alunos (CSV): o ficheiro escolhido é lido no browser e o texto vai para a caixa.
+// O Excel em português grava o CSV em Windows-1252 (não UTF-8): se não for UTF-8 válido, lê-se assim.
+document.querySelectorAll('[data-formulario-csv]').forEach((form) => {
+  const entrada = form.querySelector('[data-ficheiro-csv]');
+  const caixa = form.querySelector('[data-texto-csv]');
+  entrada.addEventListener('change', async () => {
+    const ficheiro = entrada.files[0];
+    if (!ficheiro) return;
+    if (ficheiro.size > 4 * 1024 * 1024) {
+      alert('O ficheiro é demasiado grande (máx. 4 MB).');
+      entrada.value = '';
+      return;
+    }
+    const bytes = await ficheiro.arrayBuffer();
+    try {
+      caixa.value = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      caixa.value = new TextDecoder('windows-1252').decode(bytes);
+    }
+  });
+});

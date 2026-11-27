@@ -20,6 +20,13 @@ get('/funcionario', async (req, res) => {
         <span class="texto-suave">N.º de processo ${h(f.numero_processo)}</span>
       </div>
       <p class="texto-suave">Exerce funções de <strong>${cargo}</strong> nesta escola.</p>
+      ${
+        f.cargo === 'biblioteca'
+          ? '<p class="barra-acoes"><a class="botao" href="/funcionario/biblioteca">Empréstimos</a> <a class="botao botao-secundario" href="/funcionario/livros">Catálogo de livros</a></p>'
+          : f.cargo === 'secretaria'
+            ? '<p class="barra-acoes"><a class="botao" href="/funcionario/alunos">Fichas dos alunos (PDF)</a></p>'
+            : ''
+      }
       <p class="legenda">Esta é a sua área pessoal. Para ver os seus dados, veja «Dados pessoais» no menu.</p>
     </section>`;
   res.html(pagina(req, { titulo: 'Painel', ativo: 'inicio' }, conteudo));

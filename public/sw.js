@@ -4,7 +4,7 @@
 // como único recurso offline. Só os ficheiros estáticos (CSS, JS, ícones) ficam em cache.
 // Mudar a versão sempre que o CSS/JS/ícones mudarem: o service worker novo apaga a cache antiga
 // (sem isto, quem tem a app instalada continuava a ver o CSS antigo na primeira visita)
-const CACHE_ESTATICOS = 'gestao-escolar-estaticos-v9';
+const CACHE_ESTATICOS = 'gestao-escolar-estaticos-v10';
 const FICHEIRO_OFFLINE = '/offline.html';
 
 const PRE_CACHE = [
@@ -56,6 +56,38 @@ self.addEventListener('fetch', (evento) => {
         })
         .catch(() => emCache);
       return emCache || daRede;
+    })
+  );
+});
+
+// Notificações push (ver src/lib/push.js): a mensagem chega encriptada e o browser já a decifrou.
+// { titulo, corpo, url, escola }
+self.addEventListener('push', (evento) => {
+  let dados = {};
+  try {
+    dados = evento.data ? evento.data.json() : {};
+  } catch {
+    dados = { titulo: evento.data?.text() || 'Nova notificação' };
+  }
+  evento.waitUntil(
+    self.registration.showNotification(dados.titulo || 'Gestão Escolar', {
+      body: [dados.corpo, dados.escola].filter(Boolean).join('\n'),
+      icon: '/static/icons/icon-192.png',
+      badge: '/static/icons/icon-96.png',
+      lang: 'pt-PT',
+      data: { url: dados.url || '/' },
+    })
+  );
+});
+
+// Tocar na notificação: abre a página (ou mostra a janela da app que já a tem aberta)
+self.addEventListener('notificationclick', (evento) => {
+  evento.notification.close();
+  const url = evento.notification.data?.url || '/';
+  evento.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((janelas) => {
+      const aberta = janelas.find((j) => j.url === url);
+      return aberta ? aberta.focus() : self.clients.openWindow(url);
     })
   );
 });

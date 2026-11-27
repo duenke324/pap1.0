@@ -79,6 +79,7 @@ abertas noutros computadores terminam.
 | Dar aula | sumário, módulo e faltas da aula, tudo num ecrã |
 | Justificativos | (diretor de turma) os documentos enviados pelos encarregados e alunos maiores |
 | Avaliação | lançar as notas de cada módulo e ver a pauta |
+| Progresso dos módulos | horas dadas e notas lançadas em cada módulo; avisa os módulos a acabar sem notas |
 | Testes e avaliações | marcar testes, trabalhos e apresentações |
 | Horário | o horário do professor |
 
@@ -102,13 +103,21 @@ abertas noutros computadores terminam.
 
 Painel com o cargo e os dados pessoais. As correções são feitas pela direção.
 
+- **Biblioteca** (cargo Biblioteca):
+  - **Catálogo**: acrescentar livros (título, autor, ISBN, cota, exemplares), editar e apagar (um livro que já foi
+    emprestado não se apaga).
+  - **Empréstimos**: escrever o n.º de processo do aluno ou professor, escolher o livro e o prazo (15 dias por
+    omissão) → **Registar empréstimo**. Quando o livro volta, **Devolvido**. Os atrasados aparecem a vermelho.
+- **Secretaria** (cargo Secretaria): **Fichas dos alunos** → procurar o aluno → **Ficha em PDF**.
+
 ---
 
 ## 6. Direção da escola (administrador)
 
 | Menu | O que faz |
 | --- | --- |
-| Painel | estatísticas e gráficos de assiduidade, faltas recentes por justificar |
+| Painel | estatísticas e gráficos de assiduidade, faltas recentes por justificar, alunos em risco alto |
+| Alunos em risco | os alunos com vários sinais de alerta (faltas, notas, ocorrências), o motivo e gráficos por mês e por turma |
 | Turmas | criar e editar turmas (curso, diretor de turma, delegado e subdelegado) |
 | Alunos | criar, editar e apagar alunos; ficha com a conta do encarregado |
 | Professores | contas dos professores e disciplinas que lecionam |
@@ -128,6 +137,25 @@ Painel com o cargo e os dados pessoais. As correções são feitas pela direçã
 3. Ao guardar aparecem **uma só vez**: o email e a palavra-passe temporária do aluno e, se for menor, o **código e a
    palavra-passe temporária do encarregado**. Anotar e entregar.
 4. Um aluno **maior de idade** não precisa de encarregado: justifica as suas faltas.
+
+**Importar vários alunos** (Alunos → **Importar de CSV**):
+1. No Excel, uma linha por aluno com as colunas do modelo (descarregar em "Descarregar o modelo") e **Guardar como →
+   CSV (separado por pontos e vírgulas)**.
+2. Escolher o ficheiro e carregar em **Verificar**: cada linha aparece como **Certo** ou com o erro.
+3. Carregar em **Importar**: as linhas certas são criadas; descarregar o **PDF** com as palavras-passe e entregar.
+   As linhas com erro corrigem-se no ficheiro e importam-se depois.
+
+**Ficha de registo em PDF**: na ficha do aluno, **Ficha de registo (PDF)** — módulos, classificações e assiduidade,
+pronta a imprimir e assinar.
+
+---
+
+## Notificações no telemóvel (todos os perfis)
+
+Em **A minha conta → Ativar notificações neste aparelho** (o browser pede autorização). Depois, as faltas, os avisos,
+as respostas aos justificativos e as tarefas chegam como notificação, mesmo com a aplicação fechada. Para experimentar:
+**Enviar uma notificação de teste**. No iPhone/iPad, instale primeiro a app no ecrã principal. Para desligar:
+**Desligar neste aparelho**.
 
 ---
 
