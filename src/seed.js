@@ -8,7 +8,7 @@ async function semear() {
   const { transacao } = require('./db');
   const { gerarHash, paraISO, diaDaSemana, gerarEmailAluno } = require('./lib/util');
 
-  await transacao(async ({ executar }) => {
+  await transacao(async ({ executar, um }) => {
     const inserir = async (sql, ...params) => Number((await executar(sql, ...params)).lastInsertRowid);
 
     // Administrador (login por número de processo, tal como professores e alunos)
@@ -216,6 +216,7 @@ async function semear() {
       );
     }
 
+
     // Alunos (utilizador = n.º de processo, palavra-passe aluno123)
     const alunos = [
       // 10.º TGPSI
@@ -350,6 +351,37 @@ async function semear() {
         diaUtil(desvio),
         tipo,
         descricao
+      );
+    }
+    // Biblioteca: alguns livros e empréstimos (um deles já atrasado), registados pelo funcionário 3004
+    const livros = [];
+    for (const [titulo, autor, cota, exemplares] of [
+      ['Os Maias', 'Eça de Queirós', '821.134.3 QUE', 4],
+      ['Memorial do Convento', 'José Saramago', '821.134.3 SAR', 3],
+      ['Mensagem', 'Fernando Pessoa', '821.134.3 PES', 2],
+      ['Introdução à Programação em Python', 'Ernesto Costa', '004.43 COS', 2],
+      ['Redes de Computadores', 'Andrew S. Tanenbaum', '004.7 TAN', 1],
+      ['Sistemas Operativos', 'José Alves Marques', '004.45 MAR', 1],
+    ]) {
+      livros.push(await inserir('INSERT INTO livros (titulo, autor, cota, exemplares) VALUES (?, ?, ?, ?)', titulo, autor, cota, exemplares));
+    }
+    const dia = (recuo) => paraISO(new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - recuo));
+    const conta = async (username) => (await um('SELECT id FROM utilizadores WHERE username = ?', username)).id;
+    const bibliotecario = await conta('3004');
+    for (const [livro, username, recuo, devolvido] of [
+      [0, '2450', 20, null], // 10.º ano, atrasado (prazo de 15 dias já passou)
+      [1, '2310', 5, null],
+      [3, '2451', 3, null],
+      [2, '2311', 30, 18], // já devolvido
+    ]) {
+      await executar(
+        'INSERT INTO emprestimos (livro_id, utilizador_id, data, prazo, devolvido_em, registado_por) VALUES (?, ?, ?, ?, ?, ?)',
+        livros[livro],
+        await conta(username),
+        dia(recuo),
+        dia(recuo - 15),
+        devolvido === null ? null : dia(devolvido),
+        bibliotecario
       );
     }
   });

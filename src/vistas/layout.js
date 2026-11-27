@@ -25,6 +25,7 @@ const MENUS = {
     { href: '/professor/aula', chave: 'aula', texto: 'Dar aula' },
     { href: '/professor/justificativos', chave: 'justificativos', texto: 'Justificativos' },
     { href: '/professor/avaliacao', chave: 'avaliacao', texto: 'Avaliação' },
+    { href: '/professor/modulos', chave: 'modulos', texto: 'Progresso dos módulos' },
     { href: '/professor/testes', chave: 'testes', texto: 'Testes e avaliações' },
     { href: '/professor/horario', chave: 'horario', texto: 'Horário' },
     CONTA,
@@ -37,6 +38,7 @@ const MENUS = {
     { href: '/admin/disciplinas', chave: 'disciplinas', texto: 'Disciplinas' },
     { href: '/admin/horarios', chave: 'horarios', texto: 'Horários' },
     { href: '/admin/calendario', chave: 'calendario', texto: 'Calendário e avisos' },
+    { href: '/admin/risco', chave: 'risco', texto: 'Alunos em risco' },
     { href: '/admin/faltas', chave: 'faltas', texto: 'Faltas' },
     { href: '/admin/justificativos', chave: 'justificativos', texto: 'Justificativos' },
     { href: '/admin/funcionarios', chave: 'funcionarios', texto: 'Funcionários' },
@@ -56,6 +58,21 @@ const MENUS = {
     CONTA,
   ],
 };
+
+// Entradas extra do menu do funcionário, conforme o cargo (src/rotas/biblioteca.js)
+const MENU_CARGO = {
+  biblioteca: [
+    { href: '/funcionario/biblioteca', chave: 'biblioteca', texto: 'Empréstimos' },
+    { href: '/funcionario/livros', chave: 'livros', texto: 'Catálogo' },
+  ],
+  secretaria: [{ href: '/funcionario/alunos', chave: 'fichas', texto: 'Fichas dos alunos' }],
+};
+
+function menuDe(req) {
+  const menu = MENUS[req.utilizador.papel];
+  const extra = req.utilizador.papel === 'funcionario' ? MENU_CARGO[req.funcionario?.cargo] : null;
+  return extra ? [menu[0], ...extra, ...menu.slice(1)] : menu;
+}
 
 const NOMES_PAPEL = {
   aluno: 'Aluno',
@@ -97,6 +114,7 @@ const ICONES = {
   texto: '<path d="M5 6h14M5 10h14M5 14h9M5 18h6"/>',
   lista: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/>',
   chave: '<circle cx="8" cy="14" r="4"/><path d="m11 11 8-8M16 6l2 2M14 8l2 2"/>',
+  alerta: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2v.3"/>',
   maleta: '<rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M9 7V5h6v2M3.5 12h17"/>',
 };
 
@@ -122,6 +140,11 @@ const ICONE_MENU = {
   estatisticas: 'grafico',
   dados: 'cartao',
   sumarios: 'texto',
+  risco: 'alerta',
+  modulos: 'grafico',
+  biblioteca: 'livro',
+  livros: 'lista',
+  fichas: 'ficheiro',
 };
 
 function icone(nome) {
@@ -249,7 +272,7 @@ function identificacaoAluno(a) {
 function pagina(req, opcoes, conteudo) {
   const { titulo, ativo, subtitulo = '', acoes = '' } = opcoes;
   const u = req.utilizador;
-  const indice = MENUS[u.papel]
+  const indice = menuDe(req)
     .map(
       (item) =>
         `<a href="${item.href}" class="${item.chave === ativo ? 'ativo' : ''}"${item.chave === ativo ? ' aria-current="page"' : ''}>${icone(ICONE_MENU[item.chave] || 'lista')}<span>${h(item.texto)}</span></a>`

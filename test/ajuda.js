@@ -12,6 +12,7 @@ const AMBIENTE = {
   PORT: '3091',
   TEAMS_PORT: '3191',
   COPIAS_AUTOMATICAS: '0',
+  PUSH_PERMITIR_LOCAL: '1', // as notificações push vão para um servidor local do teste (notificacoes.test.js)
   SMTP_HOST: '', // sem SMTP: os emails são escritos na consola do servidor (que os testes leem)
   APP_URL: 'http://localhost:3091',
   CONVERSAS_URL: 'http://localhost:3191',

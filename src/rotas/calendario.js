@@ -2,6 +2,7 @@
 const { get, post } = require('../lib/servidor');
 const { todos, um, executar } = require('../db');
 const { pagina, vazio } = require('../vistas/layout');
+const { notificar } = require('../lib/push');
 const { h, dataValida, formatarData, selecionado, anoLetivoAtual } = require('../lib/util');
 
 const TIPOS_CALENDARIO = { periodo: 'Período letivo', interrupcao: 'Interrupção letiva' };
@@ -156,6 +157,16 @@ post('/admin/avisos', async (req, res) => {
   if (Object.keys(erros).length) return paginaCalendario(req, res, { dadosAviso: dados, errosAviso: erros }, 422);
 
   await executar('INSERT INTO avisos (titulo, texto, turma_id, publicado_por) VALUES (?, ?, ?, ?)', dados.titulo, dados.texto, dados.turma_id, req.utilizador.id);
+  // Notificação aos alunos (da turma, ou todos) e aos seus encarregados
+  const destinatarios = await todos(
+    `SELECT a.utilizador_id AS aluno_u, e.utilizador_id AS encarregado_u FROM alunos a
+       LEFT JOIN encarregados e ON e.id = a.encarregado_id WHERE (? IS NULL OR a.turma_id = ?)`,
+    dados.turma_id,
+    dados.turma_id
+  );
+  const corpo = dados.texto.length > 140 ? `${dados.texto.slice(0, 140)}…` : dados.texto;
+  await notificar(destinatarios.map((d) => d.aluno_u), { titulo: `Aviso: ${dados.titulo}`, corpo, url: '/aluno' });
+  await notificar(destinatarios.map((d) => d.encarregado_u), { titulo: `Aviso: ${dados.titulo}`, corpo, url: '/encarregado' });
   req.flash('sucesso', 'Aviso publicado.');
   res.redirecionar('/admin/calendario');
 });

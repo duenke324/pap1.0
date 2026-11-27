@@ -8,6 +8,8 @@ const { pagina, vazio, avatar, botaoImprimir } = require('../vistas/layout');
 const { etiquetaFalta } = require('./aluno');
 const { pautaDoAluno } = require('./avaliacao');
 const { registarLog } = require('../lib/auditoria');
+const { alunosEmRisco } = require('../lib/risco');
+const { enviarFichaPdf } = require('../lib/ficha-aluno');
 const { cartaoEncarregado, criarContaEncarregado, EMAIL_VALIDO } = require('./encarregados');
 const {
   h,
@@ -238,6 +240,7 @@ get('/admin', async (req, res) => {
     professores: await n('SELECT COUNT(*) AS n FROM professores'),
     funcionarios: await n('SELECT COUNT(*) AS n FROM funcionarios'),
     porJustificar: await n('SELECT COUNT(*) AS n FROM faltas WHERE justificada = 0'),
+    risco: (await alunosEmRisco()).filter((a) => a.nivel === 'alto').length,
   };
   const porTurma = await todos(
     `SELECT t.id, t.nome, t.ano_letivo, COUNT(DISTINCT a.id) AS alunos,
@@ -264,6 +267,7 @@ get('/admin', async (req, res) => {
   const conteudo = `
     <section class="estatisticas">
       <a class="estatistica ${stats.porJustificar ? 'destaque-aviso' : ''}" href="/admin/faltas"><span>Faltas por justificar</span><strong>${stats.porJustificar}</strong></a>
+      <a class="estatistica ${stats.risco ? 'destaque-aviso' : ''}" href="/admin/risco"><span>Alunos em risco alto</span><strong>${stats.risco}</strong></a>
       <a class="estatistica" href="/admin/alunos"><span>Alunos</span><strong>${stats.alunos}</strong></a>
       <a class="estatistica" href="/admin/turmas"><span>Turmas</span><strong>${stats.turmas}</strong></a>
       <div class="estatistica"><span>Professores</span><strong>${stats.professores}</strong></div>
@@ -471,7 +475,11 @@ get('/admin/alunos', async (req, res) => {
   res.html(
     pagina(
       req,
-      { titulo: 'Alunos', ativo: 'alunos', acoes: `<a class="botao" href="/admin/alunos/novo">+ Novo aluno</a>` },
+      {
+        titulo: 'Alunos',
+        ativo: 'alunos',
+        acoes: `<a class="botao botao-secundario" href="/admin/alunos/importar">Importar de CSV</a> <a class="botao" href="/admin/alunos/novo">+ Novo aluno</a>`,
+      },
       conteudo
     )
   );
@@ -481,6 +489,41 @@ get('/admin/alunos/novo', async (req, res) => {
   const aluno = { turma_id: req.query.turma || '' };
   res.html(pagina(req, { titulo: 'Novo aluno', ativo: 'alunos' }, await formularioAluno(req, { aluno, acao: '/admin/alunos/novo', titulo: 'Criar aluno' })));
 });
+
+// Cria a conta e a ficha de um aluno (e a conta do encarregado, se for menor), dentro de uma transação.
+// Usado no formulário "Novo aluno" e na importação de um ficheiro CSV (src/rotas/importar.js).
+async function criarAlunoNaBd(tx, dados, { email, password }) {
+  const u = await tx.executar(
+    `INSERT INTO utilizadores (username, password_hash, papel, nome, deve_redefinir_password) VALUES (?, ?, 'aluno', ?, 1)`,
+    dados.numero_processo,
+    gerarHash(password),
+    dados.nome
+  );
+  const alunoId = Number(
+    (await tx.executar(
+      `INSERT INTO alunos (utilizador_id, turma_id, numero_processo, nome, data_nascimento, contacto, encarregado_nome, email)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      u.lastInsertRowid,
+      dados.turma_id,
+      dados.numero_processo,
+      dados.nome,
+      dados.data_nascimento || null,
+      dados.contacto || null,
+      dados.encarregado_nome || null,
+      email
+    )).lastInsertRowid
+  );
+  // Aluno menor (ou sem data de nascimento): cria já a conta do encarregado de educação
+  let contaEncarregado = null;
+  if (!maiorDeIdade(dados.data_nascimento)) {
+    contaEncarregado = await criarContaEncarregado(
+      tx,
+      { id: alunoId, numero_processo: dados.numero_processo },
+      { nome: dados.encarregado_nome, email: dados.encarregado_email, contacto: dados.encarregado_contacto }
+    );
+  }
+  return { alunoId, contaEncarregado };
+}
 
 post('/admin/alunos/novo', async (req, res) => {
   const { dados, erros } = await lerFormularioAluno(req.corpo);
@@ -494,39 +537,8 @@ post('/admin/alunos/novo', async (req, res) => {
   const emailGerado = gerarEmailAluno(dados.nome, dados.numero_processo);
   const passwordGerada = gerarPasswordTemporaria();
 
-  let alunoId;
   let avisoFoto = '';
-  let contaEncarregado = null;
-  await transacao(async (tx) => {
-    const u = await tx.executar(
-      `INSERT INTO utilizadores (username, password_hash, papel, nome, deve_redefinir_password) VALUES (?, ?, 'aluno', ?, 1)`,
-      dados.numero_processo,
-      gerarHash(passwordGerada),
-      dados.nome
-    );
-    alunoId = Number(
-      (await tx.executar(
-        `INSERT INTO alunos (utilizador_id, turma_id, numero_processo, nome, data_nascimento, contacto, encarregado_nome, email)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        u.lastInsertRowid,
-        dados.turma_id,
-        dados.numero_processo,
-        dados.nome,
-        dados.data_nascimento || null,
-        dados.contacto || null,
-        dados.encarregado_nome || null,
-        emailGerado
-      )).lastInsertRowid
-    );
-    // Aluno menor (ou sem data de nascimento): cria já a conta do encarregado de educação
-    if (!maiorDeIdade(dados.data_nascimento)) {
-      contaEncarregado = await criarContaEncarregado(
-        tx,
-        { id: alunoId, numero_processo: dados.numero_processo },
-        { nome: dados.encarregado_nome, email: dados.encarregado_email, contacto: dados.encarregado_contacto }
-      );
-    }
-  });
+  const { alunoId, contaEncarregado } = await transacao((tx) => criarAlunoNaBd(tx, dados, { email: emailGerado, password: passwordGerada }));
 
   if (dados.fotografia_dados) {
     let foto = null;
@@ -623,8 +635,11 @@ get('/admin/alunos/:id', async (req, res) => {
     </div>
     ${await cartaoEncarregado(aluno.id)}
     <section class="cartao"><h2>Avaliação por módulos</h2>${await pautaDoAluno(aluno)}</section>`;
-  res.html(pagina(req, { titulo: 'Ficha do aluno', ativo: 'alunos', acoes: botaoImprimir() }, conteudo));
+  const acoes = `<a class="botao botao-secundario no-imprimir" href="/admin/alunos/${aluno.id}/ficha.pdf" target="_blank">Ficha de registo (PDF)</a> ${botaoImprimir()}`;
+  res.html(pagina(req, { titulo: 'Ficha do aluno', ativo: 'alunos', acoes }, conteudo));
 });
+
+get('/admin/alunos/:id/ficha.pdf', (req, res) => enviarFichaPdf(res, req.params.id));
 
 get('/admin/alunos/:id/editar', async (req, res) => {
   const aluno = await carregarAluno(req.params.id);
@@ -1041,3 +1056,5 @@ post('/admin/seguranca/desligar', async (req, res) => {
   req.flash('sucesso', 'Código de entrada desligado.');
   res.redirecionar('/admin/seguranca');
 });
+
+module.exports = { lerFormularioAluno, criarAlunoNaBd };

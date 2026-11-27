@@ -381,10 +381,14 @@ require('./rotas/aluno');
 require('./rotas/professor');
 require('./rotas/atas');
 require('./rotas/avaliacao');
+require('./rotas/modulos');
 require('./rotas/admin');
+require('./rotas/risco');
+require('./rotas/importar');
 require('./rotas/turmas');
 require('./rotas/professores');
 require('./rotas/funcionario');
+require('./rotas/biblioteca');
 require('./rotas/funcionarios');
 require('./rotas/horarios');
 require('./rotas/calendario');
@@ -394,6 +398,7 @@ require('./rotas/encarregados');
 require('./rotas/justificativos');
 require('./rotas/recuperacao');
 require('./rotas/conta');
+require('./rotas/notificacoes');
 require('./rotas/plataforma');
 
 // ---------- Arranque ----------

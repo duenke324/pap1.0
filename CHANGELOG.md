@@ -3,6 +3,41 @@
 Tudo o que mudou no Sistema de Gestão Escolar, da versão mais recente para a mais antiga.
 Cada vez que algo é atualizado no GitHub, acrescenta-se aqui uma entrada.
 
+## [1.11.0] — 2026-11-27
+
+### Novo
+- **Alunos em risco** (direção, menu novo): uma lista com os alunos que juntam vários sinais de alerta — módulos a
+  metade ou no limite de faltas, módulos NC/EF e notas negativas, ocorrências graves e faltas por justificar — com
+  uma pontuação simples (risco alto a partir de 5 pontos, médio de 2 a 4) e o motivo de cada um. Gráficos de
+  **faltas por mês** (justificadas e por justificar) e de **assiduidade por turma**, filtro por turma e ano letivo.
+  Cartão "Alunos em risco alto" no Painel.
+- **Notificações no telemóvel e no computador** (Web Push), feitas só com o `crypto` do Node (VAPID + encriptação
+  aes128gcm, sem bibliotecas novas). Cada pessoa liga-as em **A minha conta**. Avisam de: falta marcada (aluno e
+  encarregado), metade/limite de faltas de um módulo (aluno, encarregado e diretor de turma), justificativo novo
+  (diretor de turma e direção) e a decisão (quem o enviou), avisos da escola, tarefa nova e tarefa avaliada na
+  Conversas, e empréstimos da biblioteca. Botão "Enviar uma notificação de teste".
+- **Progresso dos módulos** (professor, menu novo): horas dadas face às horas previstas de cada módulo, data da
+  última lição e notas lançadas; avisa quando um módulo tem 80% das horas dadas e ainda faltam notas ou quando as
+  horas foram ultrapassadas. Cartão "Módulos a acabar" em "As minhas turmas".
+- **Importar alunos de um ficheiro CSV** (Alunos → Importar de CSV): verifica cada linha com as regras do
+  formulário (incluindo n.º de processo repetido no ficheiro e turma inexistente), mostra as linhas com erro e cria as
+  certas de uma vez (com as contas dos encarregados dos menores). As palavras-passe aparecem uma vez e num **PDF para
+  imprimir**. Lê o CSV do Excel português (Windows-1252) e tem um modelo para descarregar.
+- **Ficha de registo do aluno em PDF**: identificação, módulos concluídos, horas, média, assiduidade e uma tabela por
+  disciplina, com linha para assinatura. Na ficha do aluno (direção), em Avaliações (o próprio aluno) e para a
+  secretaria.
+- **Biblioteca** (funcionário com o cargo Biblioteca): catálogo de livros (exemplares, cota, ISBN) e empréstimos a
+  alunos e professores pelo n.º de processo, com prazo (15 dias por omissão), devoluções e atrasados. O aluno vê os
+  livros que tem por devolver em Informações.
+- **Secretaria** (funcionário com o cargo Secretaria): "Fichas dos alunos", com a ficha em PDF de cada aluno.
+- Testes novos (`notificacoes.test.js` e `secretaria.test.js`): 41 no total.
+
+### Alterado
+- Tabelas novas `notificacoes_push`, `livros`, `emprestimos` (escolas) e `push_chaves` (plataforma), criadas sozinhas
+  no arranque. Dados de demonstração com livros e empréstimos.
+- A criação de um aluno passou para uma função usada pelo formulário e pela importação (`criarAlunoNaBd`).
+- O atributo `hidden` passa sempre à frente do estilo dos botões.
+
 ## [1.10.1] — 2026-11-22
 
 ### Novo

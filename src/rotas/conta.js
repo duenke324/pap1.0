@@ -15,9 +15,11 @@ const { escolaAtual, contextoAtual } = require('../lib/contexto');
 const { registarLog } = require('../lib/auditoria');
 const { chaveLogin, registarFalha, limparFalhas, mensagemFalha, mensagemBloqueio, MINUTOS_BLOQUEIO } = require('../lib/seguranca-login');
 
+const { cartaoNotificacoes } = require('./notificacoes');
+
 const MINIMO = 6;
 
-function paginaConta(req, res, { erro = '' } = {}, estado = 200) {
+async function paginaConta(req, res, { erro = '' } = {}, estado = 200) {
   const u = req.utilizador;
   const conteudo = `
     <section class="cartao">
@@ -48,7 +50,8 @@ function paginaConta(req, res, { erro = '' } = {}, estado = 200) {
           ? '<p class="texto-suave">Para pedir também um código por email em cada entrada, veja <a href="/admin/seguranca">Segurança da conta</a>.</p>'
           : ''
       }
-    </section>`;
+    </section>
+    ${await cartaoNotificacoes(req)}`;
   res.html(pagina(req, { titulo: 'A minha conta', ativo: 'conta' }, conteudo), estado);
 }
 

@@ -3,6 +3,8 @@ const { get, post } = require('../lib/servidor');
 const { todos, um } = require('../db');
 const { pagina, vazio, grelhaHorario, botaoImprimir } = require('../vistas/layout');
 const { pautaDoAluno } = require('./avaliacao');
+const { enviarFichaPdf } = require('../lib/ficha-aluno');
+const { cartaoEmprestimosAluno } = require('./biblioteca');
 const { situacaoPorModulo, cartaoFaltasModulos } = require('../lib/avisos-faltas');
 const { registarJustificativo, barraJustificar, listarJustificativos, listaJustificativos } = require('../lib/justificativos');
 const {
@@ -240,6 +242,7 @@ get('/aluno', async (req, res) => {
           }
         </section>
         ${cartaoReuniao(aluno, proximaReuniao)}
+        ${aluno.utilizador_id ? await cartaoEmprestimosAluno(aluno.utilizador_id) : ''}
         <section class="cartao">
           <h2>Avisos</h2>
           ${listaAvisos(avisos)}
@@ -539,7 +542,14 @@ get('/aluno/sumarios', async (req, res) => {
 get('/aluno/avaliacao', async (req, res) => {
   if (!req.aluno) return semFicha(req, res, 'Avaliação', 'avaliacao');
   const conteudo = `<section class="cartao">${await pautaDoAluno(req.aluno)}</section>`;
-  res.html(pagina(req, { titulo: 'Avaliação', ativo: 'avaliacao', subtitulo: 'Classificações por módulo', acoes: botaoImprimir() }, conteudo));
+  const acoes = `<a class="botao botao-secundario no-imprimir" href="/aluno/ficha.pdf" target="_blank">Ficha em PDF</a> ${botaoImprimir()}`;
+  res.html(pagina(req, { titulo: 'Avaliação', ativo: 'avaliacao', subtitulo: 'Classificações por módulo', acoes }, conteudo));
+});
+
+// Ficha de registo em PDF (módulos, classificações e assiduidade) — só a do próprio aluno
+get('/aluno/ficha.pdf', async (req, res) => {
+  if (!req.aluno) return res.erro(404);
+  await enviarFichaPdf(res, req.aluno.id);
 });
 
 get('/aluno/testes', async (req, res) => {
